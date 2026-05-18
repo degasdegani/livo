@@ -1,0 +1,102 @@
+# ═══════════════════════════════════════════════════════════════
+# LIVO — .gitignore profissional
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Dependências ─────────────────────────────────────────────
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ─── Build e Cache ────────────────────────────────────────────
+/.next/
+/out/
+/build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Variáveis de Ambiente (NUNCA COMMITAR) ───────────────────
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+.env.staging
+
+# ─── Logs e Debug ─────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+logs/
+
+# ─── Testes ───────────────────────────────────────────────────
+/coverage
+.nyc_output
+junit.xml
+
+# ─── Sistema Operacional ──────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Editores e IDEs ──────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# ─── Vercel ───────────────────────────────────────────────────
+.vercel
+
+# ─── Certificados e Chaves ────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.p12
+.cert
+
+# ─── Banco de Dados Local ─────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# ─── Uploads e Arquivos Temporários ───────────────────────────
+/uploads
+/tmp
+*.tmp
+*.temp
+
+# ─── Análise e Profiling ──────────────────────────────────────
+.turbo
+.bundle-analyzer
+
+# ─── Sentry ───────────────────────────────────────────────────
+.sentryclirc
+
+# ─── Storybook ────────────────────────────────────────────────
+storybook-static
+
+# ─── Notas pessoais (não compartilhar) ────────────────────────
+NOTES.md
+TODO.md
+/notas
+/scratch
