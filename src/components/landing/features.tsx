@@ -159,9 +159,8 @@ export function Features() {
 
         {/* Grid de features */}
         <div
+          className="grid grid-cols-1 md:grid-cols-3"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
             gap: "1px",
             background: "rgba(255,255,255,0.04)",
             borderRadius: "20px",
