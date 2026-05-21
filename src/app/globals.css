@@ -1,26 +1,155 @@
+/* ============================================================
+   LIVO — Design System Global
+   Paleta oficial, tipografia e tokens de design
+   ============================================================ */
+
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ── Dark mode via classe .dark ─────────────────────────── */
+@custom-variant dark (&:is(.dark *));
 
+/* ── Tokens oficiais do Livo (Tailwind 4 @theme) ────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Fontes */
+  --font-sans: "Satoshi", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+
+  /* ── Paleta de cores do Livo ─────────────────────────── */
+
+  /* Background */
+  --color-background: #050505;
+  --color-foreground: #fafafa;
+
+  /* Superfícies */
+  --color-surface-1: #0a0a0a;
+  --color-surface-2: #111111;
+  --color-surface-3: #1a1a1a;
+  --color-surface-4: #242424;
+
+  /* Bordas */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+
+  /* Texto */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #52525b;
+  --color-text-disabled: #27272a;
+
+  /* ── Cores accent do Livo ────────────────────────────── */
+
+  /* Vermelho/Magenta — cor primária da marca */
+  --color-red: #ff2d55;
+  --color-red-hover: #ff4566;
+  --color-red-muted: rgba(255, 45, 85, 0.1);
+  --color-red-glow: rgba(255, 45, 85, 0.3);
+
+  /* Ciano — accent tecnológico */
+  --color-cyan: #00d4ff;
+  --color-cyan-hover: #33ddff;
+  --color-cyan-muted: rgba(0, 212, 255, 0.1);
+  --color-cyan-glow: rgba(0, 212, 255, 0.3);
+
+  /* Roxo — IA e premium */
+  --color-purple: #7c3aed;
+  --color-purple-hover: #8b5cf6;
+  --color-purple-muted: rgba(124, 58, 237, 0.1);
+
+  /* ── Cores funcionais ────────────────────────────────── */
+  --color-success: #00d4a0;
+  --color-success-muted: rgba(0, 212, 160, 0.1);
+  --color-warning: #ffb020;
+  --color-warning-muted: rgba(255, 176, 32, 0.1);
+  --color-error: #ff2d55;
+  --color-error-muted: rgba(255, 45, 85, 0.1);
+  --color-gold: #d4af37;
+  --color-gold-muted: rgba(212, 175, 55, 0.1);
+
+  /* ── Mapeamento shadcn/ui → cores do Livo ────────────── */
+  --color-card: var(--color-surface-1);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-surface-2);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-red);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-surface-3);
+  --color-secondary-foreground: var(--color-text-secondary);
+  --color-muted: var(--color-surface-2);
+  --color-muted-foreground: var(--color-text-tertiary);
+  --color-accent: var(--color-surface-3);
+  --color-accent-foreground: var(--color-text-primary);
+  --color-destructive: var(--color-red);
+  --color-ring: var(--color-red);
+  --color-input: var(--color-border);
+
+  /* Sidebar */
+  --color-sidebar: var(--color-surface-1);
+  --color-sidebar-foreground: var(--color-text-primary);
+  --color-sidebar-primary: var(--color-red);
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: var(--color-surface-2);
+  --color-sidebar-accent-foreground: var(--color-text-secondary);
+  --color-sidebar-border: var(--color-border);
+  --color-sidebar-ring: var(--color-red);
+
+  /* Charts */
+  --color-chart-1: var(--color-red);
+  --color-chart-2: var(--color-cyan);
+  --color-chart-3: var(--color-purple);
+  --color-chart-4: var(--color-success);
+  --color-chart-5: var(--color-warning);
+
+  /* Radius */
+  --radius: 0.75rem;
+
+  /* Animação padrão do Livo */
+  --ease-livo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Reset e base global ────────────────────────────────── */
+* {
+  border-color: var(--color-border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Scrollbar customizada ──────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-red);
+}
+
+/* ── Seleção de texto ────────────────────────────────────── */
+::selection {
+  background: var(--color-red-muted);
+  color: var(--color-text-primary);
+}
+
+/* ── Focus ring ─────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-red);
+  outline-offset: 2px;
 }
