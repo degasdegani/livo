@@ -1,4 +1,11 @@
+// ============================================================
+// LIVO — Root Layout
+// Envolve toda a aplicação com o SessionProvider do Auth.js
+// ============================================================
+
+import { auth } from "@/auth";
 import type { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -37,7 +44,6 @@ export const metadata: Metadata = {
     "sistema",
     "software",
     "SaaS",
-    "inteligência artificial",
   ],
   authors: [{ name: "Livo", url: "https://livo.com.br" }],
   creator: "Livo",
@@ -47,31 +53,22 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     url: "https://livo.com.br",
     title: "Livo — Gestão inteligente para barbearias",
-    description:
-      "Sistema premium de agendamento e gestão para barbearias com inteligência artificial integrada.",
+    description: "Sistema premium de agendamento e gestão para barbearias.",
     siteName: "Livo",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Livo — Gestão inteligente para barbearias",
-    description:
-      "Sistema premium de agendamento e gestão para barbearias com inteligência artificial integrada.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
+  // Pega a sessão atual no servidor para passar ao SessionProvider
+  // Evita flash de conteúdo não autenticado
+  const session = await auth();
+
   return (
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
-        {/* Satoshi — fonte premium principal do Livo (Fontshare) */}
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link
           href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap"
@@ -83,13 +80,11 @@ export default function RootLayout({
           ${inter.variable}
           ${jetbrainsMono.variable}
           ${instrumentSerif.variable}
-          min-h-screen
-          bg-background
-          text-foreground
-          antialiased
+          min-h-screen bg-background text-foreground antialiased
         `}
       >
-        {children}
+        {/* SessionProvider torna a sessão acessível em toda a aplicação */}
+        <SessionProvider session={session}>{children}</SessionProvider>
       </body>
     </html>
   );
