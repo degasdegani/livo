@@ -14,6 +14,19 @@ const DEFAULT_HOURS = [
   { dayOfWeek: 6, isOpen: true, openTime: "09:00", closeTime: "13:00" },
 ];
 
+const RESERVED_SLUGS = [
+  "login",
+  "register",
+  "dashboard",
+  "onboarding",
+  "api",
+  "admin",
+  "app",
+  "www",
+  "mail",
+  "livo",
+];
+
 interface CreateBarbershopData {
   name: string;
   slug: string;
@@ -37,6 +50,10 @@ export async function createBarbershop(
     }
 
     const userId = session.user.id;
+
+    if (RESERVED_SLUGS.includes(data.slug.toLowerCase())) {
+      return { error: "Esse endereço não está disponível. Escolha outro." };
+    }
 
     if (!data.name || data.name.trim().length < 2) {
       return {
