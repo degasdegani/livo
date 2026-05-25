@@ -1,48 +1,29 @@
-// ============================================================
-// LIVO — Página de Cadastro
-// ============================================================
-
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { registerUser } from "./actions";
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+      style={{
+        background: "#FF2D55",
+        boxShadow: "0 8px 24px rgba(255,45,85,0.3)",
+      }}
+    >
+      {pending ? "Criando conta..." : "Criar conta gratis"}
+    </button>
+  );
+}
+
 export default function RegisterPage() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    const formData = new FormData(e.currentTarget);
-
-    startTransition(async () => {
-      const result = await registerUser(formData);
-
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-
-      // Cadastro OK → faz login automático
-      const login = await signIn("credentials", {
-        email: formData.get("email"),
-        password: formData.get("password"),
-        redirect: false,
-      });
-
-      if (login?.error) {
-        setError("Conta criada! Faça login para continuar.");
-        router.push("/login");
-        return;
-      }
-
-      router.push("/dashboard");
-    });
-  }
+  const [state, action] = useActionState(registerUser, null);
 
   return (
     <div
@@ -52,7 +33,6 @@ export default function RegisterPage() {
         border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
         <span
           style={{
@@ -82,7 +62,6 @@ export default function RegisterPage() {
         30 dias gratis. Sem cartao de credito.
       </p>
 
-      {/* Botão Google */}
       <button
         type="button"
         onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
@@ -113,7 +92,6 @@ export default function RegisterPage() {
         Continuar com Google
       </button>
 
-      {/* Divisor */}
       <div className="flex items-center gap-3 mb-6">
         <div
           className="flex-1 h-px"
@@ -128,8 +106,7 @@ export default function RegisterPage() {
         />
       </div>
 
-      {/* Formulário */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form action={action} className="flex flex-col gap-4">
         <div>
           <label
             className="block text-xs font-semibold mb-2"
@@ -142,16 +119,10 @@ export default function RegisterPage() {
             type="text"
             placeholder="Joao Silva"
             required
-            className="w-full px-4 py-3 rounded-xl text-sm text-white transition-colors outline-none placeholder:text-[#3F3F46]"
+            className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.08)";
             }}
           />
         </div>
@@ -168,16 +139,10 @@ export default function RegisterPage() {
             type="email"
             placeholder="seu@email.com"
             required
-            className="w-full px-4 py-3 rounded-xl text-sm text-white transition-colors outline-none placeholder:text-[#3F3F46]"
+            className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.08)";
             }}
           />
         </div>
@@ -194,16 +159,10 @@ export default function RegisterPage() {
             type="password"
             placeholder="Minimo 6 caracteres"
             required
-            className="w-full px-4 py-3 rounded-xl text-sm text-white transition-colors outline-none placeholder:text-[#3F3F46]"
+            className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.08)";
             }}
           />
         </div>
@@ -220,49 +179,29 @@ export default function RegisterPage() {
             type="password"
             placeholder="Repita a senha"
             required
-            className="w-full px-4 py-3 rounded-xl text-sm text-white transition-colors outline-none placeholder:text-[#3F3F46]"
+            className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
             }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.08)";
-            }}
           />
         </div>
 
-        {error && (
+        {state?.error && (
           <p
             className="text-xs text-center py-2 px-3 rounded-lg"
             style={{ color: "#FF2D55", background: "rgba(255,45,85,0.08)" }}
           >
-            {error}
+            {state.error}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-          style={{
-            background: "#FF2D55",
-            boxShadow: "0 8px 24px rgba(255,45,85,0.3)",
-          }}
-        >
-          {isPending ? "Criando conta..." : "Criar conta gratis"}
-        </button>
+        <SubmitButton />
       </form>
 
       <p className="text-center text-xs mt-6" style={{ color: "#52525B" }}>
         Ja tem conta?{" "}
-        <a
-          href="/login"
-          className="hover:text-white transition-colors"
-          style={{ color: "#A1A1AA" }}
-        >
+        <a href="/login" style={{ color: "#A1A1AA" }}>
           Fazer login
         </a>
       </p>

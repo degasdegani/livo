@@ -1,116 +1,413 @@
 // ============================================================
-// LIVO — Dashboard (versão mínima para validar o login)
-// Substituiremos isso pelo dashboard real nos próximos dias
+// LIVO — Dashboard Real
+// Painel principal com KPIs e agenda do dia
 // ============================================================
 
 import { auth, signOut } from "@/auth";
+import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  // Busca a barbearia do usuário com dados relacionados
+  const barbershop = await db.barbershop.findUnique({
+    where: { ownerId: session.user.id },
+    include: {
+      services: { where: { isActive: true }, orderBy: { name: "asc" } },
+      professionals: { where: { isActive: true } },
+      _count: {
+        select: {
+          clients: true,
+          appointments: true,
+        },
+      },
+    },
+  });
+
+  if (!barbershop) redirect("/onboarding");
+
+  // Agendamentos de hoje
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const todayAppointments = await db.appointment.findMany({
+    where: {
+      barbershopId: barbershop.id,
+      date: { gte: todayStart, lte: todayEnd },
+    },
+    include: {
+      service: true,
+      professional: true,
+    },
+    orderBy: { date: "asc" },
+  });
+
+  // Receita do dia (só agendamentos confirmados ou concluídos)
+  const todayRevenue = todayAppointments
+    .filter((a) => a.status === "confirmed" || a.status === "completed")
+    .reduce((sum, a) => sum + a.service.priceInCents, 0);
+
+  // Saudação baseada na hora do servidor
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center gap-8"
-      style={{ backgroundColor: "#050505" }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-2">
-        <span
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            background: "#FF2D55",
-            display: "inline-block",
-            boxShadow: "0 0 16px rgba(255,45,85,0.6)",
-          }}
-        />
-        <span
-          className="font-black text-white"
-          style={{ fontSize: "24px", letterSpacing: "-0.5px" }}
-        >
-          Livo
-        </span>
-      </div>
-
-      {/* Mensagem de boas-vindas */}
-      <div
-        className="text-center rounded-2xl p-8"
+    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+      {/* ── Header ──────────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between px-6 h-14"
         style={{
-          background: "#0A0A0A",
-          border: "1px solid rgba(255,255,255,0.08)",
-          maxWidth: "400px",
+          background: "rgba(5,5,5,0.9)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <div className="text-4xl mb-4">✅</div>
-        <h1
-          className="font-black text-white mb-2"
-          style={{ fontSize: "24px", letterSpacing: "-0.5px" }}
-        >
-          Login funcionando!
-        </h1>
-        <p className="text-sm mb-6" style={{ color: "#A1A1AA" }}>
-          Bem-vindo ao Livo,{" "}
-          <strong style={{ color: "#FFFFFF" }}>
-            {session?.user?.name ?? session?.user?.email}
-          </strong>
-          !
-        </p>
-        <p className="text-xs mb-8" style={{ color: "#52525B" }}>
-          O dashboard completo vem nos proximos dias. Hoje validamos que a
-          autenticacao funciona 100%.
-        </p>
-
-        {/* Botão de logout */}
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/login" });
-          }}
-        >
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl font-bold text-sm transition-all duration-200 hover:opacity-80"
+        {/* Logo + nome da barbearia */}
+        <div className="flex items-center gap-3">
+          <span
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#A1A1AA",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#FF2D55",
+              display: "inline-block",
+              boxShadow: "0 0 10px rgba(255,45,85,0.5)",
+            }}
+          />
+          <span
+            className="font-black text-white"
+            style={{ fontSize: "16px", letterSpacing: "-0.3px" }}
+          >
+            {barbershop.name}
+          </span>
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{
+              background: "rgba(255,45,85,0.08)",
+              color: "#FF2D55",
+              border: "1px solid rgba(255,45,85,0.2)",
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "1px",
             }}
           >
-            Sair da conta
-          </button>
-        </form>
-      </div>
+            START
+          </span>
+        </div>
 
-      {/* Info da sessão (para debug) */}
-      <div
-        className="text-center rounded-xl p-4"
-        style={{
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.04)",
-          maxWidth: "400px",
-          width: "100%",
-        }}
-      >
-        <p
-          className="text-xs mb-2"
-          style={{ color: "#3F3F46", fontFamily: "var(--font-mono)" }}
+        {/* Usuário + logout */}
+        <div className="flex items-center gap-4">
+          <span
+            className="text-sm hidden sm:block"
+            style={{ color: "#52525B" }}
+          >
+            {session.user.name}
+          </span>
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
+          >
+            <button
+              type="submit"
+              className="text-xs font-semibold transition-colors hover:text-white"
+              style={{ color: "#52525B" }}
+            >
+              Sair
+            </button>
+          </form>
+        </div>
+      </header>
+
+      {/* ── Conteúdo principal ──────────────────────────────── */}
+      <main className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
+        {/* Saudação */}
+        <div>
+          <h1
+            className="font-black text-white mb-1"
+            style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
+          >
+            {greeting}, {session.user.name?.split(" ")[0]} ✦
+          </h1>
+          <p style={{ color: "#52525B", fontSize: "14px" }}>
+            {todayAppointments.length === 0
+              ? "Nenhum agendamento para hoje ainda."
+              : `Hoje voce tem ${todayAppointments.length} agendamento${todayAppointments.length > 1 ? "s" : ""}.`}
+          </p>
+        </div>
+
+        {/* ── KPIs ────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            {
+              label: "HOJE",
+              value: todayAppointments.length.toString(),
+              sub: "agendamentos",
+              color: "#FF2D55",
+            },
+            {
+              label: "RECEITA",
+              value: `R$${(todayRevenue / 100).toFixed(0)}`,
+              sub: "hoje",
+              color: "#00D4A0",
+            },
+            {
+              label: "CLIENTES",
+              value: barbershop._count.clients.toString(),
+              sub: "cadastrados",
+              color: "#00D4FF",
+            },
+            {
+              label: "SERVICOS",
+              value: barbershop.services.length.toString(),
+              sub: "ativos",
+              color: "#7C3AED",
+            },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="rounded-2xl p-5"
+              style={{
+                background: "#0A0A0A",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <p
+                className="text-xs font-bold tracking-widest mb-3"
+                style={{ color: "#3F3F46", fontFamily: "var(--font-mono)" }}
+              >
+                {kpi.label}
+              </p>
+              <p
+                className="font-black"
+                style={{
+                  fontSize: "32px",
+                  letterSpacing: "-1px",
+                  color: kpi.color,
+                  lineHeight: 1,
+                }}
+              >
+                {kpi.value}
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                {kpi.sub}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Agenda do dia ────────────────────────────────────── */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          SESSAO ATIVA
-        </p>
-        <p
-          className="text-xs"
-          style={{ color: "#52525B", fontFamily: "var(--font-mono)" }}
-        >
-          {session?.user?.email}
-        </p>
-        <p
-          className="text-xs"
-          style={{ color: "#52525B", fontFamily: "var(--font-mono)" }}
-        >
-          ID: {session?.user?.id}
-        </p>
-      </div>
+          {/* Header da agenda */}
+          <div
+            className="flex items-center justify-between px-6 py-4"
+            style={{
+              background: "#0A0A0A",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <div>
+              <p className="font-bold text-white text-sm">Agenda de hoje</p>
+              <p className="text-xs" style={{ color: "#52525B" }}>
+                {new Date().toLocaleDateString("pt-BR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+            </div>
+            <span
+              className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{
+                background:
+                  todayAppointments.length > 0
+                    ? "rgba(0,212,160,0.1)"
+                    : "rgba(255,255,255,0.04)",
+                color: todayAppointments.length > 0 ? "#00D4A0" : "#3F3F46",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {todayAppointments.length} confirmado
+              {todayAppointments.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {/* Lista de agendamentos ou estado vazio */}
+          {todayAppointments.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 text-center"
+              style={{ background: "#080808" }}
+            >
+              <div className="text-4xl mb-4">📅</div>
+              <p className="font-bold text-white mb-2">
+                Nenhum agendamento hoje
+              </p>
+              <p
+                className="text-sm mb-6"
+                style={{ color: "#52525B", maxWidth: "280px" }}
+              >
+                Compartilhe o link da sua pagina para seus clientes agendarem
+                online.
+              </p>
+              <div
+                className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                style={{
+                  background: "rgba(255,45,85,0.06)",
+                  border: "1px solid rgba(255,45,85,0.15)",
+                }}
+              >
+                <span
+                  className="text-xs"
+                  style={{ color: "#FF2D55", fontFamily: "var(--font-mono)" }}
+                >
+                  livo.com.br/{barbershop.slug}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: "#080808" }}>
+              {todayAppointments.map((appointment) => {
+                const time = new Date(appointment.date).toLocaleTimeString(
+                  "pt-BR",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                );
+
+                const statusColors = {
+                  pending: "#FFB020",
+                  confirmed: "#FF2D55",
+                  completed: "#00D4A0",
+                  cancelled: "#3F3F46",
+                  no_show: "#3F3F46",
+                } as const;
+
+                const statusLabels = {
+                  pending: "Pendente",
+                  confirmed: "Confirmado",
+                  completed: "Concluido",
+                  cancelled: "Cancelado",
+                  no_show: "Faltou",
+                } as const;
+
+                const color = statusColors[appointment.status];
+
+                return (
+                  <div
+                    key={appointment.id}
+                    className="flex items-center gap-4 px-6 py-4"
+                    style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                  >
+                    {/* Horário */}
+                    <span
+                      className="font-bold flex-shrink-0"
+                      style={{
+                        color: "#A1A1AA",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "13px",
+                        minWidth: "45px",
+                      }}
+                    >
+                      {time}
+                    </span>
+
+                    {/* Barra de status */}
+                    <div
+                      style={{
+                        width: 3,
+                        alignSelf: "stretch",
+                        borderRadius: "2px",
+                        background: color,
+                        flexShrink: 0,
+                      }}
+                    />
+
+                    {/* Avatar */}
+                    <div
+                      className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-sm"
+                      style={{
+                        width: 36,
+                        height: 36,
+                        background: "#1A1A1A",
+                        border: `1.5px solid ${color}40`,
+                        color: "#A1A1AA",
+                      }}
+                    >
+                      {appointment.clientName.charAt(0).toUpperCase()}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="font-semibold text-sm truncate"
+                        style={{ color: "#FFFFFF" }}
+                      >
+                        {appointment.clientName}
+                      </p>
+                      <p className="text-xs" style={{ color: "#52525B" }}>
+                        {appointment.service.name} ·{" "}
+                        {appointment.professional.name}
+                      </p>
+                    </div>
+
+                    {/* Preço + status */}
+                    <div className="text-right flex-shrink-0">
+                      <p
+                        className="text-sm font-bold"
+                        style={{ color: "#A1A1AA" }}
+                      >
+                        R$ {(appointment.service.priceInCents / 100).toFixed(0)}
+                      </p>
+                      <p className="text-xs" style={{ color }}>
+                        {statusLabels[appointment.status]}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Ações rápidas ────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { icon: "📅", label: "Nova agenda", desc: "Agendar manualmente" },
+            {
+              icon: "👥",
+              label: "Clientes",
+              desc: `${barbershop._count.clients} cadastrados`,
+            },
+            { icon: "⚙️", label: "Configuracoes", desc: "Servicos e horarios" },
+          ].map((action) => (
+            <div
+              key={action.label}
+              className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:opacity-80"
+              style={{
+                background: "#0A0A0A",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <span className="text-2xl">{action.icon}</span>
+              <div>
+                <p className="font-bold text-white text-sm">{action.label}</p>
+                <p className="text-xs" style={{ color: "#52525B" }}>
+                  {action.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
