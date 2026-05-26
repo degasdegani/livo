@@ -1,11 +1,25 @@
 // ============================================================
 // LIVO — Dashboard Real
-// Painel principal com KPIs e agenda do dia
+// Painel principal com KPIs, agenda e ações rápidas
 // ============================================================
 
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+// ── Server Action: atualizar status do agendamento ────────────
+// Inline para manter o arquivo limpo e sem imports extras
+async function updateAppointmentStatus(appointmentId: string, status: string) {
+  "use server";
+  await db.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      status: status as "confirmed" | "completed" | "cancelled" | "no_show",
+    },
+  });
+  revalidatePath("/dashboard");
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -17,16 +31,13 @@ export default async function DashboardPage() {
       services: { where: { isActive: true }, orderBy: { name: "asc" } },
       professionals: { where: { isActive: true } },
       _count: {
-        select: {
-          clients: true,
-          appointments: true,
-        },
+        select: { clients: true, appointments: true },
       },
     },
   });
-
   if (!barbershop) redirect("/onboarding");
 
+  // ── Agendamentos de hoje ───────────────────────────────────
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -37,24 +48,51 @@ export default async function DashboardPage() {
       barbershopId: barbershop.id,
       date: { gte: todayStart, lte: todayEnd },
     },
-    include: {
-      service: true,
-      professional: true,
-    },
+    include: { service: true, professional: true },
     orderBy: { date: "asc" },
   });
 
+  // ── KPIs ──────────────────────────────────────────────────
+  // Receita do dia (confirmados + concluídos)
   const todayRevenue = todayAppointments
     .filter((a) => a.status === "confirmed" || a.status === "completed")
     .reduce((sum, a) => sum + a.service.priceInCents, 0);
+
+  // Agendamentos do mês
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthAppointments = await db.appointment.count({
+    where: {
+      barbershopId: barbershop.id,
+      date: { gte: monthStart },
+      status: { notIn: ["cancelled", "no_show"] },
+    },
+  });
 
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
+  const statusColors = {
+    pending: "#FFB020",
+    confirmed: "#FF2D55",
+    completed: "#00D4A0",
+    cancelled: "#3F3F46",
+    no_show: "#3F3F46",
+  } as const;
+
+  const statusLabels = {
+    pending: "Pendente",
+    confirmed: "Confirmado",
+    completed: "Concluido",
+    cancelled: "Cancelado",
+    no_show: "Faltou",
+  } as const;
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
-      {/* ── Header ──────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-40 flex items-center justify-between px-6 h-14"
         style={{
@@ -93,7 +131,6 @@ export default async function DashboardPage() {
             START
           </span>
         </div>
-
         <div className="flex items-center gap-4">
           <span
             className="text-sm hidden sm:block"
@@ -118,7 +155,7 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Conteúdo principal ──────────────────────────────── */}
+      {/* ── Conteúdo ──────────────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
         {/* Saudação */}
         <div>
@@ -135,7 +172,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {/* ── KPIs ────────────────────────────────────────────── */}
+        {/* ── KPIs ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             {
@@ -157,9 +194,9 @@ export default async function DashboardPage() {
               color: "#00D4FF",
             },
             {
-              label: "SERVICOS",
-              value: barbershop.services.length.toString(),
-              sub: "ativos",
+              label: "MES",
+              value: monthAppointments.toString(),
+              sub: "agendamentos",
               color: "#7C3AED",
             },
           ].map((kpi) => (
@@ -195,11 +232,12 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Agenda do dia ────────────────────────────────────── */}
+        {/* ── Agenda do dia ────────────────────────────────── */}
         <div
           className="rounded-2xl overflow-hidden"
           style={{ border: "1px solid rgba(255,255,255,0.06)" }}
         >
+          {/* Header da agenda */}
           <div
             className="flex items-center justify-between px-6 py-4"
             style={{
@@ -233,6 +271,7 @@ export default async function DashboardPage() {
             </span>
           </div>
 
+          {/* Lista de agendamentos */}
           {todayAppointments.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-16 text-center"
@@ -250,7 +289,7 @@ export default async function DashboardPage() {
                 online.
               </p>
               <div
-                className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                className="px-4 py-2 rounded-xl"
                 style={{
                   background: "rgba(255,45,85,0.06)",
                   border: "1px solid rgba(255,45,85,0.15)",
@@ -271,24 +310,10 @@ export default async function DashboardPage() {
                   "pt-BR",
                   { hour: "2-digit", minute: "2-digit" },
                 );
-
-                const statusColors = {
-                  pending: "#FFB020",
-                  confirmed: "#FF2D55",
-                  completed: "#00D4A0",
-                  cancelled: "#3F3F46",
-                  no_show: "#3F3F46",
-                } as const;
-
-                const statusLabels = {
-                  pending: "Pendente",
-                  confirmed: "Confirmado",
-                  completed: "Concluido",
-                  cancelled: "Cancelado",
-                  no_show: "Faltou",
-                } as const;
-
                 const color = statusColors[appointment.status];
+                const isActive =
+                  appointment.status === "confirmed" ||
+                  appointment.status === "pending";
 
                 return (
                   <div
@@ -296,6 +321,7 @@ export default async function DashboardPage() {
                     className="flex items-center gap-4 px-6 py-4"
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
                   >
+                    {/* Horário */}
                     <span
                       className="font-bold shrink-0"
                       style={{
@@ -307,6 +333,8 @@ export default async function DashboardPage() {
                     >
                       {time}
                     </span>
+
+                    {/* Barra de status */}
                     <div
                       style={{
                         width: 3,
@@ -316,6 +344,8 @@ export default async function DashboardPage() {
                         flexShrink: 0,
                       }}
                     />
+
+                    {/* Avatar */}
                     <div
                       className="flex items-center justify-center rounded-full shrink-0 font-bold text-sm"
                       style={{
@@ -328,6 +358,8 @@ export default async function DashboardPage() {
                     >
                       {appointment.clientName.charAt(0).toUpperCase()}
                     </div>
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p
                         className="font-semibold text-sm truncate"
@@ -340,7 +372,9 @@ export default async function DashboardPage() {
                         {appointment.professional.name}
                       </p>
                     </div>
-                    <div className="text-right shrink-0">
+
+                    {/* Preço */}
+                    <div className="text-right shrink-0 mr-3 hidden sm:block">
                       <p
                         className="text-sm font-bold"
                         style={{ color: "#A1A1AA" }}
@@ -351,6 +385,104 @@ export default async function DashboardPage() {
                         {statusLabels[appointment.status]}
                       </p>
                     </div>
+
+                    {/* ── Botões de ação ──────────────────────── */}
+                    {/* Só aparecem para agendamentos ativos (confirmado/pendente) */}
+                    {isActive ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Concluir */}
+                        <form
+                          action={async () => {
+                            "use server";
+                            await updateAppointmentStatus(
+                              appointment.id,
+                              "completed",
+                            );
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            title="Marcar como concluído"
+                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              background: "rgba(0,212,160,0.1)",
+                              color: "#00D4A0",
+                              border: "1px solid rgba(0,212,160,0.2)",
+                            }}
+                          >
+                            ✓
+                          </button>
+                        </form>
+
+                        {/* Cancelar */}
+                        <form
+                          action={async () => {
+                            "use server";
+                            await updateAppointmentStatus(
+                              appointment.id,
+                              "cancelled",
+                            );
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            title="Cancelar agendamento"
+                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              background: "rgba(255,255,255,0.04)",
+                              color: "#52525B",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </form>
+
+                        {/* Faltou */}
+                        <form
+                          action={async () => {
+                            "use server";
+                            await updateAppointmentStatus(
+                              appointment.id,
+                              "no_show",
+                            );
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            title="Marcar como faltou"
+                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              background: "rgba(255,176,32,0.08)",
+                              color: "#FFB020",
+                              border: "1px solid rgba(255,176,32,0.2)",
+                            }}
+                          >
+                            !
+                          </button>
+                        </form>
+                      </div>
+                    ) : (
+                      // Agendamentos encerrados: só mostra o status
+                      <div className="shrink-0">
+                        <span
+                          className="text-xs font-bold px-2 py-1 rounded-full"
+                          style={{
+                            background: `${color}15`,
+                            color,
+                            border: `1px solid ${color}30`,
+                          }}
+                        >
+                          {statusLabels[appointment.status]}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -358,7 +490,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* ── Ações rápidas ────────────────────────────────────── */}
+        {/* ── Ações rápidas ────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
@@ -371,7 +503,7 @@ export default async function DashboardPage() {
               icon: "👥",
               label: "Clientes",
               desc: `${barbershop._count.clients} cadastrados`,
-              href: "/dashboard",
+              href: "/dashboard/clients",
             },
             {
               icon: "⚙️",
@@ -383,7 +515,7 @@ export default async function DashboardPage() {
             <a
               href={action.href}
               key={action.label}
-              className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:opacity-80"
+              className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 hover:opacity-80"
               style={{
                 background: "#0A0A0A",
                 border: "1px solid rgba(255,255,255,0.06)",
