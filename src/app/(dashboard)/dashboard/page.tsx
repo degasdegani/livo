@@ -11,7 +11,6 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  // Busca a barbearia do usuário com dados relacionados
   const barbershop = await db.barbershop.findUnique({
     where: { ownerId: session.user.id },
     include: {
@@ -28,7 +27,6 @@ export default async function DashboardPage() {
 
   if (!barbershop) redirect("/onboarding");
 
-  // Agendamentos de hoje
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -46,12 +44,10 @@ export default async function DashboardPage() {
     orderBy: { date: "asc" },
   });
 
-  // Receita do dia (só agendamentos confirmados ou concluídos)
   const todayRevenue = todayAppointments
     .filter((a) => a.status === "confirmed" || a.status === "completed")
     .reduce((sum, a) => sum + a.service.priceInCents, 0);
 
-  // Saudação baseada na hora do servidor
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
@@ -67,7 +63,6 @@ export default async function DashboardPage() {
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        {/* Logo + nome da barbearia */}
         <div className="flex items-center gap-3">
           <span
             style={{
@@ -99,7 +94,6 @@ export default async function DashboardPage() {
           </span>
         </div>
 
-        {/* Usuário + logout */}
         <div className="flex items-center gap-4">
           <span
             className="text-sm hidden sm:block"
@@ -206,7 +200,6 @@ export default async function DashboardPage() {
           className="rounded-2xl overflow-hidden"
           style={{ border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          {/* Header da agenda */}
           <div
             className="flex items-center justify-between px-6 py-4"
             style={{
@@ -240,7 +233,6 @@ export default async function DashboardPage() {
             </span>
           </div>
 
-          {/* Lista de agendamentos ou estado vazio */}
           {todayAppointments.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-16 text-center"
@@ -277,10 +269,7 @@ export default async function DashboardPage() {
               {todayAppointments.map((appointment) => {
                 const time = new Date(appointment.date).toLocaleTimeString(
                   "pt-BR",
-                  {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  },
+                  { hour: "2-digit", minute: "2-digit" },
                 );
 
                 const statusColors = {
@@ -307,9 +296,8 @@ export default async function DashboardPage() {
                     className="flex items-center gap-4 px-6 py-4"
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
                   >
-                    {/* Horário */}
                     <span
-                      className="font-bold flex-shrink-0"
+                      className="font-bold shrink-0"
                       style={{
                         color: "#A1A1AA",
                         fontFamily: "var(--font-mono)",
@@ -319,8 +307,6 @@ export default async function DashboardPage() {
                     >
                       {time}
                     </span>
-
-                    {/* Barra de status */}
                     <div
                       style={{
                         width: 3,
@@ -330,10 +316,8 @@ export default async function DashboardPage() {
                         flexShrink: 0,
                       }}
                     />
-
-                    {/* Avatar */}
                     <div
-                      className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-sm"
+                      className="flex items-center justify-center rounded-full shrink-0 font-bold text-sm"
                       style={{
                         width: 36,
                         height: 36,
@@ -344,8 +328,6 @@ export default async function DashboardPage() {
                     >
                       {appointment.clientName.charAt(0).toUpperCase()}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p
                         className="font-semibold text-sm truncate"
@@ -358,9 +340,7 @@ export default async function DashboardPage() {
                         {appointment.professional.name}
                       </p>
                     </div>
-
-                    {/* Preço + status */}
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right shrink-0">
                       <p
                         className="text-sm font-bold"
                         style={{ color: "#A1A1AA" }}
@@ -381,20 +361,33 @@ export default async function DashboardPage() {
         {/* ── Ações rápidas ────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { icon: "📅", label: "Nova agenda", desc: "Agendar manualmente" },
+            {
+              icon: "📅",
+              label: "Nova agenda",
+              desc: "Agendar manualmente",
+              href: "/dashboard",
+            },
             {
               icon: "👥",
               label: "Clientes",
               desc: `${barbershop._count.clients} cadastrados`,
+              href: "/dashboard",
             },
-            { icon: "⚙️", label: "Configuracoes", desc: "Servicos e horarios" },
+            {
+              icon: "⚙️",
+              label: "Configuracoes",
+              desc: "Servicos e horarios",
+              href: "/dashboard/settings",
+            },
           ].map((action) => (
-            <div
+            <a
+              href={action.href}
               key={action.label}
               className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:opacity-80"
               style={{
                 background: "#0A0A0A",
                 border: "1px solid rgba(255,255,255,0.06)",
+                textDecoration: "none",
               }}
             >
               <span className="text-2xl">{action.icon}</span>
@@ -404,7 +397,7 @@ export default async function DashboardPage() {
                   {action.desc}
                 </p>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </main>
