@@ -15,15 +15,37 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+
   const barbershop = await db.barbershop.findUnique({
     where: { slug, isActive: true },
+    include: { services: { where: { isActive: true }, take: 3 } },
   });
 
-  if (!barbershop) return { title: "Barbearia não encontrada | Livo" };
+  if (!barbershop) {
+    return {
+      title: "Barbearia não encontrada | Livo",
+    };
+  }
+
+  const serviceNames = barbershop.services.map((s) => s.name).join(", ");
+  const city = barbershop.city ? ` em ${barbershop.city}` : "";
+  const description = `Agende seu horário na ${barbershop.name}${city}. Serviços: ${serviceNames}. Agendamento online rápido e fácil pelo Livo.`;
 
   return {
     title: `${barbershop.name} | Livo`,
-    description: `Agende seu horário na ${barbershop.name} pelo Livo.`,
+    description,
+    openGraph: {
+      title: barbershop.name,
+      description,
+      type: "website",
+      locale: "pt_BR",
+      siteName: "Livo",
+    },
+    twitter: {
+      card: "summary",
+      title: barbershop.name,
+      description,
+    },
   };
 }
 

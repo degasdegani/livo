@@ -494,10 +494,10 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
-              icon: "📅",
-              label: "Nova agenda",
-              desc: "Agendar manualmente",
-              href: "/dashboard/agenda/new",
+              icon: "📊",
+              label: "Relatorios",
+              desc: "Receita e desempenho",
+              href: "/dashboard/relatorios",
             },
             {
               icon: "👥",
