@@ -497,7 +497,7 @@ export default async function DashboardPage() {
               icon: "📅",
               label: "Nova agenda",
               desc: "Agendar manualmente",
-              href: "/dashboard",
+              href: "/dashboard/agenda/new",
             },
             {
               icon: "👥",
