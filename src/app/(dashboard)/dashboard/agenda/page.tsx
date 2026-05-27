@@ -5,21 +5,9 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { AppointmentActions } from "../appointment-actions";
 import { DateNavigator } from "./date-navigator";
-
-// Server Action inline para atualizar status
-async function updateStatus(appointmentId: string, status: string) {
-  "use server";
-  await db.appointment.update({
-    where: { id: appointmentId },
-    data: {
-      status: status as "confirmed" | "completed" | "cancelled" | "no_show",
-    },
-  });
-  revalidatePath("/dashboard/agenda");
-}
 
 const statusColors = {
   pending: "#FFB020",
@@ -50,7 +38,6 @@ export default async function AgendaPage({
   });
   if (!barbershop) redirect("/onboarding");
 
-  // Data selecionada (padrão: hoje)
   const { date } = await searchParams;
   const selectedDate = date || new Date().toISOString().split("T")[0];
 
@@ -66,7 +53,6 @@ export default async function AgendaPage({
     orderBy: { date: "asc" },
   });
 
-  // Receita do dia (confirmados + concluídos)
   const revenue = appointments
     .filter((a) => a.status === "confirmed" || a.status === "completed")
     .reduce((sum, a) => sum + a.service.priceInCents, 0);
@@ -235,7 +221,6 @@ export default async function AgendaPage({
                           : undefined,
                     }}
                   >
-                    {/* Horário */}
                     <span
                       className="font-bold shrink-0"
                       style={{
@@ -247,8 +232,6 @@ export default async function AgendaPage({
                     >
                       {time}
                     </span>
-
-                    {/* Barra de status */}
                     <div
                       style={{
                         width: 3,
@@ -258,8 +241,6 @@ export default async function AgendaPage({
                         flexShrink: 0,
                       }}
                     />
-
-                    {/* Avatar */}
                     <div
                       className="flex items-center justify-center rounded-full shrink-0 font-bold text-sm"
                       style={{
@@ -272,8 +253,6 @@ export default async function AgendaPage({
                     >
                       {appointment.clientName.charAt(0).toUpperCase()}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate text-white">
                         {appointment.clientName}
@@ -284,73 +263,8 @@ export default async function AgendaPage({
                       </p>
                     </div>
 
-                    {/* Ações */}
                     {isActive ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <form
-                          action={async () => {
-                            "use server";
-                            await updateStatus(appointment.id, "completed");
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            title="Concluir"
-                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
-                            style={{
-                              width: 28,
-                              height: 28,
-                              background: "rgba(0,212,160,0.1)",
-                              color: "#00D4A0",
-                              border: "1px solid rgba(0,212,160,0.2)",
-                            }}
-                          >
-                            ✓
-                          </button>
-                        </form>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await updateStatus(appointment.id, "cancelled");
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            title="Cancelar"
-                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
-                            style={{
-                              width: 28,
-                              height: 28,
-                              background: "rgba(255,255,255,0.04)",
-                              color: "#52525B",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                            }}
-                          >
-                            ✕
-                          </button>
-                        </form>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await updateStatus(appointment.id, "no_show");
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            title="Faltou"
-                            className="flex items-center justify-center rounded-lg font-bold text-xs transition-all hover:opacity-80"
-                            style={{
-                              width: 28,
-                              height: 28,
-                              background: "rgba(255,176,32,0.08)",
-                              color: "#FFB020",
-                              border: "1px solid rgba(255,176,32,0.2)",
-                            }}
-                          >
-                            !
-                          </button>
-                        </form>
-                      </div>
+                      <AppointmentActions appointmentId={appointment.id} />
                     ) : (
                       <span
                         className="text-xs font-bold px-2 py-1 rounded-full shrink-0"
