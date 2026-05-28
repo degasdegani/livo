@@ -5,7 +5,8 @@ import { Check, X } from "lucide-react";
 const PLANS = [
   {
     name: "Livo Start",
-    price: "197",
+    price: "97",
+    originalPrice: "197",
     desc: "Para o barbeiro solo que esta digitalizando o negocio.",
     featured: false,
     features: [
@@ -23,6 +24,7 @@ const PLANS = [
   {
     name: "Livo Pro",
     price: "297",
+    originalPrice: undefined,
     desc: "Para barbearias estabelecidas que querem crescer.",
     featured: true,
     features: [
@@ -40,6 +42,7 @@ const PLANS = [
   {
     name: "Livo Prime",
     price: "497",
+    originalPrice: undefined,
     desc: "Para barbearias premium com maximo em IA e automacao.",
     featured: false,
     features: [
@@ -54,7 +57,7 @@ const PLANS = [
       { text: "Onboarding presencial", ok: true },
     ],
   },
-] as const;
+];
 
 export function Plans() {
   return (
@@ -126,6 +129,30 @@ export function Plans() {
                 {plan.name}
               </p>
 
+              {plan.originalPrice && (
+                <div className="mb-1">
+                  <span
+                    style={{
+                      color: "#52525B",
+                      fontSize: "16px",
+                      textDecoration: "line-through",
+                    }}
+                  >
+                    R$ {plan.originalPrice}
+                  </span>
+                  <span
+                    className="ml-2 font-bold rounded-full px-2 py-0.5"
+                    style={{
+                      background: "rgba(255,45,85,0.15)",
+                      color: "#FF2D55",
+                      fontSize: "11px",
+                    }}
+                  >
+                    OFERTA
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-baseline gap-1 mb-3">
                 <span
                   style={{
@@ -192,7 +219,7 @@ export function Plans() {
               </ul>
 
               <a
-                href="#"
+                href="/onboarding"
                 className="block text-center py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90"
                 style={{
                   background: plan.featured

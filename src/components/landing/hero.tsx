@@ -222,12 +222,16 @@ export function Hero() {
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.5 }}
             className="flex flex-wrap gap-4 justify-center"
           >
-            <Button variant="primary" size="xl">
-              Começar grátis por 30 dias
-            </Button>
-            <Button variant="secondary" size="xl">
-              Ver demonstração →
-            </Button>
+            <a href="/onboarding">
+              <Button variant="primary" size="xl">
+                Começar grátis por 30 dias
+              </Button>
+            </a>
+            <a href="#produto">
+              <Button variant="secondary" size="xl">
+                Ver demonstração →
+              </Button>
+            </a>
           </motion.div>
 
           {/* Texto de garantia */}
@@ -278,7 +282,6 @@ export function Hero() {
                     gap: "8px",
                   }}
                 >
-                  {/* Dots macOS */}
                   {["#FF5F57", "#FEBC2E", "#28C840"].map((color) => (
                     <div
                       key={color}
@@ -290,7 +293,6 @@ export function Hero() {
                       }}
                     />
                   ))}
-                  {/* URL bar simulada */}
                   <div
                     style={{
                       flex: 1,
@@ -313,7 +315,7 @@ export function Hero() {
                         color: "#52525B",
                       }}
                     >
-                      app.livo.com.br/dashboard
+                      app.livobarber.com.br/dashboard
                     </span>
                   </div>
                 </div>
@@ -333,7 +335,6 @@ export function Hero() {
                       flexShrink: 0,
                     }}
                   >
-                    {/* Logo na sidebar */}
                     <div
                       style={{
                         display: "flex",
@@ -371,7 +372,6 @@ export function Hero() {
                       </span>
                     </div>
 
-                    {/* Itens do menu */}
                     {[
                       { icon: "◼", label: "Dashboard", active: true },
                       { icon: "📅", label: "Agendamentos", active: false },
@@ -422,7 +422,6 @@ export function Hero() {
                   <div
                     style={{ flex: 1, padding: "20px", overflowY: "hidden" }}
                   >
-                    {/* Saudação */}
                     <div style={{ marginBottom: "16px" }}>
                       <div
                         style={{
@@ -444,7 +443,6 @@ export function Hero() {
                       </div>
                     </div>
 
-                    {/* KPIs */}
                     <div
                       style={{
                         display: "grid",
@@ -497,7 +495,6 @@ export function Hero() {
                       ))}
                     </div>
 
-                    {/* Lista de agendamentos */}
                     <div
                       style={{
                         background: "#0D0D0D",
@@ -548,7 +545,6 @@ export function Hero() {
                                 : "transparent",
                           }}
                         >
-                          {/* Horário */}
                           <span
                             style={{
                               fontFamily: "var(--font-mono)",
@@ -560,8 +556,6 @@ export function Hero() {
                           >
                             {appt.time}
                           </span>
-
-                          {/* Barra de status */}
                           <div
                             style={{
                               width: 2,
@@ -574,8 +568,6 @@ export function Hero() {
                                   : undefined,
                             }}
                           />
-
-                          {/* Avatar */}
                           <div
                             style={{
                               width: 28,
@@ -594,8 +586,6 @@ export function Hero() {
                           >
                             {appt.name.charAt(0)}
                           </div>
-
-                          {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div
                               style={{
@@ -622,8 +612,6 @@ export function Hero() {
                               {appt.service} · {appt.barber}
                             </div>
                           </div>
-
-                          {/* Status dot */}
                           <div
                             style={{
                               width: 7,

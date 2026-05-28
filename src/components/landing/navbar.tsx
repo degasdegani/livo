@@ -27,7 +27,7 @@ export function Navbar() {
       />
 
       <Container className="relative flex items-center justify-between h-16">
-        <a href="#" className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3">
           <span
             style={{
               width: 8,
@@ -73,9 +73,11 @@ export function Navbar() {
           </a>
         </nav>
 
-        <Button variant="primary" size="sm">
-          Começar agora
-        </Button>
+        <a href="/onboarding">
+          <Button variant="primary" size="sm">
+            Começar agora
+          </Button>
+        </a>
       </Container>
     </header>
   );
