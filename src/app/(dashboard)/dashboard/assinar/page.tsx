@@ -1,0 +1,317 @@
+// ============================================================
+// LIVO — Página de Assinatura
+// Paywall quando trial vence ou plano está inativo
+// ============================================================
+
+"use client";
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { createSubscription } from "./actions";
+
+function maskCPF(value: string): string {
+  const d = value.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.replace(/(\d{3})(\d{0,3})/, "$1.$2");
+  if (d.length <= 9) return d.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
+  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full py-4 rounded-xl font-black text-white text-base transition-all hover:opacity-90 disabled:opacity-50"
+      style={{
+        background: "#FF2D55",
+        boxShadow: "0 8px 32px rgba(255,45,85,0.3)",
+      }}
+    >
+      {pending ? "Processando..." : "Assinar agora — R$ 97/mês →"}
+    </button>
+  );
+}
+
+export default function AssinarPage() {
+  const [state, action] = useActionState(createSubscription, null);
+  const [cpf, setCpf] = useState("");
+
+  // Se tiver PIX, mostra a tela de pagamento
+  if (state?.success && state.pixPayload) {
+    return (
+      <main
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ backgroundColor: "#050505" }}
+      >
+        <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
+          <div className="flex items-center gap-2">
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#FF2D55",
+                display: "inline-block",
+              }}
+            />
+            <span
+              className="font-black text-white"
+              style={{ fontSize: "20px" }}
+            >
+              Livo
+            </span>
+          </div>
+
+          <div>
+            <h2
+              className="font-black text-white mb-2"
+              style={{ fontSize: "24px" }}
+            >
+              Pague com PIX
+            </h2>
+            <p className="text-sm" style={{ color: "#52525B" }}>
+              Escaneie o QR Code ou copie o código abaixo
+            </p>
+          </div>
+
+          {/* QR Code */}
+          {state.pixImage && (
+            <div className="p-4 rounded-2xl" style={{ background: "#FFFFFF" }}>
+              <img
+                src={`data:image/png;base64,${state.pixImage}`}
+                alt="QR Code PIX"
+                width={200}
+                height={200}
+              />
+            </div>
+          )}
+
+          {/* Código copia e cola */}
+          <div className="w-full">
+            <p className="text-xs mb-2" style={{ color: "#52525B" }}>
+              Código PIX (copia e cola):
+            </p>
+            <div
+              className="p-3 rounded-xl text-xs break-all cursor-pointer"
+              style={{
+                background: "#0A0A0A",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#A1A1AA",
+                fontFamily: "monospace",
+              }}
+              onClick={() => {
+                navigator.clipboard.writeText(state.pixPayload || "");
+                alert("Código copiado!");
+              }}
+            >
+              {state.pixPayload?.slice(0, 60)}...
+            </div>
+            <p className="text-xs mt-2" style={{ color: "#3F3F46" }}>
+              Clique para copiar o código completo
+            </p>
+          </div>
+
+          <div
+            className="w-full p-4 rounded-xl"
+            style={{
+              background: "rgba(0,212,160,0.06)",
+              border: "1px solid rgba(0,212,160,0.2)",
+            }}
+          >
+            <p className="text-sm font-semibold" style={{ color: "#00D4A0" }}>
+              ✓ Após o pagamento, seu acesso será liberado automaticamente.
+            </p>
+          </div>
+
+          {state.invoiceUrl && (
+            <a
+              href={state.invoiceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm hover:opacity-70 transition-opacity"
+              style={{ color: "#52525B" }}
+            >
+              Abrir fatura completa →
+            </a>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // Se assinou sem PIX (link de fatura)
+  if (state?.success && state.invoiceUrl) {
+    return (
+      <main
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ backgroundColor: "#050505" }}
+      >
+        <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
+          <div className="text-5xl">✅</div>
+          <h2 className="font-black text-white" style={{ fontSize: "24px" }}>
+            Assinatura criada!
+          </h2>
+          <p className="text-sm" style={{ color: "#52525B" }}>
+            Acesse o link abaixo para finalizar o pagamento.
+          </p>
+          <a
+            href={state.invoiceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-4 rounded-xl font-black text-white text-center transition-all hover:opacity-80 block"
+            style={{ background: "#FF2D55" }}
+          >
+            Ir para o pagamento →
+          </a>
+          <a href="/dashboard" className="text-sm" style={{ color: "#52525B" }}>
+            Voltar ao dashboard
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{ backgroundColor: "#050505" }}
+    >
+      <div className="w-full max-w-md flex flex-col gap-8">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#FF2D55",
+              display: "inline-block",
+            }}
+          />
+          <span className="font-black text-white" style={{ fontSize: "20px" }}>
+            Livo
+          </span>
+        </div>
+
+        {/* Headline */}
+        <div>
+          <h1
+            className="font-black text-white mb-2"
+            style={{ fontSize: "32px", letterSpacing: "-1px" }}
+          >
+            Seu trial chegou
+            <br />
+            <span style={{ color: "#FF2D55" }}>ao fim.</span>
+          </h1>
+          <p style={{ color: "#52525B" }}>
+            Assine o Livo Start para continuar gerenciando sua barbearia.
+          </p>
+        </div>
+
+        {/* Card do plano */}
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "#0A0A0A",
+            border: "1px solid rgba(255,45,85,0.2)",
+          }}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <span
+                className="text-xs font-bold px-2 py-1 rounded-full"
+                style={{
+                  background: "rgba(255,45,85,0.08)",
+                  color: "#FF2D55",
+                  border: "1px solid rgba(255,45,85,0.2)",
+                }}
+              >
+                LIVO START
+              </span>
+              <p
+                className="font-black text-white mt-3"
+                style={{ fontSize: "36px", letterSpacing: "-1px" }}
+              >
+                R$ 97
+                <span
+                  className="text-base font-normal"
+                  style={{ color: "#52525B" }}
+                >
+                  /mês
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {[
+              "Agendamento online ilimitado",
+              "Dashboard e relatórios",
+              "CRM de clientes automático",
+              "E-mail de confirmação",
+              "1 profissional",
+              "Suporte via WhatsApp",
+            ].map((feature) => (
+              <div key={feature} className="flex items-center gap-2">
+                <span style={{ color: "#00D4A0", fontSize: "12px" }}>✓</span>
+                <span className="text-sm" style={{ color: "#A1A1AA" }}>
+                  {feature}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Formulário */}
+        <form action={action} className="flex flex-col gap-4">
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              CPF do responsável *
+            </label>
+            <input
+              name="cpfCnpj"
+              type="text"
+              inputMode="numeric"
+              value={cpf}
+              onChange={(e) => setCpf(maskCPF(e.target.value))}
+              placeholder="000.000.000-00"
+              required
+              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+            <p className="text-xs mt-1" style={{ color: "#3F3F46" }}>
+              Necessário para emissão da cobrança
+            </p>
+          </div>
+
+          {state?.error && (
+            <p
+              className="text-xs px-4 py-3 rounded-xl"
+              style={{
+                color: "#FF2D55",
+                background: "rgba(255,45,85,0.08)",
+                border: "1px solid rgba(255,45,85,0.2)",
+              }}
+            >
+              {state.error}
+            </p>
+          )}
+
+          <SubmitButton />
+
+          <p className="text-center text-xs" style={{ color: "#3F3F46" }}>
+            Cancele quando quiser · Sem fidelidade · PIX ou cartão
+          </p>
+        </form>
+      </div>
+    </main>
+  );
+}

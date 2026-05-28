@@ -1,6 +1,6 @@
 // ============================================================
 // LIVO — Schema do Banco de Dados
-// Prisma + PostgreSQL (Railway)
+// Prisma + PostgreSQL
 // ============================================================
 
 generator client {
@@ -14,25 +14,21 @@ datasource db {
 
 // ─── ENUMS ──────────────────────────────────────────────────
 
-// Planos disponíveis no sistema
 enum Plan {
   start
   pro
   prime
 }
 
-// Status possíveis de um agendamento
 enum AppointmentStatus {
-  pending // aguardando confirmação
-  confirmed // confirmado
-  completed // atendimento realizado
-  cancelled // cancelado
-  no_show // cliente não compareceu
+  pending
+  confirmed
+  completed
+  cancelled
+  no_show
 }
 
-// ─── AUTH.JS (NextAuth) — tabelas obrigatórias ───────────────
-// Essas 4 tabelas são exigidas pelo Auth.js Prisma Adapter
-// Não altere os nomes dos campos — o Auth.js depende deles
+// ─── AUTH.JS (NextAuth) ─────────────────────────────────────
 
 model User {
   id            String    @id @default(cuid())
@@ -40,11 +36,11 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  password      String? // senha criptografada (para login email+senha)
+  password      String?
 
   accounts   Account[]
   sessions   Session[]
-  barbershop Barbershop? // barbearia que este usuário é dono
+  barbershop Barbershop?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -53,18 +49,19 @@ model User {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+
+  refresh_token String? @db.Text
+  access_token  String? @db.Text
+  expires_at    Int?
+  token_type    String?
+  scope         String?
+  id_token      String? @db.Text
+  session_state String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -92,27 +89,28 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// ─── LIVO — Modelos principais ───────────────────────────────
+// ─── LIVO — MODELOS PRINCIPAIS ──────────────────────────────
 
 model Barbershop {
-  id           String  @id @default(cuid())
-  name         String // "Barbearia do João"
-  slug         String  @unique // "barbearia-do-joao" → livo.com.br/barbearia-do-joao
-  description  String?
-  logoUrl      String?
-  primaryColor String  @default("#FF2D55") // cor de destaque da página pública
-  phone        String?
-  address      String?
-  city         String?
-  state        String?
-  zipCode      String?
+  id    String  @id @default(cuid())
+  name  String
+  slug  String  @unique
+  phone String?
+  city  String?
+  state String?
 
-  // Plano e status
-  plan          Plan      @default(start)
-  planExpiresAt DateTime? // null = trial ativo
-  isActive      Boolean   @default(true)
+  // Plano
+  plan Plan @default(start)
 
-  // Dono da barbearia
+  // Status da assinatura
+  planStatus          String    @default("trial")
+  trialEndsAt         DateTime?
+  asaasCustomerId     String?
+  asaasSubscriptionId String?
+
+  isActive Boolean @default(true)
+
+  // Dono
   ownerId String @unique
   owner   User   @relation(fields: [ownerId], references: [id])
 
@@ -149,10 +147,10 @@ model Professional {
 
 model Service {
   id           String  @id @default(cuid())
-  name         String // "Corte Social"
+  name         String
   description  String?
-  durationMin  Int // duração em minutos (ex: 30, 45, 60)
-  priceInCents Int // preço em centavos (R$40,00 = 4000)
+  durationMin  Int
+  priceInCents Int
   isActive     Boolean @default(true)
 
   barbershopId String
@@ -168,25 +166,28 @@ model Service {
 
 model Appointment {
   id      String            @id @default(cuid())
-  date    DateTime // data e hora de início do agendamento
-  endTime DateTime // data e hora de término (calculado)
+  date    DateTime
+  endTime DateTime
   status  AppointmentStatus @default(pending)
-  notes   String? // observações do agendamento
+  notes   String?
 
-  // Dados do cliente (não precisa ter conta no sistema)
+  // Cliente
   clientName  String
   clientPhone String
   clientEmail String?
 
   // Relacionamentos
-  barbershopId   String
-  barbershop     Barbershop   @relation(fields: [barbershopId], references: [id])
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
+
   professionalId String
   professional   Professional @relation(fields: [professionalId], references: [id])
-  serviceId      String
-  service        Service      @relation(fields: [serviceId], references: [id])
-  clientId       String? // opcional — vincula ao CRM se cliente existir
-  client         Client?      @relation(fields: [clientId], references: [id])
+
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,36 +200,34 @@ model Client {
   name  String
   phone String
   email String?
-  notes String? // observações sobre o cliente
+  notes String?
 
   barbershopId String
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   appointments Appointment[]
 
-  // Métricas calculadas (atualizadas a cada agendamento)
+  // Métricas
   totalVisits Int       @default(0)
   lastVisitAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Mesmo telefone não pode estar duplicado na mesma barbearia
   @@unique([phone, barbershopId])
   @@map("clients")
 }
 
 model BusinessHour {
   id        String  @id @default(cuid())
-  dayOfWeek Int // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
-  openTime  String // "09:00"
-  closeTime String // "18:00"
+  dayOfWeek Int
+  openTime  String
+  closeTime String
   isOpen    Boolean @default(true)
 
   barbershopId String
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
-  // Cada dia da semana aparece uma vez por barbearia
   @@unique([dayOfWeek, barbershopId])
   @@map("business_hours")
 }
