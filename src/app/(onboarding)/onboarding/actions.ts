@@ -94,6 +94,8 @@ export async function createBarbershop(
           city: data.city?.trim() || null,
           ownerId: userId,
           plan: "start",
+          planStatus: "trial",
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 

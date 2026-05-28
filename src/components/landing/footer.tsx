@@ -1,9 +1,22 @@
 import { Container } from "@/components/layout/container";
 
 const LINKS = {
-  Produto: ["Funcionalidades", "Planos", "IA integrada", "Seguranca"],
-  Empresa: ["Sobre o Livo", "Parceiros", "Contato"],
-  Legal: ["Termos de uso", "Privacidade", "LGPD"],
+  Produto: [
+    { label: "Funcionalidades", href: "#funcionalidades" },
+    { label: "Planos", href: "#planos" },
+    { label: "IA integrada", href: "#ia" },
+    { label: "Seguranca", href: "#" },
+  ],
+  Empresa: [
+    { label: "Sobre o Livo", href: "#" },
+    { label: "Parceiros", href: "#" },
+    { label: "Contato", href: "#" },
+  ],
+  Legal: [
+    { label: "Termos de Uso", href: "/termos" },
+    { label: "Privacidade", href: "/privacidade" },
+    { label: "LGPD", href: "/privacidade" },
+  ],
 } as const;
 
 export function Footer() {
@@ -53,13 +66,13 @@ export function Footer() {
               </p>
               <ul className="flex flex-col gap-3">
                 {links.map((link) => (
-                  <li key={link}>
+                  <li key={link.label}>
                     <a
-                      href="#"
+                      href={link.href}
                       className="text-sm hover:text-white transition-colors duration-200"
                       style={{ color: "#3F3F46", textDecoration: "none" }}
                     >
-                      {link}
+                      {link.label}
                     </a>
                   </li>
                 ))}
@@ -73,7 +86,7 @@ export function Footer() {
           style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
         >
           <p style={{ fontSize: "12px", color: "#27272A" }}>
-            2026 Livo. Todos os direitos reservados.
+            © 2026 Livo. Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-2">
             <span
@@ -97,7 +110,7 @@ export function Footer() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            livo.com.br
+            livobarber.com.br
           </p>
         </div>
       </Container>
