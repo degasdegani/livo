@@ -2,6 +2,7 @@
 
 import { signIn } from "@/auth";
 import { db } from "@/lib/db";
+import { sendWelcomeEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export async function registerUser(
@@ -33,6 +34,9 @@ export async function registerUser(
   await db.user.create({
     data: { name, email, password: hashedPassword },
   });
+
+  // Envia e-mail de boas-vindas
+  await sendWelcomeEmail({ userEmail: email, userName: name });
 
   // Login automático após cadastro — redireciona para dashboard
   await signIn("credentials", {

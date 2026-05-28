@@ -7,8 +7,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { BasicInfoForm } from "./basic-info-form";
-import { ServicesManager } from "./services-manager";
 import { BusinessHoursForm } from "./business-hours-form";
+import { ServicesManager } from "./services-manager";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -82,7 +82,7 @@ export default async function SettingsPage() {
               className="text-sm font-bold"
               style={{ color: "#A1A1AA", fontFamily: "monospace" }}
             >
-              livo.com.br/{barbershop.slug}
+              livobarber.com.br/{barbershop.slug}
             </p>
           </div>
           <span

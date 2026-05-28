@@ -70,7 +70,7 @@ export function HowItWorks() {
               className="text-xs font-semibold text-[#00D4FF]"
               style={{ fontFamily: "var(--font-mono)" }}
             >
-              livo.com.br/sua-barbearia
+              livobarber.com.br/sua-barbearia
             </span>
           </div>
 

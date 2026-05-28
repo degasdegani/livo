@@ -171,7 +171,7 @@ export default function OnboardingPage() {
                   borderRight: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
-                livo.com.br/
+                livobarber.com.br/
               </span>
               <input
                 type="text"

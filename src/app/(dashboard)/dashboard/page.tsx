@@ -280,7 +280,7 @@ export default async function DashboardPage() {
                   className="text-xs"
                   style={{ color: "#FF2D55", fontFamily: "var(--font-mono)" }}
                 >
-                  livo.com.br/{barbershop.slug}
+                  livobarber.com.br/{barbershop.slug}
                 </span>
               </div>
             </div>

@@ -54,7 +54,7 @@ export default function TermosPage() {
         },
         {
           titulo: "11. Contato",
-          texto: `Para dúvidas sobre estes termos, entre em contato: contato@livo.com.br`,
+          texto: `Para dúvidas sobre estes termos, entre em contato: contato@livobarber.com.br`,
         },
       ].map((section) => (
         <section key={section.titulo} className="mb-8">

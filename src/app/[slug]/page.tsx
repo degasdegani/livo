@@ -1,6 +1,6 @@
 // ============================================================
 // LIVO — Página Pública da Barbearia
-// URL: livo.com.br/[slug]
+// URL: livobarber.com.br/[slug]
 // Acessível por qualquer pessoa sem login
 // ============================================================
 

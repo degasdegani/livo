@@ -30,7 +30,7 @@ export default function PrivacidadePage() {
         },
         {
           titulo: "5. Seus Direitos (LGPD)",
-          texto: `Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem direito a: acessar seus dados, corrigir dados incorretos, solicitar exclusão dos seus dados, portabilidade dos dados, revogar consentimento e ser informado sobre o uso dos seus dados. Para exercer esses direitos, entre em contato: privacidade@livo.com.br`,
+          texto: `Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem direito a: acessar seus dados, corrigir dados incorretos, solicitar exclusão dos seus dados, portabilidade dos dados, revogar consentimento e ser informado sobre o uso dos seus dados. Para exercer esses direitos, entre em contato: privacidade@livobarber.com.br`,
         },
         {
           titulo: "6. Cookies",
@@ -46,11 +46,11 @@ export default function PrivacidadePage() {
         },
         {
           titulo: "9. Alterações nesta Política",
-          texto: `Esta política pode ser atualizada periodicamente. Alterações significativas serão comunicadas por e-mail. A versão mais recente sempre estará disponível em livo.com.br/privacidade.`,
+          texto: `Esta política pode ser atualizada periodicamente. Alterações significativas serão comunicadas por e-mail. A versão mais recente sempre estará disponível em livobarber.com.br/privacidade.`,
         },
         {
           titulo: "10. Contato",
-          texto: `Encarregado de Proteção de Dados (DPO): Eduardo Degani. E-mail: privacidade@livo.com.br`,
+          texto: `Encarregado de Proteção de Dados (DPO): Eduardo Degani. E-mail: privacidade@livobarber.com.br`,
         },
       ].map((section) => (
         <section key={section.titulo} className="mb-8">
