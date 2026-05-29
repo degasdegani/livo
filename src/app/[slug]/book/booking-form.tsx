@@ -27,6 +27,14 @@ const MONTHS = [
   "Dezembro",
 ];
 
+// ── Máscara de telefone ───────────────────────────────────────
+function applyPhoneMask(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 interface Props {
   barbershopId: string;
   professionalId: string;
@@ -59,7 +67,6 @@ export function BookingForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  // Busca slots quando a data muda
   useEffect(() => {
     if (!selectedDate) return;
     setLoadingSlots(true);
@@ -83,6 +90,10 @@ export function BookingForm({
     if (!dateStr) return "";
     const d = new Date(`${dateStr}T12:00:00`);
     return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setClientPhone(applyPhoneMask(e.target.value));
   }
 
   function handleConfirm() {
@@ -399,49 +410,69 @@ export function BookingForm({
             </div>
           </div>
 
-          {[
-            {
-              label: "Seu nome *",
-              value: clientName,
-              setter: setClientName,
-              type: "text",
-              placeholder: "Como você se chama?",
-            },
-            {
-              label: "Telefone (WhatsApp) *",
-              value: clientPhone,
-              setter: setClientPhone,
-              type: "tel",
-              placeholder: "(16) 99999-9999",
-            },
-            {
-              label: "E-mail (opcional)",
-              value: clientEmail,
-              setter: setClientEmail,
-              type: "email",
-              placeholder: "para receber confirmacao",
-            },
-          ].map((field) => (
-            <div key={field.label}>
-              <label
-                className="block text-xs font-semibold mb-2"
-                style={{ color: "#A1A1AA" }}
-              >
-                {field.label}
-              </label>
-              <input
-                type={field.type}
-                value={field.value}
-                onChange={(e) => field.setter(e.target.value)}
-                placeholder={field.placeholder}
-                className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              />
-            </div>
-          ))}
+          {/* Nome */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              Seu nome *
+            </label>
+            <input
+              type="text"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="Como você se chama?"
+              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+          </div>
+
+          {/* Telefone com máscara */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              Telefone (WhatsApp) *
+            </label>
+            <input
+              type="tel"
+              value={clientPhone}
+              onChange={handlePhoneChange}
+              placeholder="(16) 99999-9999"
+              maxLength={15}
+              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+          </div>
+
+          {/* E-mail */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              E-mail (opcional)
+            </label>
+            <input
+              type="email"
+              value={clientEmail}
+              onChange={(e) => setClientEmail(e.target.value)}
+              placeholder="para receber confirmacao"
+              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+          </div>
 
           {error && (
             <p

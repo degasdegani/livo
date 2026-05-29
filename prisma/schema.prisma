@@ -40,7 +40,10 @@ model User {
 
   accounts   Account[]
   sessions   Session[]
-  barbershop Barbershop?
+  barbershop Barbershop? // barbearia que ESTE usuário é dono (se for dono)
+
+  memberships     Membership[] // barbearias em que este usuário tem acesso
+  sentInvitations Invitation[] // convites enviados por este usuário
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,7 +113,7 @@ model Barbershop {
 
   isActive Boolean @default(true)
 
-  // Dono
+  // Dono (cobrança / criador da conta)
   ownerId String @unique
   owner   User   @relation(fields: [ownerId], references: [id])
 
@@ -120,6 +123,8 @@ model Barbershop {
   appointments  Appointment[]
   clients       Client[]
   businessHours BusinessHour[]
+  memberships   Membership[]
+  invitations   Invitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -138,6 +143,7 @@ model Professional {
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   appointments Appointment[]
+  membership   Membership? // crachá do barbeiro (se ele tiver login próprio)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -230,4 +236,74 @@ model BusinessHour {
 
   @@unique([dayOfWeek, barbershopId])
   @@map("business_hours")
+}
+
+// ─── ACESSOS / PERMISSÕES (RBAC) ────────────────────────────
+
+enum MemberRole {
+  owner
+  reception
+  barber
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+model Membership {
+  id   String     @id @default(cuid())
+  role MemberRole
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  // Vínculo opcional ao profissional (usado no acesso de barbeiro)
+  professionalId String?       @unique
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+
+  // Comissionamento — ligado/desligado pelo dono, por pessoa
+  commissionOnServices Boolean @default(false)
+  commissionOnProducts Boolean @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, barbershopId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id    String     @id @default(cuid())
+  email String
+  role  MemberRole
+
+  token     String           @unique
+  status    InvitationStatus @default(pending)
+  expiresAt DateTime
+
+  // Config que será aplicada ao crachá quando o convite for aceito
+  professionalId       String?
+  commissionOnServices Boolean @default(false)
+  commissionOnProducts Boolean @default(false)
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  invitedById String?
+  invitedBy   User?   @relation(fields: [invitedById], references: [id])
+
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+
+  @@index([email])
+  @@index([barbershopId])
+  @@map("invitations")
 }

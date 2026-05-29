@@ -99,11 +99,22 @@ export async function createBarbershop(
         },
       });
 
-      await tx.professional.create({
+      // 🔸 MUDANÇA 1: guardamos o profissional numa variável
+      const professional = await tx.professional.create({
         data: {
           name: session.user!.name || "Profissional",
           isActive: true,
           barbershopId: barbershop.id,
+        },
+      });
+
+      // 🔸 MUDANÇA 2: cria o crachá de DONO (vinculado ao profissional dele)
+      await tx.membership.create({
+        data: {
+          userId,
+          barbershopId: barbershop.id,
+          role: "owner",
+          professionalId: professional.id,
         },
       });
 
