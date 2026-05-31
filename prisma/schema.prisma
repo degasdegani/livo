@@ -307,3 +307,17 @@ model Invitation {
   @@index([barbershopId])
   @@map("invitations")
 }
+// ─── LISTA DE PRÉ-LANÇAMENTO (VIP) ──────────────────────────
+
+model WaitlistLead {
+  id             String   @id @default(cuid())
+  name           String
+  whatsapp       String
+  email          String
+  barbershopName String?
+  source         String   @default("workshop-tx")
+  createdAt      DateTime @default(now())
+
+  @@index([source])
+  @@map("waitlist_leads")
+}
