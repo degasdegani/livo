@@ -36,7 +36,7 @@ export async function registerUser(
   });
 
   // Envia e-mail de boas-vindas
-  await sendWelcomeEmail({ userEmail: email, userName: name });
+  await sendWelcomeEmail(email, name);
 
   // Login automático após cadastro — redireciona para dashboard
   await signIn("credentials", {
