@@ -79,10 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       if (user.email && user.name) {
-        await sendWelcomeEmail({
-          userEmail: user.email,
-          userName: user.name,
-        });
+        await sendWelcomeEmail(user.email, user.name);
       }
     },
   },
