@@ -4,6 +4,37 @@ import { useState, useTransition } from "react";
 import { createBarbershop } from "./actions";
 import { PRESET_SERVICES } from "./data";
 
+// ─── Máscaras ──────────────────────────────────────────────────────────────────
+
+function maskCelular(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function maskTelefoneFixo(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+}
+
+function maskCPF(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9)
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function maskCEP(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
 function toSlug(value: string): string {
   return value
     .toLowerCase()
@@ -15,14 +46,49 @@ function toSlug(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
+// ─── Estilos reutilizáveis ─────────────────────────────────────────────────────
+
+const inputClass =
+  "w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-[#3F3F46]";
+
+const inputStyle = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+};
+
+function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.target.style.borderColor = "#FF2D55";
+}
+
+function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+  e.target.style.borderColor = "rgba(255,255,255,0.08)";
+}
+
+// ─── Componente principal ──────────────────────────────────────────────────────
+
 export default function OnboardingPage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+
+  // Dados do dono
+  const [fullName, setFullName] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [celular, setCelular] = useState("");
+
+  // Dados da barbearia
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [city, setCity] = useState("");
+
+  // Endereço opcional
+  const [street, setStreet] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [cep, setCep] = useState("");
+  const [telefoneFixo, setTelefoneFixo] = useState("");
+
+  // Serviços
   const [selectedServices, setSelectedServices] = useState<string[]>([
     "Corte Social",
     "Corte + Barba",
@@ -51,12 +117,37 @@ export default function OnboardingPage() {
     e.preventDefault();
     setError("");
 
+    // Validações do lado cliente
+    if (!fullName.trim() || fullName.trim().split(" ").length < 2) {
+      setError("Informe seu nome completo (nome e sobrenome).");
+      return;
+    }
+    if (cpf.replace(/\D/g, "").length !== 11) {
+      setError("CPF inválido. Informe os 11 dígitos.");
+      return;
+    }
+    if (!birthDate) {
+      setError("Informe sua data de nascimento.");
+      return;
+    }
+    if (celular.replace(/\D/g, "").length !== 11) {
+      setError("Celular inválido. Informe DDD + 9 dígitos.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createBarbershop({
         name,
         slug,
-        phone,
         city,
+        celular,
+        fullName,
+        cpf: cpf.replace(/\D/g, ""),
+        birthDate,
+        street,
+        neighborhood,
+        cep: cep.replace(/\D/g, ""),
+        telefoneFixo: telefoneFixo.replace(/\D/g, "") || undefined,
         selectedServices,
       });
 
@@ -65,13 +156,13 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Reload completo garante dados frescos do banco
       window.location.href = "/dashboard";
     });
   }
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Cabeçalho */}
       <div>
         <div className="flex items-center gap-2 mb-6">
           <span
@@ -109,6 +200,111 @@ export default function OnboardingPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {/* ── Bloco 1: Dados do dono ─────────────────────────────────────── */}
+        <div
+          className="rounded-2xl p-6 flex flex-col gap-5"
+          style={{
+            background: "#0A0A0A",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div>
+            <p className="font-bold text-white mb-1 text-sm">Seus dados</p>
+            <p style={{ color: "#52525B", fontSize: "12px" }}>
+              Informações do responsável pela barbearia
+            </p>
+          </div>
+
+          {/* Nome completo */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              Nome completo *
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="João da Silva"
+              required
+              className={inputClass}
+              style={{ ...inputStyle }}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+          </div>
+
+          {/* CPF + Data de nascimento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2"
+                style={{ color: "#A1A1AA" }}
+              >
+                CPF *
+              </label>
+              <input
+                type="text"
+                value={cpf}
+                onChange={(e) => setCpf(maskCPF(e.target.value))}
+                placeholder="000.000.000-00"
+                required
+                inputMode="numeric"
+                className={inputClass}
+                style={{ ...inputStyle }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2"
+                style={{ color: "#A1A1AA" }}
+              >
+                Data de nascimento *
+              </label>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                required
+                className={inputClass}
+                style={{
+                  ...inputStyle,
+                  colorScheme: "dark",
+                }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
+          </div>
+
+          {/* Celular */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              Celular *
+            </label>
+            <input
+              type="tel"
+              value={celular}
+              onChange={(e) => setCelular(maskCelular(e.target.value))}
+              placeholder="(16) 99999-9999"
+              required
+              inputMode="numeric"
+              className={inputClass}
+              style={{ ...inputStyle }}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+          </div>
+        </div>
+
+        {/* ── Bloco 2: Dados da barbearia ────────────────────────────────── */}
         <div
           className="rounded-2xl p-6 flex flex-col gap-5"
           style={{
@@ -125,6 +321,7 @@ export default function OnboardingPage() {
             </p>
           </div>
 
+          {/* Nome da barbearia */}
           <div>
             <label
               className="block text-xs font-semibold mb-2"
@@ -138,20 +335,14 @@ export default function OnboardingPage() {
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Ex: Barbearia do João"
               required
-              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-[#3F3F46]"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#FF2D55";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = "rgba(255,255,255,0.08)";
-              }}
+              className={inputClass}
+              style={{ ...inputStyle }}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
             />
           </div>
 
+          {/* Slug */}
           <div>
             <label
               className="block text-xs font-semibold mb-2"
@@ -195,30 +386,65 @@ export default function OnboardingPage() {
             </p>
           </div>
 
+          {/* Cidade */}
+          <div>
+            <label
+              className="block text-xs font-semibold mb-2"
+              style={{ color: "#A1A1AA" }}
+            >
+              Cidade (opcional)
+            </label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Ribeirão Preto"
+              className={inputClass}
+              style={{ ...inputStyle }}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+          </div>
+        </div>
+
+        {/* ── Bloco 3: Endereço e telefone fixo (opcional) ───────────────── */}
+        <div
+          className="rounded-2xl p-6 flex flex-col gap-5"
+          style={{
+            background: "#0A0A0A",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div>
+            <p className="font-bold text-white mb-1 text-sm">
+              Endereço e contato{" "}
+              <span style={{ color: "#52525B", fontWeight: 400 }}>
+                (opcional)
+              </span>
+            </p>
+            <p style={{ color: "#52525B", fontSize: "12px" }}>
+              Pode preencher depois nas configurações
+            </p>
+          </div>
+
+          {/* Rua + Bairro */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label
                 className="block text-xs font-semibold mb-2"
                 style={{ color: "#A1A1AA" }}
               >
-                Telefone (opcional)
+                Rua
               </label>
               <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(16) 99999-9999"
-                className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-[#3F3F46]"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#FF2D55";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(255,255,255,0.08)";
-                }}
+                type="text"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                placeholder="Rua das Flores, 123"
+                className={inputClass}
+                style={{ ...inputStyle }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
             <div>
@@ -226,29 +452,67 @@ export default function OnboardingPage() {
                 className="block text-xs font-semibold mb-2"
                 style={{ color: "#A1A1AA" }}
               >
-                Cidade (opcional)
+                Bairro
               </label>
               <input
                 type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Ribeirao Preto"
-                className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-[#3F3F46]"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#FF2D55";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(255,255,255,0.08)";
-                }}
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                placeholder="Centro"
+                className={inputClass}
+                style={{ ...inputStyle }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
+          </div>
+
+          {/* CEP + Telefone fixo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2"
+                style={{ color: "#A1A1AA" }}
+              >
+                CEP
+              </label>
+              <input
+                type="text"
+                value={cep}
+                onChange={(e) => setCep(maskCEP(e.target.value))}
+                placeholder="00000-000"
+                inputMode="numeric"
+                className={inputClass}
+                style={{ ...inputStyle }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+              />
+            </div>
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2"
+                style={{ color: "#A1A1AA" }}
+              >
+                Telefone fixo
+              </label>
+              <input
+                type="tel"
+                value={telefoneFixo}
+                onChange={(e) =>
+                  setTelefoneFixo(maskTelefoneFixo(e.target.value))
+                }
+                placeholder="(16) 3333-4444"
+                inputMode="numeric"
+                className={inputClass}
+                style={{ ...inputStyle }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
               />
             </div>
           </div>
         </div>
 
+        {/* ── Bloco 4: Serviços ──────────────────────────────────────────── */}
         <div
           className="rounded-2xl p-6 flex flex-col gap-4"
           style={{
@@ -329,6 +593,7 @@ export default function OnboardingPage() {
           )}
         </div>
 
+        {/* Erro */}
         {error && (
           <div
             className="px-4 py-3 rounded-xl text-sm text-center"
@@ -342,6 +607,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {/* Botão */}
         <button
           type="submit"
           disabled={
@@ -358,7 +624,7 @@ export default function OnboardingPage() {
         </button>
 
         <p className="text-center text-xs" style={{ color: "#3F3F46" }}>
-          Todas as configuracoes podem ser alteradas depois nas Configuracoes
+          Todas as configurações podem ser alteradas depois nas Configurações
         </p>
       </form>
     </div>

@@ -1,282 +1,158 @@
-// ============================================================
-// LIVO — Utilitário de E-mail (Resend)
-// Centraliza todos os e-mails transacionais do sistema
-// ============================================================
-
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ── Tipos ─────────────────────────────────────────────────────
-interface AppointmentConfirmationData {
-  clientEmail: string;
-  clientName: string;
+const FROM = process.env.RESEND_FROM ?? "LIVO <noreply@livobarber.com.br>";
+const BASE_URL = process.env.NEXTAUTH_URL ?? "https://livobarber.com.br";
+
+// ─── E-mail de boas-vindas (já existia) ───────────────────────────────────────
+export async function sendWelcomeEmail(to: string, name: string) {
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Bem-vindo ao LIVO! 🎉",
+      html: buildWelcomeHtml(name),
+    });
+  } catch (err) {
+    // Falha no e-mail não deve bloquear o fluxo principal
+    console.error("[email] sendWelcomeEmail falhou:", err);
+  }
+}
+
+// ─── E-mail de convite (novo — Dia 2) ─────────────────────────────────────────
+export type InvitationEmailPayload = {
+  to: string;
   barbershopName: string;
-  barbershopSlug: string;
-  serviceName: string;
-  servicePrice: number;
-  date: string;
-  time: string;
-  professional: string;
-}
+  inviterName: string;
+  role: "reception" | "barber";
+  token: string;
+};
 
-interface WelcomeEmailData {
-  userEmail: string;
-  userName: string;
-}
+const ROLE_LABELS: Record<InvitationEmailPayload["role"], string> = {
+  reception: "Recepção",
+  barber: "Barbeiro Colaborador",
+};
 
-// ── Formatação de data ─────────────────────────────────────────
-const DAYS_PT = [
-  "Domingo",
-  "Segunda-feira",
-  "Terça-feira",
-  "Quarta-feira",
-  "Quinta-feira",
-  "Sexta-feira",
-  "Sábado",
-];
-const MONTHS_PT = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
+export async function sendInvitationEmail(payload: InvitationEmailPayload) {
+  const { to, barbershopName, inviterName, role, token } = payload;
+  const inviteUrl = `${BASE_URL}/convite/${token}`;
+  const roleLabel = ROLE_LABELS[role];
 
-function formatDatePT(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  return `${DAYS_PT[d.getDay()]}, ${d.getDate()} de ${MONTHS_PT[d.getMonth()]} de ${d.getFullYear()}`;
-}
-
-// ── Template: Confirmação de Agendamento ──────────────────────
-function buildConfirmationHTML(data: AppointmentConfirmationData): string {
-  const dateFormatted = formatDatePT(data.date);
-  const priceFormatted = `R$ ${(data.servicePrice / 100).toFixed(2).replace(".", ",")}`;
-  const bookingUrl = `https://livobarber.com.br/${data.barbershopSlug}`;
-
-  return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agendamento Confirmado — ${data.barbershopName}</title>
-</head>
-<body style="margin:0;padding:0;background:#F4F4F5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-          <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width:8px;height:8px;border-radius:50%;background:#FF2D55;display:inline-block;vertical-align:middle;"></td>
-                  <td style="padding-left:6px;font-size:18px;font-weight:900;color:#0A0A0A;letter-spacing:-0.5px;vertical-align:middle;">Livo</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="background:#FF2D55;padding:20px 32px;text-align:center;">
-                    <p style="margin:0;font-size:13px;font-weight:700;color:#FFFFFF;letter-spacing:2px;text-transform:uppercase;">
-                      Agendamento Confirmado
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:32px;">
-                    <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#0A0A0A;letter-spacing:-0.5px;">
-                      Olá, ${data.clientName}! 👋
-                    </p>
-                    <p style="margin:0 0 28px;font-size:14px;color:#71717A;line-height:1.6;">
-                      Seu agendamento na <strong style="color:#0A0A0A;">${data.barbershopName}</strong> está confirmado.
-                    </p>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9F9F9;border-radius:12px;overflow:hidden;">
-                      <tr>
-                        <td style="padding:20px 24px;border-bottom:1px solid #F0F0F0;">
-                          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#A1A1AA;text-transform:uppercase;letter-spacing:1px;">Serviço</p>
-                          <p style="margin:0;font-size:16px;font-weight:700;color:#0A0A0A;">${data.serviceName}</p>
-                        </td>
-                        <td style="padding:20px 24px;border-bottom:1px solid #F0F0F0;text-align:right;">
-                          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#A1A1AA;text-transform:uppercase;letter-spacing:1px;">Valor</p>
-                          <p style="margin:0;font-size:16px;font-weight:900;color:#FF2D55;">${priceFormatted}</p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding:20px 24px;border-bottom:1px solid #F0F0F0;">
-                          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#A1A1AA;text-transform:uppercase;letter-spacing:1px;">Data</p>
-                          <p style="margin:0;font-size:15px;font-weight:700;color:#0A0A0A;">${dateFormatted}</p>
-                        </td>
-                        <td style="padding:20px 24px;border-bottom:1px solid #F0F0F0;text-align:right;">
-                          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#A1A1AA;text-transform:uppercase;letter-spacing:1px;">Horário</p>
-                          <p style="margin:0;font-size:15px;font-weight:700;color:#0A0A0A;">${data.time}</p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td colspan="2" style="padding:20px 24px;">
-                          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#A1A1AA;text-transform:uppercase;letter-spacing:1px;">Profissional</p>
-                          <p style="margin:0;font-size:15px;font-weight:700;color:#0A0A0A;">${data.professional}</p>
-                        </td>
-                      </tr>
-                    </table>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-                      <tr>
-                        <td align="center">
-                          <a href="${bookingUrl}" style="display:inline-block;background:#FF2D55;color:#FFFFFF;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;letter-spacing:-0.2px;">
-                            Ver página da barbearia
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin:24px 0 0;font-size:12px;color:#A1A1AA;text-align:center;line-height:1.6;">
-                      Para cancelar ou remarcar, entre em contato diretamente com a barbearia.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#A1A1AA;">
-                Agendamento realizado pelo
-                <a href="https://livobarber.com.br" style="color:#FF2D55;text-decoration:none;font-weight:600;">Livo</a>
-                — Gestão inteligente para barbearias
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-
-// ── Template: Boas-vindas ──────────────────────────────────────
-function buildWelcomeHTML(data: WelcomeEmailData): string {
-  return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bem-vindo ao Livo</title>
-</head>
-<body style="margin:0;padding:0;background:#F4F4F5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-          <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width:8px;height:8px;border-radius:50%;background:#FF2D55;display:inline-block;vertical-align:middle;"></td>
-                  <td style="padding-left:6px;font-size:18px;font-weight:900;color:#0A0A0A;letter-spacing:-0.5px;vertical-align:middle;">Livo</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="background:#FF2D55;padding:20px 32px;text-align:center;">
-                    <p style="margin:0;font-size:13px;font-weight:700;color:#FFFFFF;letter-spacing:2px;text-transform:uppercase;">
-                      Bem-vindo ao Livo 🎉
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:32px;">
-                    <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#0A0A0A;letter-spacing:-0.5px;">
-                      Olá, ${data.userName}! 👋
-                    </p>
-                    <p style="margin:0 0 28px;font-size:14px;color:#71717A;line-height:1.6;">
-                      Sua conta no <strong style="color:#0A0A0A;">Livo</strong> foi criada com sucesso.
-                      Configure sua barbearia e comece a receber agendamentos online agora mesmo.
-                    </p>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
-                      <tr>
-                        <td align="center">
-                          <a href="https://livobarber.com.br/dashboard" style="display:inline-block;background:#FF2D55;color:#FFFFFF;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;letter-spacing:-0.2px;">
-                            Acessar meu painel
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin:24px 0 0;font-size:12px;color:#A1A1AA;text-align:center;line-height:1.6;">
-                      Qualquer dúvida, estamos aqui para ajudar.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#A1A1AA;">
-                <a href="https://livobarber.com.br" style="color:#FF2D55;text-decoration:none;font-weight:600;">Livo</a>
-                — Gestão inteligente para barbearias
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-
-// ── Envio: Confirmação de Agendamento ─────────────────────────
-export async function sendAppointmentConfirmation(
-  data: AppointmentConfirmationData,
-): Promise<void> {
-  if (!data.clientEmail) return;
   try {
     await resend.emails.send({
-      from: process.env.RESEND_FROM ?? "noreply@livobarber.com.br",
-      to: data.clientEmail,
-      subject: `✅ Agendamento confirmado — ${data.barbershopName}`,
-      html: buildConfirmationHTML(data),
+      from: FROM,
+      to,
+      subject: `Você foi convidado para a ${barbershopName} no LIVO`,
+      html: buildInvitationHtml({
+        barbershopName,
+        inviterName,
+        roleLabel,
+        inviteUrl,
+      }),
     });
-    console.log(`[email] Confirmação enviada para ${data.clientEmail}`);
   } catch (err) {
-    console.error("[email] Falha ao enviar confirmação:", err);
+    console.error("[email] sendInvitationEmail falhou:", err);
+    // Re-throw aqui porque o dono precisa saber se o e-mail não saiu
+    throw new Error("Falha ao enviar o e-mail de convite. Tente novamente.");
   }
 }
 
-// ── Envio: Boas-vindas ────────────────────────────────────────
-export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<void> {
-  if (!data.userEmail) return;
-  try {
-    await resend.emails.send({
-      from: process.env.RESEND_FROM ?? "noreply@livobarber.com.br",
-      to: data.userEmail,
-      subject: "Bem-vindo ao Livo 🎉",
-      html: buildWelcomeHTML(data),
-    });
-    console.log(`[email] Boas-vindas enviado para ${data.userEmail}`);
-  } catch (err) {
-    console.error("[email] Falha ao enviar boas-vindas:", err);
-  }
+// ─── Templates HTML ───────────────────────────────────────────────────────────
+
+function buildWelcomeHtml(name: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0B0D;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0B0D;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#17171C;border-radius:12px;border:1px solid #2A2A33;overflow:hidden;max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#C8102E;padding:8px 32px;text-align:center;">
+            <span style="color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;">LIVO</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 32px;">
+            <h1 style="color:#fff;font-size:24px;margin:0 0 16px;">Bem-vindo, ${name}! 🎉</h1>
+            <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
+              Sua barbearia está configurada e pronta para decolar. Acesse o painel e comece a usar o sistema operacional da barbearia moderna.
+            </p>
+            <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">
+              Acessar o LIVO →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #2A2A33;">
+            <p style="color:#6E6E78;font-size:12px;margin:0;">© 2026 LIVO · livobarber.com.br</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildInvitationHtml(params: {
+  barbershopName: string;
+  inviterName: string;
+  roleLabel: string;
+  inviteUrl: string;
+}): string {
+  const { barbershopName, inviterName, roleLabel, inviteUrl } = params;
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0B0D;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0B0D;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#17171C;border-radius:12px;border:1px solid #2A2A33;overflow:hidden;max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#C8102E;padding:8px 32px;text-align:center;">
+            <span style="color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;">LIVO</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 32px;">
+            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">
+              Você foi convidado! ✂️
+            </h1>
+            <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
+              <strong style="color:#fff;">${inviterName}</strong> convidou você para acessar a
+              <strong style="color:#fff;">${barbershopName}</strong> no LIVO
+              como <strong style="color:#C8A24C;">${roleLabel}</strong>.
+            </p>
+
+            <div style="background:#1F1F27;border:1px solid #2A2A33;border-radius:8px;padding:20px;margin:0 0 28px;">
+              <p style="color:#9A9AA6;font-size:13px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px;">Barbearia</p>
+              <p style="color:#fff;font-size:17px;font-weight:700;margin:0 0 16px;">${barbershopName}</p>
+              <p style="color:#9A9AA6;font-size:13px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px;">Seu papel</p>
+              <p style="color:#C8A24C;font-size:15px;font-weight:600;margin:0;">${roleLabel}</p>
+            </div>
+
+            <a href="${inviteUrl}" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:700;font-size:16px;">
+              Aceitar convite →
+            </a>
+
+            <p style="color:#6E6E78;font-size:12px;margin:24px 0 0;">
+              Este link expira em <strong style="color:#9A9AA6;">7 dias</strong>.
+              Se você não reconhece este convite, ignore este e-mail.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #2A2A33;">
+            <p style="color:#6E6E78;font-size:12px;margin:0;">© 2026 LIVO · livobarber.com.br</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }

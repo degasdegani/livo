@@ -30,8 +30,18 @@ const RESERVED_SLUGS = [
 interface CreateBarbershopData {
   name: string;
   slug: string;
-  phone?: string;
   city?: string;
+  // Dados do dono
+  fullName: string;
+  cpf: string; // só dígitos (ex: "12345678900")
+  birthDate: string; // formato "YYYY-MM-DD"
+  celular: string; // só dígitos (ex: "16999999999")
+  // Endereço opcional
+  street?: string;
+  neighborhood?: string;
+  cep?: string;
+  telefoneFixo?: string;
+  // Serviços
   selectedServices: string[];
 }
 
@@ -51,24 +61,31 @@ export async function createBarbershop(
 
     const userId = session.user.id;
 
+    // Validações
     if (RESERVED_SLUGS.includes(data.slug.toLowerCase())) {
       return { error: "Esse endereço não está disponível. Escolha outro." };
     }
-
     if (!data.name || data.name.trim().length < 2) {
       return {
         error: "O nome da barbearia precisa ter pelo menos 2 caracteres.",
       };
     }
-
     if (!data.slug || data.slug.trim().length < 2) {
       return {
         error: "O endereço público precisa ter pelo menos 2 caracteres.",
       };
     }
-
     if (data.selectedServices.length === 0) {
       return { error: "Selecione pelo menos 1 serviço." };
+    }
+    if (!data.fullName || data.fullName.trim().split(" ").length < 2) {
+      return { error: "Informe seu nome completo." };
+    }
+    if (!data.cpf || data.cpf.length !== 11) {
+      return { error: "CPF inválido." };
+    }
+    if (!data.celular || data.celular.length !== 11) {
+      return { error: "Celular inválido." };
     }
 
     const slugExisting = await db.barbershop.findUnique({
@@ -85,13 +102,27 @@ export async function createBarbershop(
       return { error: "Você já tem uma barbearia cadastrada." };
     }
 
+    // Monta endereço completo para salvar no campo city por enquanto
+    // (Dia 3 adiciona campos separados no schema)
+    const addressParts = [data.street, data.neighborhood, data.city].filter(
+      Boolean,
+    );
+    const fullAddress = addressParts.join(", ") || null;
+
     await db.$transaction(async (tx) => {
+      // Atualiza o nome completo do usuário
+      await tx.user.update({
+        where: { id: userId },
+        data: { name: data.fullName.trim() },
+      });
+
       const barbershop = await tx.barbershop.create({
         data: {
           name: data.name.trim(),
           slug: data.slug.toLowerCase().trim(),
-          phone: data.phone?.trim() || null,
-          city: data.city?.trim() || null,
+          // Celular da barbearia = celular do dono no onboarding
+          phone: data.celular,
+          city: fullAddress,
           ownerId: userId,
           plan: "start",
           planStatus: "trial",
@@ -99,16 +130,14 @@ export async function createBarbershop(
         },
       });
 
-      // 🔸 MUDANÇA 1: guardamos o profissional numa variável
       const professional = await tx.professional.create({
         data: {
-          name: session.user!.name || "Profissional",
+          name: data.fullName.trim(),
           isActive: true,
           barbershopId: barbershop.id,
         },
       });
 
-      // 🔸 MUDANÇA 2: cria o crachá de DONO (vinculado ao profissional dele)
       await tx.membership.create({
         data: {
           userId,

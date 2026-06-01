@@ -10,12 +10,17 @@ export default auth((req) => {
   const pathname = req.nextUrl.pathname;
   const isLoggedIn = !!req.auth;
 
-  // Rotas que exigem autenticação (sistema e onboarding)
+  // Rotas que exigem autenticação
   const isProtectedRoute =
     pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
 
   // Rotas de autenticação (login e cadastro)
   const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  // Rotas públicas explícitas (documentação — não precisam de nada):
+  // /convite/[token] → aceite de convite
+  // /vip            → captura de leads
+  // /[slug]         → página pública da barbearia
 
   // Não logado tentando acessar área protegida → login
   if (isProtectedRoute && !isLoggedIn) {

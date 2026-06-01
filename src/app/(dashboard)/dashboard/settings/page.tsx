@@ -93,6 +93,30 @@ export default async function SettingsPage() {
           </span>
         </div>
 
+        {/* Card de Acessos e membros */}
+        <a
+          href="/dashboard/settings/acessos"
+          className="flex items-center justify-between rounded-xl px-5 py-4 transition-all hover:border-red-500/40"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div>
+            <p
+              className="text-xs font-semibold mb-1"
+              style={{ color: "#52525B" }}
+            >
+              EQUIPE
+            </p>
+            <p className="text-sm font-bold text-white">Acessos e membros</p>
+            <p className="text-xs mt-0.5" style={{ color: "#A1A1AA" }}>
+              Convide recepcionistas e barbeiros para acessar o sistema
+            </p>
+          </div>
+          <span style={{ color: "#52525B" }}>→</span>
+        </a>
+
         {/* Seção 1: Informações básicas */}
         <BasicInfoForm
           name={barbershop.name}
