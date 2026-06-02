@@ -49,7 +49,9 @@ export async function getBarberAvailableSlots({
 
     const appointmentsForCalc = existingAppointments.map((a) => ({
       startMinutes: a.date.getHours() * 60 + a.date.getMinutes(),
-      endMinutes: a.endTime.getHours() * 60 + a.endTime.getMinutes(),
+      endMinutes: a.endTime
+        ? a.endTime.getHours() * 60 + a.endTime.getMinutes()
+        : 0,
     }));
 
     const today = new Date();
