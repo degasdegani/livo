@@ -1,177 +1,159 @@
+// src/app/(onboarding)/onboarding/actions.ts
 "use server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { PRESET_SERVICES } from "./data";
 
-const DEFAULT_HOURS = [
-  { dayOfWeek: 0, isOpen: false, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 1, isOpen: true, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 2, isOpen: true, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 3, isOpen: true, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 4, isOpen: true, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 5, isOpen: true, openTime: "09:00", closeTime: "18:00" },
-  { dayOfWeek: 6, isOpen: true, openTime: "09:00", closeTime: "13:00" },
-];
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
 
-const RESERVED_SLUGS = [
-  "login",
-  "register",
-  "dashboard",
-  "onboarding",
-  "api",
-  "admin",
-  "app",
-  "www",
-  "mail",
-  "livo",
-];
+export async function createBarbershop(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
 
-interface CreateBarbershopData {
-  name: string;
-  slug: string;
-  city?: string;
+  const userId = session.user.id;
+  console.log("DEBUG userId:", userId);
+
   // Dados do dono
-  fullName: string;
-  cpf: string; // só dígitos (ex: "12345678900")
-  birthDate: string; // formato "YYYY-MM-DD"
-  celular: string; // só dígitos (ex: "16999999999")
-  // Endereço opcional
-  street?: string;
-  neighborhood?: string;
-  cep?: string;
-  telefoneFixo?: string;
-  // Serviços
-  selectedServices: string[];
-}
+  const fullName = (formData.get("fullName") as string)?.trim();
+  const cpfRaw = (formData.get("cpf") as string)?.replace(/\D/g, "");
+  const birthDateRaw = formData.get("birthDate") as string;
+  const phone = (formData.get("phone") as string)?.replace(/\D/g, "");
 
-interface ActionResult {
-  success?: boolean;
-  error?: string;
-}
+  // Dados da barbearia
+  const barbershopName = (formData.get("barbershopName") as string)?.trim();
+  const slugInput = (formData.get("slug") as string)?.trim();
 
-export async function createBarbershop(
-  data: CreateBarbershopData,
-): Promise<ActionResult> {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Você precisa estar logado." };
-    }
+  // Endereço — obrigatório a partir do Dia 3
+  const street = (formData.get("street") as string)?.trim();
+  const neighborhood = (formData.get("neighborhood") as string)?.trim();
+  const cep = (formData.get("cep") as string)?.replace(/\D/g, "");
+  const city = (formData.get("city") as string)?.trim();
+  const state = (formData.get("state") as string)?.trim();
 
-    const userId = session.user.id;
+  // Telefone fixo (opcional)
+  const landline =
+    (formData.get("landline") as string)?.replace(/\D/g, "") || null;
 
-    // Validações
-    if (RESERVED_SLUGS.includes(data.slug.toLowerCase())) {
-      return { error: "Esse endereço não está disponível. Escolha outro." };
-    }
-    if (!data.name || data.name.trim().length < 2) {
-      return {
-        error: "O nome da barbearia precisa ter pelo menos 2 caracteres.",
-      };
-    }
-    if (!data.slug || data.slug.trim().length < 2) {
-      return {
-        error: "O endereço público precisa ter pelo menos 2 caracteres.",
-      };
-    }
-    if (data.selectedServices.length === 0) {
-      return { error: "Selecione pelo menos 1 serviço." };
-    }
-    if (!data.fullName || data.fullName.trim().split(" ").length < 2) {
-      return { error: "Informe seu nome completo." };
-    }
-    if (!data.cpf || data.cpf.length !== 11) {
-      return { error: "CPF inválido." };
-    }
-    if (!data.celular || data.celular.length !== 11) {
-      return { error: "Celular inválido." };
-    }
-
-    const slugExisting = await db.barbershop.findUnique({
-      where: { slug: data.slug.toLowerCase() },
-    });
-    if (slugExisting) {
-      return { error: "Esse endereço já está em uso. Escolha outro." };
-    }
-
-    const userHasBarbershop = await db.barbershop.findUnique({
-      where: { ownerId: userId },
-    });
-    if (userHasBarbershop) {
-      return { error: "Você já tem uma barbearia cadastrada." };
-    }
-
-    // Monta endereço completo para salvar no campo city por enquanto
-    // (Dia 3 adiciona campos separados no schema)
-    const addressParts = [data.street, data.neighborhood, data.city].filter(
-      Boolean,
-    );
-    const fullAddress = addressParts.join(", ") || null;
-
-    await db.$transaction(async (tx) => {
-      // Atualiza o nome completo do usuário
-      await tx.user.update({
-        where: { id: userId },
-        data: { name: data.fullName.trim() },
-      });
-
-      const barbershop = await tx.barbershop.create({
-        data: {
-          name: data.name.trim(),
-          slug: data.slug.toLowerCase().trim(),
-          // Celular da barbearia = celular do dono no onboarding
-          phone: data.celular,
-          city: fullAddress,
-          ownerId: userId,
-          plan: "start",
-          planStatus: "trial",
-          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-      });
-
-      const professional = await tx.professional.create({
-        data: {
-          name: data.fullName.trim(),
-          isActive: true,
-          barbershopId: barbershop.id,
-        },
-      });
-
-      await tx.membership.create({
-        data: {
-          userId,
-          barbershopId: barbershop.id,
-          role: "owner",
-          professionalId: professional.id,
-        },
-      });
-
-      const servicesToCreate = PRESET_SERVICES.filter((s) =>
-        data.selectedServices.includes(s.name),
-      );
-
-      await tx.service.createMany({
-        data: servicesToCreate.map((s) => ({
-          name: s.name,
-          durationMin: s.durationMin,
-          priceInCents: s.priceInCents,
-          isActive: true,
-          barbershopId: barbershop.id,
-        })),
-      });
-
-      await tx.businessHour.createMany({
-        data: DEFAULT_HOURS.map((h) => ({
-          ...h,
-          barbershopId: barbershop.id,
-        })),
-      });
-    });
-
-    return { success: true };
-  } catch (err) {
-    console.error("[createBarbershop] Erro:", err);
-    return { error: "Erro ao criar barbearia. Tente novamente." };
+  // Validações básicas no server
+  if (!fullName || !barbershopName || !slugInput || !phone) {
+    throw new Error("Campos obrigatórios faltando.");
   }
+  if (!street || !neighborhood || !cep || !city) {
+    throw new Error("Endereço completo é obrigatório.");
+  }
+
+  const slug = slugify(slugInput);
+
+  // Verifica slug disponível
+  const existing = await db.barbershop.findUnique({ where: { slug } });
+  if (existing) {
+    throw new Error("Este link já está em uso. Escolha outro.");
+  }
+
+  // Verifica CPF duplicado (se fornecido)
+  if (cpfRaw) {
+    const cpfExisting = await db.user.findUnique({ where: { cpf: cpfRaw } });
+    if (cpfExisting && cpfExisting.id !== userId) {
+      throw new Error("CPF já cadastrado no sistema.");
+    }
+  }
+  if (birthDateRaw && birthDateRaw.length < 10) {
+    throw new Error("Data de nascimento inválida.");
+  }
+  // Converte birthDate para Date
+  let birthDate: Date | null = null;
+  if (birthDateRaw && birthDateRaw.length === 10) {
+    const parsed = new Date(birthDateRaw + "T12:00:00.000Z");
+    if (!isNaN(parsed.getTime())) {
+      birthDate = parsed;
+    }
+  }
+
+  // Trial: 30 dias a partir de agora
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+
+  // Transação única: User atualizado + Barbershop + Professional + Membership + Services + BusinessHours
+  await db.$transaction(async (tx) => {
+    // 1. Atualiza dados do User (dono)
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        name: fullName,
+        ...(cpfRaw ? { cpf: cpfRaw } : {}),
+        ...(birthDate ? { birthDate } : {}),
+      },
+    });
+
+    // 2. Cria a barbearia com endereço estruturado
+    const barbershop = await tx.barbershop.create({
+      data: {
+        name: barbershopName,
+        slug,
+        phone: phone || null,
+        city,
+        state: state || null,
+        street,
+        neighborhood,
+        cep,
+        plan: "start", // atualizado manualmente para pro via Prisma Studio
+        planStatus: "trial",
+        trialEndsAt,
+        ownerId: userId,
+      },
+    });
+
+    // 3. Cria o Professional (perfil do dono como barbeiro)
+    const professional = await tx.professional.create({
+      data: {
+        name: fullName,
+        isActive: true,
+        barbershopId: barbershop.id,
+      },
+    });
+
+    // 4. Cria o Membership de dono, vinculado ao professional
+    await tx.membership.create({
+      data: {
+        role: "owner",
+        userId,
+        barbershopId: barbershop.id,
+        professionalId: professional.id,
+        commissionOnServices: true,
+        commissionOnProducts: false,
+        isActive: true,
+      },
+    });
+
+    // 5. Cria os serviços pré-configurados
+    await tx.service.createMany({
+      data: PRESET_SERVICES.map((s) => ({
+        ...s,
+        barbershopId: barbershop.id,
+      })),
+    });
+
+    // 6. Cria horários padrão (seg–sab aberto, dom fechado)
+    const defaultHours = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      dayOfWeek: day,
+      openTime: "09:00",
+      closeTime: "18:00",
+      isOpen: day !== 0, // domingo fechado
+      barbershopId: barbershop.id,
+    }));
+    await tx.businessHour.createMany({ data: defaultHours });
+  });
+
+  redirect("/dashboard");
 }

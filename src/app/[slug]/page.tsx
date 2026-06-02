@@ -1,9 +1,6 @@
-// ============================================================
-// LIVO — Página Pública da Barbearia
-// URL: livobarber.com.br/[slug]
-// Acessível por qualquer pessoa sem login
-// ============================================================
+// src/app/[slug]/page.tsx
 
+import { BarbershopMap } from "@/components/barbershop-map";
 import { db } from "@/lib/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -59,7 +56,6 @@ export default async function BarbershopPage({
 }) {
   const { slug } = await params;
 
-  // Busca a barbearia com todos os dados relacionados
   const barbershop = await db.barbershop.findUnique({
     where: { slug, isActive: true },
     include: {
@@ -69,17 +65,17 @@ export default async function BarbershopPage({
     },
   });
 
-  // Barbearia não existe ou está inativa → 404
   if (!barbershop) notFound();
 
-  // Horário de hoje
   const todayDayOfWeek = new Date().getDay();
   const todayHours = barbershop.businessHours.find(
     (h) => h.dayOfWeek === todayDayOfWeek,
   );
 
-  // Pega o primeiro profissional (Livo Start tem apenas 1)
   const professional = barbershop.professionals[0];
+
+  // Verifica se tem endereço suficiente para mostrar o mapa
+  const hasAddress = barbershop.street && barbershop.city;
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
@@ -119,9 +115,25 @@ export default async function BarbershopPage({
             {barbershop.name}
           </h1>
 
-          {/* Info: cidade e telefone */}
+          {/* Info: endereço e telefone */}
           <div className="flex flex-wrap gap-4 mb-4">
-            {barbershop.city && (
+            {(barbershop.street || barbershop.city) && (
+              <span
+                className="flex items-center gap-1.5 text-sm"
+                style={{ color: "#A1A1AA" }}
+              >
+                📍{" "}
+                {[
+                  barbershop.street,
+                  barbershop.neighborhood,
+                  barbershop.city,
+                  barbershop.state,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+              </span>
+            )}
+            {!barbershop.street && barbershop.city && (
               <span
                 className="flex items-center gap-1.5 text-sm"
                 style={{ color: "#A1A1AA" }}
@@ -196,7 +208,6 @@ export default async function BarbershopPage({
                     border: "1px solid rgba(255,255,255,0.06)",
                   }}
                 >
-                  {/* Info do serviço */}
                   <div className="flex-1 min-w-0 mr-4">
                     <p className="font-bold text-white text-sm mb-0.5">
                       {service.name}
@@ -206,7 +217,6 @@ export default async function BarbershopPage({
                     </p>
                   </div>
 
-                  {/* Preço + botão */}
                   <div className="flex items-center gap-4 shrink-0">
                     <div className="text-right">
                       <p
@@ -297,6 +307,47 @@ export default async function BarbershopPage({
             })}
           </div>
         </section>
+
+        {/* ── Mapa ─────────────────────────────────────────── */}
+        {hasAddress && (
+          <section>
+            <h2
+              className="font-black text-white mb-4"
+              style={{ fontSize: "18px", letterSpacing: "-0.3px" }}
+            >
+              Localização
+            </h2>
+            <BarbershopMap
+              name={barbershop.name}
+              street={barbershop.street}
+              neighborhood={barbershop.neighborhood}
+              city={barbershop.city}
+              state={barbershop.state}
+              cep={barbershop.cep}
+              height="250px"
+            />
+            {/* Link para abrir no Google Maps */}
+            <a
+              href={`https://www.google.com/maps/search/${encodeURIComponent(
+                [
+                  barbershop.name,
+                  barbershop.street,
+                  barbershop.neighborhood,
+                  barbershop.city,
+                  barbershop.state,
+                ]
+                  .filter(Boolean)
+                  .join(", "),
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 mt-3 text-sm transition-colors"
+              style={{ color: "#52525B" }}
+            >
+              <span>Abrir no Google Maps →</span>
+            </a>
+          </section>
+        )}
 
         {/* ── Rodapé ────────────────────────────────────────── */}
         <footer className="text-center pb-4">

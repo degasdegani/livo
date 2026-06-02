@@ -1,7 +1,4 @@
-// ============================================================
-// LIVO — Schema do Banco de Dados
-// Prisma + PostgreSQL
-// ============================================================
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -12,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── ENUMS ──────────────────────────────────────────────────
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
 
 enum Plan {
   start
@@ -28,43 +25,63 @@ enum AppointmentStatus {
   no_show
 }
 
-// ─── AUTH.JS (NextAuth) ─────────────────────────────────────
+enum MemberRole {
+  owner
+  reception
+  barber
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum ClientOrigem {
+  Indicacao
+  Google
+  Instagram
+  Fachada
+  Outro
+}
+
+// ─── AUTH.JS ─────────────────────────────────────────────────────────────────
 
 model User {
   id            String    @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String    @unique
   emailVerified DateTime?
   image         String?
   password      String?
+  cpf           String?   @unique
+  birthDate     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  accounts   Account[]
-  sessions   Session[]
-  barbershop Barbershop? // barbearia que ESTE usuário é dono (se for dono)
-
-  memberships     Membership[] // barbearias em que este usuário tem acesso
-  sentInvitations Invitation[] // convites enviados por este usuário
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  accounts        Account[]
+  sessions        Session[]
+  barbershop      Barbershop?  @relation("BarbershopOwner")
+  memberships     Membership[]
+  sentInvitations Invitation[] @relation("InvitedBy")
 
   @@map("users")
 }
 
 model Account {
-  id                String @id @default(cuid())
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-
-  refresh_token String? @db.Text
-  access_token  String? @db.Text
-  expires_at    Int?
-  token_type    String?
-  scope         String?
-  id_token      String? @db.Text
-  session_state String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -92,32 +109,29 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// ─── LIVO — MODELOS PRINCIPAIS ──────────────────────────────
+// ─── BARBERSHOP ──────────────────────────────────────────────────────────────
 
 model Barbershop {
-  id    String  @id @default(cuid())
-  name  String
-  slug  String  @unique
-  phone String?
-  city  String?
-  state String?
-
-  // Plano
-  plan Plan @default(start)
-
-  // Status da assinatura
+  id                  String    @id @default(cuid())
+  name                String
+  slug                String    @unique
+  phone               String?
+  city                String?
+  state               String?
+  street              String?
+  neighborhood        String?
+  cep                 String?
+  plan                Plan      @default(start)
   planStatus          String    @default("trial")
   trialEndsAt         DateTime?
   asaasCustomerId     String?
   asaasSubscriptionId String?
+  isActive            Boolean   @default(true)
+  ownerId             String    @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  isActive Boolean @default(true)
-
-  // Dono (cobrança / criador da conta)
-  ownerId String @unique
-  owner   User   @relation(fields: [ownerId], references: [id])
-
-  // Relacionamentos
+  owner         User           @relation("BarbershopOwner", fields: [ownerId], references: [id])
   professionals Professional[]
   services      Service[]
   appointments  Appointment[]
@@ -126,188 +140,161 @@ model Barbershop {
   memberships   Membership[]
   invitations   Invitation[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
   @@map("barbershops")
 }
 
+// ─── PROFESSIONAL ────────────────────────────────────────────────────────────
+
 model Professional {
-  id        String  @id @default(cuid())
-  name      String
-  bio       String?
-  avatarUrl String?
-  isActive  Boolean @default(true)
-
+  id           String   @id @default(cuid())
+  name         String
+  bio          String?
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
-  membership   Membership? // crachá do barbeiro (se ele tiver login próprio)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  membership   Membership?
 
   @@map("professionals")
 }
 
+// ─── SERVICE ─────────────────────────────────────────────────────────────────
+
 model Service {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   description  String?
-  durationMin  Int
-  priceInCents Int
-  isActive     Boolean @default(true)
-
+  durationMin  Int      @default(30)
+  priceInCents Int      @default(0)
+  isActive     Boolean  @default(true)
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@map("services")
 }
 
-model Appointment {
-  id      String            @id @default(cuid())
-  date    DateTime
-  endTime DateTime
-  status  AppointmentStatus @default(pending)
-  notes   String?
-
-  // Cliente
-  clientName  String
-  clientPhone String
-  clientEmail String?
-
-  // Relacionamentos
-  barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
-
-  professionalId String
-  professional   Professional @relation(fields: [professionalId], references: [id])
-
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id])
-
-  clientId String?
-  client   Client? @relation(fields: [clientId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("appointments")
-}
+// ─── CLIENT ──────────────────────────────────────────────────────────────────
 
 model Client {
-  id    String  @id @default(cuid())
-  name  String
-  phone String
-  email String?
-  notes String?
-
+  id           String        @id @default(cuid())
+  name         String
+  phone        String
+  email        String?
+  notes        String?
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  totalVisits  Int           @default(0)
+  lastVisitAt  DateTime?
+  cpf          String?
+  birthDate    DateTime?
+  street       String?
+  neighborhood String?
+  cep          String?
+  origem       ClientOrigem?
+  bloqueado    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
-
-  // Métricas
-  totalVisits Int       @default(0)
-  lastVisitAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@unique([phone, barbershopId])
   @@map("clients")
 }
 
-model BusinessHour {
-  id        String  @id @default(cuid())
-  dayOfWeek Int
-  openTime  String
-  closeTime String
-  isOpen    Boolean @default(true)
+// ─── APPOINTMENT ─────────────────────────────────────────────────────────────
 
+model Appointment {
+  id             String            @id @default(cuid())
+  date           DateTime
+  endTime        DateTime?
+  status         AppointmentStatus @default(pending)
+  notes          String?
+  clientName     String
+  clientPhone    String?
+  clientEmail    String?
+  barbershopId   String
+  professionalId String
+  serviceId      String
+  clientId       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  barbershop   Barbershop   @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id])
+  service      Service      @relation(fields: [serviceId], references: [id])
+  client       Client?      @relation(fields: [clientId], references: [id])
+
+  @@map("appointments")
+}
+
+// ─── BUSINESS HOURS ──────────────────────────────────────────────────────────
+
+model BusinessHour {
+  id           String  @id @default(cuid())
+  dayOfWeek    Int
+  openTime     String  @default("09:00")
+  closeTime    String  @default("18:00")
+  isOpen       Boolean @default(true)
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@unique([dayOfWeek, barbershopId])
   @@map("business_hours")
 }
 
-// ─── ACESSOS / PERMISSÕES (RBAC) ────────────────────────────
-
-enum MemberRole {
-  owner
-  reception
-  barber
-}
-
-enum InvitationStatus {
-  pending
-  accepted
-  revoked
-  expired
-}
+// ─── MEMBERSHIP ──────────────────────────────────────────────────────────────
 
 model Membership {
-  id   String     @id @default(cuid())
-  role MemberRole
+  id                   String     @id @default(cuid())
+  role                 MemberRole
+  userId               String
+  barbershopId         String
+  professionalId       String?    @unique
+  commissionOnServices Boolean    @default(true)
+  commissionOnProducts Boolean    @default(false)
+  isActive             Boolean    @default(true)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-
-  // Vínculo opcional ao profissional (usado no acesso de barbeiro)
-  professionalId String?       @unique
-  professional   Professional? @relation(fields: [professionalId], references: [id])
-
-  // Comissionamento — ligado/desligado pelo dono, por pessoa
-  commissionOnServices Boolean @default(false)
-  commissionOnProducts Boolean @default(false)
-
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  professional Professional? @relation(fields: [professionalId], references: [id])
 
   @@unique([userId, barbershopId])
-  @@map("memberships")
 }
+
+// ─── INVITATION ──────────────────────────────────────────────────────────────
 
 model Invitation {
-  id    String     @id @default(cuid())
-  email String
-  role  MemberRole
-
-  token     String           @unique
-  status    InvitationStatus @default(pending)
-  expiresAt DateTime
-
-  // Config que será aplicada ao crachá quando o convite for aceito
+  id                   String           @id @default(cuid())
+  email                String
+  role                 MemberRole
+  token                String           @unique
+  status               InvitationStatus @default(pending)
+  expiresAt            DateTime
   professionalId       String?
-  commissionOnServices Boolean @default(false)
-  commissionOnProducts Boolean @default(false)
+  commissionOnServices Boolean          @default(true)
+  commissionOnProducts Boolean          @default(false)
+  barbershopId         String
+  invitedById          String?
+  createdAt            DateTime         @default(now())
+  acceptedAt           DateTime?
 
-  barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-
-  invitedById String?
-  invitedBy   User?   @relation(fields: [invitedById], references: [id])
-
-  createdAt  DateTime  @default(now())
-  acceptedAt DateTime?
-
-  @@index([email])
-  @@index([barbershopId])
-  @@map("invitations")
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  invitedBy  User?      @relation("InvitedBy", fields: [invitedById], references: [id])
 }
-// ─── LISTA DE PRÉ-LANÇAMENTO (VIP) ──────────────────────────
+
+// ─── WAITLIST LEAD ────────────────────────────────────────────────────────────
+// ⚠️ TEM 14 REGISTROS REAIS DO WORKSHOP TX — NUNCA DELETAR
 
 model WaitlistLead {
   id             String   @id @default(cuid())
@@ -315,9 +302,8 @@ model WaitlistLead {
   whatsapp       String
   email          String
   barbershopName String?
-  source         String   @default("workshop-tx")
+  source         String   @default("vip")
   createdAt      DateTime @default(now())
 
-  @@index([source])
   @@map("waitlist_leads")
 }
