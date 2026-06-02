@@ -267,8 +267,10 @@ model Membership {
   userId               String
   barbershopId         String
   professionalId       String?    @unique
-  commissionOnServices Boolean    @default(true)
+  commissionOnServices Boolean    @default(false)
   commissionOnProducts Boolean    @default(false)
+  commissionServicePct Decimal?   @db.Decimal(5, 2)
+  commissionProductPct Decimal?   @db.Decimal(5, 2)
   isActive             Boolean    @default(true)
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
@@ -278,6 +280,7 @@ model Membership {
   professional Professional? @relation(fields: [professionalId], references: [id])
 
   @@unique([userId, barbershopId])
+  @@map("memberships")
 }
 
 // ─── INVITATION ──────────────────────────────────────────────────────────────
@@ -290,7 +293,7 @@ model Invitation {
   status               InvitationStatus @default(pending)
   expiresAt            DateTime
   professionalId       String?
-  commissionOnServices Boolean          @default(true)
+  commissionOnServices Boolean          @default(false)
   commissionOnProducts Boolean          @default(false)
   barbershopId         String
   invitedById          String?
@@ -299,6 +302,8 @@ model Invitation {
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   invitedBy  User?      @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@map("invitations")
 }
 
 // ─── WAITLIST LEAD ────────────────────────────────────────────────────────────
@@ -316,7 +321,7 @@ model WaitlistLead {
   @@map("waitlist_leads")
 }
 
-// ─── PRODUTOS & ESTOQUE ───────────────────────────────────────────────────
+// ─── PRODUTOS & ESTOQUE ───────────────────────────────────────────────────────
 
 enum StockMovementReason {
   purchase
@@ -327,34 +332,36 @@ enum StockMovementReason {
 }
 
 model ProductCategory {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  products     Product[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  products   Product[]
 
   @@unique([name, barbershopId])
   @@map("product_categories")
 }
 
 model Product {
-  id             String           @id @default(cuid())
-  name           String
-  description    String?
-  costInCents    Int              @default(0)
-  priceInCents   Int              @default(0)
-  stockQuantity  Int              @default(0)
-  minStockAlert  Int              @default(5)
-  isActive       Boolean          @default(true)
-  barbershopId   String
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  costInCents   Int      @default(0)
+  priceInCents  Int      @default(0)
+  stockQuantity Int      @default(0)
+  minStockAlert Int      @default(5)
+  isActive      Boolean  @default(true)
+  barbershopId  String
+  categoryId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   barbershop     Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  categoryId     String?
   category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stockMovements StockMovement[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
   comandaItems   ComandaItem[]
 
   @@map("products")
@@ -366,13 +373,16 @@ model StockMovement {
   reason       StockMovementReason
   notes        String?
   productId    String
-  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   barbershopId String
-  barbershop   Barbershop          @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   createdAt    DateTime            @default(now())
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@map("stock_movements")
 }
+
+// ─── COMANDAS (PDV) ───────────────────────────────────────────────────────────
 
 enum ComandaStatus {
   open
@@ -394,28 +404,26 @@ enum ComandaItemType {
 }
 
 model Comanda {
-  id            String         @id @default(cuid())
-  status        ComandaStatus  @default(open)
-  paymentMethod PaymentMethod?
-  clientId      String?
-  clientName    String         @default("")
-  notes         String?
-  totalInCents  Int            @default(0)
-  openedAt      DateTime       @default(now())
-  closedAt      DateTime?
-
+  id             String         @id @default(cuid())
+  status         ComandaStatus  @default(open)
+  paymentMethod  PaymentMethod?
+  clientId       String?
+  clientName     String         @default("")
+  notes          String?
+  totalInCents   Int            @default(0)
+  openedAt       DateTime       @default(now())
+  closedAt       DateTime?
   barbershopId   String
   professionalId String
-  appointmentId  String? @unique
+  appointmentId  String?        @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
   professional Professional  @relation(fields: [professionalId], references: [id])
   appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
   client       Client?       @relation(fields: [clientId], references: [id])
   items        ComandaItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@map("comandas")
 }
@@ -440,8 +448,8 @@ model ComandaItem {
   commissionValue Int?
 
   comandaId String
-  comanda   Comanda @relation(fields: [comandaId], references: [id], onDelete: Cascade)
 
+  comanda Comanda  @relation(fields: [comandaId], references: [id], onDelete: Cascade)
   service Service? @relation(fields: [serviceId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
 

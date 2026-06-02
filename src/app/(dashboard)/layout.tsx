@@ -13,6 +13,7 @@ import {
   BarChart2,
   CalendarDays,
   ClipboardList,
+  DollarSign,
   LayoutDashboard,
   LogOut,
   Package,
@@ -59,22 +60,27 @@ const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
   },
   {
+    href: "/dashboard/comissoes",
+    label: "Comissões",
+    icon: DollarSign,
+  },
+  {
     href: "/dashboard/relatorios",
     label: "Relatórios",
     icon: BarChart2,
-    roleAccess: ["owner", "reception"],
+    roleAccess: [MemberRole.owner, MemberRole.reception],
   },
   {
     href: "/dashboard/settings",
     label: "Configurações",
     icon: Settings,
-    roleAccess: ["owner"],
+    roleAccess: [MemberRole.owner],
   },
   {
     href: "/dashboard/settings/acessos",
     label: "Acessos",
     icon: UserCog,
-    roleAccess: ["owner"],
+    roleAccess: [MemberRole.owner],
   },
 ];
 
@@ -135,9 +141,9 @@ export default async function DashboardLayout({
             {barbershop.name}
           </p>
           <p className="text-xs mt-0.5" style={{ color: "#6E6E78" }}>
-            {membership.role === "owner"
+            {membership.role === MemberRole.owner
               ? "Dono"
-              : membership.role === "reception"
+              : membership.role === MemberRole.reception
                 ? "Recepção"
                 : "Barbeiro"}
           </p>

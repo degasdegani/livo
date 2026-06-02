@@ -5,12 +5,17 @@
 
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
+import { getCurrentMembership } from "@/lib/permissions";
+import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { AppointmentActions } from "./appointment-actions";
+import { getComissoesData } from "./comandas/actions";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const membership = await getCurrentMembership();
 
   const barbershop = await db.barbershop.findUnique({
     where: { ownerId: session.user.id },
@@ -52,6 +57,12 @@ export default async function DashboardPage() {
       status: { notIn: ["cancelled", "no_show"] },
     },
   });
+
+  // Card de comissões — só para barbeiros
+  const comissoesDoMes =
+    membership?.role === MemberRole.barber && membership.professionalId
+      ? await getComissoesData("mes_atual", membership.professionalId)
+      : null;
 
   const hour = new Date().getHours();
   const greeting =
@@ -214,6 +225,163 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Card de Comissões (só para barbeiros) ─────────── */}
+        {comissoesDoMes &&
+          comissoesDoMes.resumo.length > 0 &&
+          (() => {
+            const meu = comissoesDoMes.resumo[0];
+            return (
+              <div>
+                <h2
+                  className="font-bold text-white mb-4"
+                  style={{ fontSize: "16px", letterSpacing: "-0.3px" }}
+                >
+                  Minhas Comissões — Este Mês
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div
+                    className="rounded-2xl p-5"
+                    style={{
+                      background: "#0A0A0A",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <p
+                      className="text-xs font-bold tracking-widest mb-3"
+                      style={{
+                        color: "#3F3F46",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      COMANDAS
+                    </p>
+                    <p
+                      className="font-black"
+                      style={{
+                        fontSize: "32px",
+                        letterSpacing: "-1px",
+                        color: "#FFFFFF",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {meu.totalComandas}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                      fechadas
+                    </p>
+                  </div>
+                  <div
+                    className="rounded-2xl p-5"
+                    style={{
+                      background: "#0A0A0A",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <p
+                      className="text-xs font-bold tracking-widest mb-3"
+                      style={{
+                        color: "#3F3F46",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      FATURAMENTO
+                    </p>
+                    <p
+                      className="font-black"
+                      style={{
+                        fontSize: "26px",
+                        letterSpacing: "-1px",
+                        color: "#FFFFFF",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {(meu.totalFaturamento / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                      no período
+                    </p>
+                  </div>
+                  <div
+                    className="rounded-2xl p-5"
+                    style={{
+                      background: "#0A0A0A",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <p
+                      className="text-xs font-bold tracking-widest mb-3"
+                      style={{
+                        color: "#3F3F46",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      COM. SERVIÇOS
+                    </p>
+                    <p
+                      className="font-black"
+                      style={{
+                        fontSize: "26px",
+                        letterSpacing: "-1px",
+                        color: "#3FB950",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {(meu.totalComissaoServicos / 100).toLocaleString(
+                        "pt-BR",
+                        { style: "currency", currency: "BRL" },
+                      )}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                      este mês
+                    </p>
+                  </div>
+                  <div
+                    className="rounded-2xl p-5"
+                    style={{
+                      background: "#0A0A0A",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <p
+                      className="text-xs font-bold tracking-widest mb-3"
+                      style={{
+                        color: "#3F3F46",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      TOTAL COMISSÃO
+                    </p>
+                    <p
+                      className="font-black"
+                      style={{
+                        fontSize: "26px",
+                        letterSpacing: "-1px",
+                        color: "#C8A24C",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {(meu.totalComissao / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                      <a
+                        href="/dashboard/comissoes"
+                        style={{ color: "#C8102E" }}
+                      >
+                        ver histórico →
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         {/* ── Agenda do dia ────────────────────────────────── */}
         <div

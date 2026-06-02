@@ -3,22 +3,18 @@
 import { db } from "@/lib/db";
 import { requireMembership, requireRole } from "@/lib/permissions";
 import {
-  ComandaItemType,
   ComandaStatus,
+  MemberRole,
   PaymentMethod,
   StockMovementReason,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-// ─── Tipos auxiliares ────────────────────────────────────────────────────────
+// ─── LISTAR COMANDAS ────────────────────────────────────────────────────────
 
-export type ComandaWithItems = Awaited<ReturnType<typeof getComanda>>;
-export type ComandaListItem = Awaited<ReturnType<typeof listComandas>>[number];
-
-// ─── Listar comandas ─────────────────────────────────────────────────────────
-
-export async function listComandas(
-  filter: "all" | "open" | "closed" | "today" = "open",
+export async function getComandas(
+  filtro: "abertas" | "hoje" | "fechadas" | "todas" = "abertas",
 ) {
   const membership = await requireMembership();
 
@@ -26,114 +22,76 @@ export async function listComandas(
     barbershopId: membership.barbershopId,
   };
 
-  // RBAC: barber vê apenas suas próprias comandas
-  if (membership.role === "barber" && membership.professionalId) {
+  if (membership.role === MemberRole.barber && membership.professionalId) {
     where.professionalId = membership.professionalId;
   }
 
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() + 1,
-  );
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const amanha = new Date(hoje);
+  amanha.setDate(amanha.getDate() + 1);
 
-  if (filter === "open") {
+  if (filtro === "abertas") {
     where.status = ComandaStatus.open;
-  } else if (filter === "closed") {
+  } else if (filtro === "hoje") {
+    where.openedAt = { gte: hoje, lt: amanha };
+  } else if (filtro === "fechadas") {
     where.status = ComandaStatus.closed;
-  } else if (filter === "today") {
-    where.openedAt = { gte: startOfDay, lt: endOfDay };
   }
 
-  return db.comanda.findMany({
+  const comandas = await db.comanda.findMany({
     where,
     include: {
-      professional: { select: { id: true, name: true } },
-      items: { select: { id: true, totalInCents: true, type: true } },
-      client: { select: { id: true, name: true } },
+      professional: { select: { name: true } },
+      client: { select: { name: true } },
+      items: true,
     },
     orderBy: { openedAt: "desc" },
+    take: 100,
   });
+
+  return comandas;
 }
 
-// ─── Buscar comanda por ID ────────────────────────────────────────────────────
+// ─── BUSCAR COMANDA ÚNICA ────────────────────────────────────────────────────
 
-export async function getComanda(comandaId: string) {
+export async function getComanda(id: string) {
   const membership = await requireMembership();
 
   const comanda = await db.comanda.findFirst({
     where: {
-      id: comandaId,
+      id,
       barbershopId: membership.barbershopId,
     },
     include: {
       professional: { select: { id: true, name: true } },
       client: { select: { id: true, name: true, phone: true } },
-      appointment: { select: { id: true, date: true } },
+      appointment: { select: { id: true } },
       items: {
-        orderBy: { comanda: { createdAt: "asc" } },
-        include: {
-          service: { select: { id: true, name: true } },
-          product: { select: { id: true, name: true, stockQuantity: true } },
-        },
+        orderBy: { id: "asc" },
       },
     },
   });
 
-  if (!comanda) return null;
-
-  // RBAC: barber só acessa suas próprias
-  if (
-    membership.role === "barber" &&
-    membership.professionalId &&
-    comanda.professionalId !== membership.professionalId
-  ) {
-    return null;
-  }
-
   return comanda;
 }
 
-// ─── Abrir nova comanda ───────────────────────────────────────────────────────
+// ─── ABRIR COMANDA ───────────────────────────────────────────────────────────
 
-export async function openComanda(data: {
+export async function abrirComanda(data: {
   professionalId: string;
   clientId?: string;
-  clientName?: string;
-  appointmentId?: string;
+  clientName: string;
   notes?: string;
+  appointmentId?: string;
 }) {
   const membership = await requireMembership();
 
-  // barber só pode abrir para si mesmo
-  if (membership.role === "barber" && membership.professionalId) {
-    if (data.professionalId !== membership.professionalId) {
-      return { error: "Você só pode abrir comandas para si mesmo." };
-    }
-  }
-
-  // Verificar se o profissional pertence à barbearia
-  const professional = await db.professional.findFirst({
-    where: { id: data.professionalId, barbershopId: membership.barbershopId },
-  });
-
-  if (!professional) {
-    return { error: "Profissional não encontrado." };
-  }
-
-  // Se veio appointmentId, verificar se já tem comanda aberta para ele
-  if (data.appointmentId) {
-    const existing = await db.comanda.findUnique({
-      where: { appointmentId: data.appointmentId },
-    });
-    if (existing) {
-      return {
-        error: "Já existe uma comanda para este agendamento.",
-        comandaId: existing.id,
-      };
-    }
+  if (
+    membership.role === MemberRole.barber &&
+    membership.professionalId !== data.professionalId
+  ) {
+    throw new Error("Barbeiro só pode abrir comanda para si mesmo.");
   }
 
   const comanda = await db.comanda.create({
@@ -141,21 +99,20 @@ export async function openComanda(data: {
       barbershopId: membership.barbershopId,
       professionalId: data.professionalId,
       clientId: data.clientId || null,
-      clientName: data.clientName || "",
-      appointmentId: data.appointmentId || null,
+      clientName: data.clientName,
       notes: data.notes || null,
+      appointmentId: data.appointmentId || null,
       status: ComandaStatus.open,
-      openedAt: new Date(),
+      totalInCents: 0,
     },
   });
 
-  revalidatePath("/dashboard/comandas");
-  return { success: true, comandaId: comanda.id };
+  redirect(`/dashboard/comandas/${comanda.id}`);
 }
 
-// ─── Adicionar item de serviço ────────────────────────────────────────────────
+// ─── ADICIONAR ITEM (SERVIÇO) ────────────────────────────────────────────────
 
-export async function addServiceItem(comandaId: string, serviceId: string) {
+export async function addServicoItem(comandaId: string, serviceId: string) {
   const membership = await requireMembership();
 
   const comanda = await db.comanda.findFirst({
@@ -165,54 +122,47 @@ export async function addServiceItem(comandaId: string, serviceId: string) {
       status: ComandaStatus.open,
     },
   });
-
-  if (!comanda) return { error: "Comanda não encontrada ou não está aberta." };
-
-  if (membership.role === "barber" && membership.professionalId) {
-    if (comanda.professionalId !== membership.professionalId) {
-      return { error: "Sem permissão." };
-    }
-  }
+  if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
 
   const service = await db.service.findFirst({
-    where: { id: serviceId, barbershopId: membership.barbershopId },
+    where: {
+      id: serviceId,
+      barbershopId: membership.barbershopId,
+      isActive: true,
+    },
   });
+  if (!service) throw new Error("Serviço não encontrado.");
 
-  if (!service) return { error: "Serviço não encontrado." };
-
-  await db.$transaction(async (tx) => {
-    await tx.comandaItem.create({
+  await db.$transaction([
+    db.comandaItem.create({
       data: {
         comandaId,
-        type: ComandaItemType.service,
+        type: "service",
         serviceId: service.id,
         serviceName: service.name,
         servicePrice: service.priceInCents,
+        productName: "",
+        productPrice: 0,
         quantity: 1,
         unitPriceInCents: service.priceInCents,
         totalInCents: service.priceInCents,
       },
-    });
-
-    // Recalcular total da comanda
-    const items = await tx.comandaItem.findMany({ where: { comandaId } });
-    const total = items.reduce((sum, item) => sum + item.totalInCents, 0);
-    await tx.comanda.update({
+    }),
+    db.comanda.update({
       where: { id: comandaId },
-      data: { totalInCents: total },
-    });
-  });
+      data: { totalInCents: { increment: service.priceInCents } },
+    }),
+  ]);
 
   revalidatePath(`/dashboard/comandas/${comandaId}`);
-  return { success: true };
 }
 
-// ─── Adicionar item de produto ────────────────────────────────────────────────
+// ─── ADICIONAR ITEM (PRODUTO) ────────────────────────────────────────────────
 
-export async function addProductItem(
+export async function addProdutoItem(
   comandaId: string,
   productId: string,
-  quantity: number = 1,
+  quantity: number,
 ) {
   const membership = await requireMembership();
 
@@ -223,14 +173,7 @@ export async function addProductItem(
       status: ComandaStatus.open,
     },
   });
-
-  if (!comanda) return { error: "Comanda não encontrada ou não está aberta." };
-
-  if (membership.role === "barber" && membership.professionalId) {
-    if (comanda.professionalId !== membership.professionalId) {
-      return { error: "Sem permissão." };
-    }
-  }
+  if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
 
   const product = await db.product.findFirst({
     where: {
@@ -239,85 +182,67 @@ export async function addProductItem(
       isActive: true,
     },
   });
+  if (!product) throw new Error("Produto não encontrado.");
+  if (product.stockQuantity < quantity)
+    throw new Error("Estoque insuficiente.");
 
-  if (!product) return { error: "Produto não encontrado." };
+  const total = product.priceInCents * quantity;
 
-  // Verificar estoque disponível
-  // Considera itens já adicionados em outras comandas abertas? Não — simplificamos:
-  // reserva só acontece no fechamento. Estoque negativo é bloqueado no fechamento.
-  if (product.stockQuantity < quantity) {
-    return {
-      error: `Estoque insuficiente. Disponível: ${product.stockQuantity} unidade(s).`,
-    };
-  }
-
-  await db.$transaction(async (tx) => {
-    await tx.comandaItem.create({
+  await db.$transaction([
+    db.comandaItem.create({
       data: {
         comandaId,
-        type: ComandaItemType.product,
+        type: "product",
         productId: product.id,
         productName: product.name,
         productPrice: product.priceInCents,
+        serviceName: "",
+        servicePrice: 0,
         quantity,
         unitPriceInCents: product.priceInCents,
-        totalInCents: product.priceInCents * quantity,
+        totalInCents: total,
       },
-    });
-
-    // Recalcular total
-    const items = await tx.comandaItem.findMany({ where: { comandaId } });
-    const total = items.reduce((sum, item) => sum + item.totalInCents, 0);
-    await tx.comanda.update({
+    }),
+    db.comanda.update({
       where: { id: comandaId },
-      data: { totalInCents: total },
-    });
-  });
+      data: { totalInCents: { increment: total } },
+    }),
+  ]);
 
   revalidatePath(`/dashboard/comandas/${comandaId}`);
-  return { success: true };
 }
 
-// ─── Remover item da comanda ──────────────────────────────────────────────────
+// ─── REMOVER ITEM ────────────────────────────────────────────────────────────
 
-export async function removeComandaItem(comandaId: string, itemId: string) {
+export async function removeItem(itemId: string, comandaId: string) {
   const membership = await requireMembership();
 
-  const comanda = await db.comanda.findFirst({
-    where: {
-      id: comandaId,
-      barbershopId: membership.barbershopId,
-      status: ComandaStatus.open,
-    },
+  const item = await db.comandaItem.findFirst({
+    where: { id: itemId, comandaId },
+    include: { comanda: true },
   });
 
-  if (!comanda) return { error: "Comanda não está aberta." };
-
-  if (membership.role === "barber" && membership.professionalId) {
-    if (comanda.professionalId !== membership.professionalId) {
-      return { error: "Sem permissão." };
-    }
+  if (!item || item.comanda.barbershopId !== membership.barbershopId) {
+    throw new Error("Item não encontrado.");
+  }
+  if (item.comanda.status !== ComandaStatus.open) {
+    throw new Error("Comanda já fechada.");
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.comandaItem.delete({ where: { id: itemId } });
-
-    // Recalcular total
-    const items = await tx.comandaItem.findMany({ where: { comandaId } });
-    const total = items.reduce((sum, item) => sum + item.totalInCents, 0);
-    await tx.comanda.update({
+  await db.$transaction([
+    db.comandaItem.delete({ where: { id: itemId } }),
+    db.comanda.update({
       where: { id: comandaId },
-      data: { totalInCents: total },
-    });
-  });
+      data: { totalInCents: { decrement: item.totalInCents } },
+    }),
+  ]);
 
   revalidatePath(`/dashboard/comandas/${comandaId}`);
-  return { success: true };
 }
 
-// ─── Fechar comanda ───────────────────────────────────────────────────────────
+// ─── FECHAR COMANDA (com cálculo de comissões) ───────────────────────────────
 
-export async function closeComanda(
+export async function fecharComanda(
   comandaId: string,
   paymentMethod: PaymentMethod,
   discountInCents: number = 0,
@@ -330,127 +255,124 @@ export async function closeComanda(
       barbershopId: membership.barbershopId,
       status: ComandaStatus.open,
     },
-    include: {
-      items: true,
-    },
-  });
-
-  if (!comanda) return { error: "Comanda não encontrada ou não está aberta." };
-
-  if (comanda.items.length === 0) {
-    return { error: "Não é possível fechar uma comanda sem itens." };
-  }
-
-  // Barber só fecha suas próprias comandas
-  if (membership.role === "barber" && membership.professionalId) {
-    if (comanda.professionalId !== membership.professionalId) {
-      return { error: "Sem permissão." };
-    }
-  }
-
-  // Verificar estoque de todos os produtos antes de fechar
-  const productItems = comanda.items.filter(
-    (item) => item.type === ComandaItemType.product,
-  );
-  for (const item of productItems) {
-    if (!item.productId) continue;
-    const product = await db.product.findUnique({
-      where: { id: item.productId },
-    });
-    if (!product)
-      return { error: `Produto ${item.productName} não encontrado.` };
-    if (product.stockQuantity < item.quantity) {
-      return {
-        error: `Estoque insuficiente para "${item.productName}". Disponível: ${product.stockQuantity}, necessário: ${item.quantity}.`,
-      };
-    }
-  }
-
-  const totalBruto = comanda.items.reduce(
-    (sum, item) => sum + item.totalInCents,
-    0,
-  );
-  const totalLiquido = Math.max(0, totalBruto - discountInCents);
-
-  try {
-    await db.$transaction(async (tx) => {
-      // 1. Fechar a comanda
-      await tx.comanda.update({
-        where: { id: comandaId },
-        data: {
-          status: ComandaStatus.closed,
-          paymentMethod,
-          totalInCents: totalLiquido,
-          closedAt: new Date(),
-        },
-      });
-
-      // 2. Baixar estoque de produtos
-      for (const item of productItems) {
-        if (!item.productId) continue;
-
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stockQuantity: { decrement: item.quantity } },
-        });
-
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            barbershopId: membership.barbershopId,
-            quantity: -item.quantity, // negativo = saída
-            reason: StockMovementReason.comanda_use,
-            notes: `Comanda #${comandaId.slice(-6).toUpperCase()}`,
-          },
-        });
-      }
-    });
-
-    revalidatePath("/dashboard/comandas");
-    revalidatePath(`/dashboard/comandas/${comandaId}`);
-    revalidatePath("/dashboard/produtos");
-    return { success: true };
-  } catch (err) {
-    console.error("Erro ao fechar comanda:", err);
-    return { error: "Erro ao fechar comanda. Tente novamente." };
-  }
-}
-
-// ─── Cancelar comanda ─────────────────────────────────────────────────────────
-
-export async function cancelComanda(comandaId: string) {
-  const membership = await requireRole(["owner", "reception"]);
-
-  const comanda = await db.comanda.findFirst({
-    where: {
-      id: comandaId,
-      barbershopId: membership.barbershopId,
-      status: { in: [ComandaStatus.open, ComandaStatus.closed] },
-    },
     include: { items: true },
   });
 
-  if (!comanda) return { error: "Comanda não encontrada." };
+  if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
+
+  // Buscar Membership do profissional para calcular comissão
+  const profMembership = await db.membership.findFirst({
+    where: {
+      barbershopId: comanda.barbershopId,
+      professionalId: comanda.professionalId,
+      isActive: true,
+    },
+  });
+
+  const totalFinal = Math.max(0, comanda.totalInCents - discountInCents);
 
   await db.$transaction(async (tx) => {
-    // Se estava fechada, devolver estoque
+    // 1. Calcular e gravar comissão em cada item
+    for (const item of comanda.items) {
+      let pct: number | null = null;
+      let value: number | null = null;
+
+      if (profMembership) {
+        if (
+          item.type === "service" &&
+          profMembership.commissionOnServices &&
+          profMembership.commissionServicePct !== null
+        ) {
+          pct = Number(profMembership.commissionServicePct);
+          value = Math.round((item.totalInCents * pct) / 100);
+        } else if (
+          item.type === "product" &&
+          profMembership.commissionOnProducts &&
+          profMembership.commissionProductPct !== null
+        ) {
+          pct = Number(profMembership.commissionProductPct);
+          value = Math.round((item.totalInCents * pct) / 100);
+        }
+      }
+
+      await tx.comandaItem.update({
+        where: { id: item.id },
+        data: {
+          commissionPct: pct,
+          commissionValue: value,
+        },
+      });
+    }
+
+    // 2. Baixar estoque dos produtos
+    const produtoItems = comanda.items.filter(
+      (i) => i.type === "product" && i.productId,
+    );
+    for (const item of produtoItems) {
+      await tx.product.update({
+        where: { id: item.productId! },
+        data: { stockQuantity: { decrement: item.quantity } },
+      });
+      await tx.stockMovement.create({
+        data: {
+          productId: item.productId!,
+          barbershopId: comanda.barbershopId,
+          quantity: -item.quantity,
+          reason: StockMovementReason.comanda_use,
+          notes: `Comanda fechada`,
+        },
+      });
+    }
+
+    // 3. Fechar a comanda
+    await tx.comanda.update({
+      where: { id: comandaId },
+      data: {
+        status: ComandaStatus.closed,
+        paymentMethod,
+        totalInCents: totalFinal,
+        closedAt: new Date(),
+      },
+    });
+  });
+
+  revalidatePath(`/dashboard/comandas`);
+  revalidatePath(`/dashboard/comandas/${comandaId}`);
+  redirect(`/dashboard/comandas`);
+}
+
+// ─── CANCELAR COMANDA ────────────────────────────────────────────────────────
+
+export async function cancelarComanda(comandaId: string) {
+  await requireRole(["owner"]);
+
+  const comanda = await db.comanda.findFirst({
+    where: { id: comandaId },
+    include: { items: true },
+  });
+
+  if (!comanda) throw new Error("Comanda não encontrada.");
+  if (comanda.status === ComandaStatus.cancelled)
+    throw new Error("Já cancelada.");
+
+  await db.$transaction(async (tx) => {
+    // Estornar estoque apenas se estava fechada
     if (comanda.status === ComandaStatus.closed) {
-      const productItems = comanda.items.filter(
-        (i) => i.type === ComandaItemType.product,
+      const prodItems = comanda.items.filter(
+        (i) => i.type === "product" && i.productId,
       );
-      for (const item of productItems) {
-        if (!item.productId) continue;
+      for (const item of prodItems) {
         await tx.product.update({
-          where: { id: item.productId },
+          where: { id: item.productId! },
           data: { stockQuantity: { increment: item.quantity } },
         });
         await tx.stockMovement.create({
           data: {
-            productId: item.productId,
-            barbershopId: membership.barbershopId,
-            quantity: item.quantity, // positivo = entrada (devolução)
+            productId: item.productId!,
+            barbershopId: comanda.barbershopId,
+            quantity: item.quantity,
             reason: StockMovementReason.return,
-            notes: `Cancelamento comanda #${comandaId.slice(-6).toUpperCase()}`,
+            notes: `Cancelamento de comanda`,
           },
         });
       }
@@ -462,51 +384,134 @@ export async function cancelComanda(comandaId: string) {
     });
   });
 
-  revalidatePath("/dashboard/comandas");
-  revalidatePath(`/dashboard/comandas/${comandaId}`);
-  revalidatePath("/dashboard/produtos");
-  return { success: true };
+  revalidatePath(`/dashboard/comandas`);
+  redirect(`/dashboard/comandas`);
 }
 
-// ─── Buscar serviços e produtos para o PDV ────────────────────────────────────
+// ─── DADOS PARA COMISSÕES ─────────────────────────────────────────────────────
 
-export async function getServicesForPDV() {
-  const membership = await requireMembership();
-  return db.service.findMany({
-    where: { barbershopId: membership.barbershopId, isActive: true },
-    orderBy: { name: "asc" },
-  });
-}
+export type ResumoProf = {
+  professionalId: string;
+  professionalName: string;
+  totalComandas: number;
+  totalFaturamento: number;
+  totalComissaoServicos: number;
+  totalComissaoProdutos: number;
+  totalComissao: number;
+};
 
-export async function getProductsForPDV() {
+export async function getComissoesData(
+  periodo:
+    | "mes_atual"
+    | "mes_anterior"
+    | "ultimos_30"
+    | "ultimos_90" = "mes_atual",
+  professionalId?: string,
+) {
   const membership = await requireMembership();
-  return db.product.findMany({
-    where: { barbershopId: membership.barbershopId, isActive: true },
-    orderBy: { name: "asc" },
-  });
-}
 
-export async function getProfessionalsForComanda() {
-  const membership = await requireMembership();
-  return db.professional.findMany({
-    where: { barbershopId: membership.barbershopId, isActive: true },
-    orderBy: { name: "asc" },
-  });
-}
+  const profId =
+    membership.role === MemberRole.barber
+      ? (membership.professionalId ?? undefined)
+      : professionalId;
 
-export async function getClientsForComanda(search: string) {
-  const membership = await requireMembership();
-  if (!search || search.length < 2) return [];
-  return db.client.findMany({
-    where: {
-      barbershopId: membership.barbershopId,
-      bloqueado: false,
-      OR: [
-        { name: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search } },
-      ],
+  const hoje = new Date();
+  let dataInicio: Date;
+  let dataFim: Date;
+
+  if (periodo === "mes_atual") {
+    dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    dataFim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+  } else if (periodo === "mes_anterior") {
+    dataInicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), 0, 23, 59, 59);
+  } else if (periodo === "ultimos_30") {
+    dataInicio = new Date(hoje);
+    dataInicio.setDate(dataInicio.getDate() - 30);
+    dataFim = hoje;
+  } else {
+    dataInicio = new Date(hoje);
+    dataInicio.setDate(dataInicio.getDate() - 90);
+    dataFim = hoje;
+  }
+
+  const where: Record<string, unknown> = {
+    barbershopId: membership.barbershopId,
+    status: ComandaStatus.closed,
+    closedAt: { gte: dataInicio, lte: dataFim },
+  };
+
+  if (profId) {
+    where.professionalId = profId;
+  }
+
+  const comandas = await db.comanda.findMany({
+    where,
+    include: {
+      professional: { select: { id: true, name: true } },
+      items: {
+        where: { commissionValue: { not: null } },
+      },
     },
-    select: { id: true, name: true, phone: true },
-    take: 10,
+    orderBy: { closedAt: "desc" },
   });
+
+  const porProfissional: Record<string, ResumoProf> = {};
+
+  for (const comanda of comandas) {
+    const pid = comanda.professionalId;
+    if (!porProfissional[pid]) {
+      porProfissional[pid] = {
+        professionalId: pid,
+        professionalName: comanda.professional?.name ?? "—",
+        totalComandas: 0,
+        totalFaturamento: 0,
+        totalComissaoServicos: 0,
+        totalComissaoProdutos: 0,
+        totalComissao: 0,
+      };
+    }
+
+    porProfissional[pid].totalComandas += 1;
+    porProfissional[pid].totalFaturamento += comanda.totalInCents;
+
+    for (const item of comanda.items) {
+      if (item.commissionValue !== null) {
+        if (item.type === "service") {
+          porProfissional[pid].totalComissaoServicos += item.commissionValue;
+        } else {
+          porProfissional[pid].totalComissaoProdutos += item.commissionValue;
+        }
+        porProfissional[pid].totalComissao += item.commissionValue;
+      }
+    }
+  }
+
+  const profissionais = await db.professional.findMany({
+    where: { barbershopId: membership.barbershopId, isActive: true },
+    select: { id: true, name: true },
+  });
+
+  for (const prof of profissionais) {
+    if (!porProfissional[prof.id]) {
+      porProfissional[prof.id] = {
+        professionalId: prof.id,
+        professionalName: prof.name,
+        totalComandas: 0,
+        totalFaturamento: 0,
+        totalComissaoServicos: 0,
+        totalComissaoProdutos: 0,
+        totalComissao: 0,
+      };
+    }
+  }
+
+  return {
+    resumo: Object.values(porProfissional).sort(
+      (a, b) => b.totalComissao - a.totalComissao,
+    ),
+    dataInicio,
+    dataFim,
+    profissionais,
+  };
 }
