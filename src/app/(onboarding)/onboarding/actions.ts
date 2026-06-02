@@ -22,7 +22,6 @@ export async function createBarbershop(formData: FormData) {
   if (!session?.user?.id) redirect("/login");
 
   const userId = session.user.id;
-  console.log("DEBUG userId:", userId);
 
   // Dados do dono
   const fullName = (formData.get("fullName") as string)?.trim();
