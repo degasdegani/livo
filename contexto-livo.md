@@ -133,6 +133,16 @@ raiz/
 │ │ ├── page.tsx ← Server Component
 │ │ ├── produtos-client.tsx ← Client Component: UI completa
 │ │ └── actions.ts ← Server Actions: CRUD + estoque
+│ ├── comandas/
+│ │ ├── page.tsx ← Server Component (lista)
+│ │ ├── comandas-client.tsx ← Client Component
+│ │ ├── actions.ts ← Server Actions: abrir/fechar/cancelar
+│ │ ├── nova/
+│ │ │ ├── page.tsx ← Server Component
+│ │ │ └── nova-comanda-form.tsx ← Client Component
+│ │ └── [id]/
+│ │ ├── page.tsx ← Server Component
+│ │ └── comanda-pdv.tsx ← Client Component (PDV)
 │ ├── relatorios/
 │ ├── settings/
 │ │ ├── page.tsx
@@ -196,23 +206,27 @@ Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dro
 - ProductCategory → @@map("product_categories")
 - Product → @@map("products")
 - StockMovement → @@map("stock_movements")
+- Comanda → @@map("comandas")
+- ComandaItem → @@map("comanda_items")
 
 ### Models:
 
 - **User**: id, name, email (único), emailVerified, image, password, cpf (único, opcional), birthDate (opcional), createdAt, updatedAt
 - **Account**, **Session**, **VerificationToken**: Auth.js padrão
-- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep (todos opcionais), plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt — relations: productCategories, products, stockMovements
-- **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt
-- **Service**: id, name, description, durationMin, priceInCents (centavos!), isActive, barbershopId
-- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt
-- **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf (opcional), birthDate (opcional), street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool, default false), createdAt, updatedAt — índice único: [phone, barbershopId]
+- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep (todos opcionais), plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt — relations: productCategories, products, stockMovements, comandas
+- **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt — relations: comandas
+- **Service**: id, name, description, durationMin, priceInCents (centavos!), isActive, barbershopId — relations: comandaItems
+- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt — relations: comanda (optional)
+- **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf (opcional), birthDate (opcional), street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool, default false), createdAt, updatedAt — relations: comandas — índice único: [phone, barbershopId]
 - **BusinessHour**: id, dayOfWeek, openTime, closeTime, isOpen, barbershopId — índice único: [dayOfWeek, barbershopId]
 - **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices, commissionOnProducts, isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
 - **Invitation**: id, email, role, token (único), status, expiresAt, professionalId (opcional), commissionOnServices, commissionOnProducts, barbershopId, invitedById, createdAt, acceptedAt
 - **WaitlistLead**: id, name, whatsapp, email, barbershopName, source, createdAt ⚠️ NUNCA DELETAR
 - **ProductCategory**: id, name, barbershopId — índice único: [name, barbershopId]
-- **Product**: id, name, description, costInCents, priceInCents, stockQuantity, minStockAlert, isActive, barbershopId, categoryId (opcional)
+- **Product**: id, name, description, costInCents, priceInCents, stockQuantity, minStockAlert, isActive, barbershopId, categoryId (opcional) — relations: comandaItems
 - **StockMovement**: id, quantity (Int, pode ser negativo), reason (StockMovementReason), notes, productId, barbershopId, createdAt
+- **Comanda**: id, status (ComandaStatus), paymentMethod (PaymentMethod?), clientId?, clientName, notes, totalInCents, openedAt, closedAt?, barbershopId, professionalId, appointmentId? (@unique) — relations: barbershop, professional, appointment, client, items
+- **ComandaItem**: id, type (ComandaItemType), serviceId?, serviceName, servicePrice, productId?, productName, productPrice, quantity, unitPriceInCents, totalInCents, commissionPct (Decimal?), commissionValue (Int?), comandaId — relations: comanda, service, product
 
 ### Enums:
 
@@ -223,6 +237,9 @@ enum MemberRole { owner, reception, barber }
 enum InvitationStatus { pending, accepted, revoked, expired }
 enum ClientOrigem { Indicacao, Google, Instagram, Fachada, Outro }
 enum StockMovementReason { purchase, comanda_use, manual_adjustment, loss, return }
+enum ComandaStatus { open, closed, cancelled }
+enum PaymentMethod { cash, pix, credit_card, debit_card, voucher }
+enum ComandaItemType { service, product }
 ```
 
 ---
@@ -275,6 +292,12 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - **owner**: CRUD completo de produtos, categorias e movimentações
 - **reception**: pode ver e registrar movimentações; pode criar/editar produtos
 - **barber**: somente leitura
+
+### RBAC em Comandas:
+
+- **owner**: tudo — abrir, editar, fechar, cancelar, ver todas
+- **reception**: abrir, fechar, ver todas; não cancela
+- **barber**: só suas próprias comandas
 
 ### Fluxo de convite: email → Invitation (token 7 dias) → /convite/[token] → Membership
 
@@ -357,8 +380,6 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - StockMovement → @@map("stock_movements")
 - Enum: StockMovementReason { purchase, comanda_use, manual_adjustment, loss, return }
 
-**Relações adicionadas em Barbershop:** productCategories, products, stockMovements
-
 **Arquivos criados:**
 
 - `src/app/(dashboard)/dashboard/produtos/page.tsx`
@@ -377,31 +398,61 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - Histórico de movimentações carregado sob demanda (last 50)
 - RBAC: barber = somente leitura; owner/reception = CRUD
 
-**Integração futura (Dia 6):**
+### ✅ DIA 6 — COMANDAS (PDV)
 
-- Comandas vão decrementar stockQuantity e criar StockMovement com reason: "comanda_use"
+**Migração aplicada:** `dia6_comandas`
+
+**Models novos:**
+
+- Comanda → @@map("comandas")
+- ComandaItem → @@map("comanda_items")
+- Enums: ComandaStatus { open, closed, cancelled }, PaymentMethod { cash, pix, credit_card, debit_card, voucher }, ComandaItemType { service, product }
+
+**Relações adicionadas:** Barbershop.comandas, Professional.comandas, Appointment.comanda, Client.comandas, Service.comandaItems, Product.comandaItems
+
+**Arquivos criados:**
+
+- `src/app/(dashboard)/dashboard/comandas/page.tsx`
+- `src/app/(dashboard)/dashboard/comandas/comandas-client.tsx`
+- `src/app/(dashboard)/dashboard/comandas/actions.ts`
+- `src/app/(dashboard)/dashboard/comandas/nova/page.tsx`
+- `src/app/(dashboard)/dashboard/comandas/nova/nova-comanda-form.tsx`
+- `src/app/(dashboard)/dashboard/comandas/[id]/page.tsx`
+- `src/app/(dashboard)/dashboard/comandas/[id]/comanda-pdv.tsx`
+
+**Funcionalidades:**
+
+- Abrir comanda: livre (avulso ou cliente cadastrado) ou vinculada a agendamento
+- Barber só abre para si mesmo; owner/reception escolhem o profissional
+- Adicionar serviços: snapshot de nome + preço no momento da adição
+- Adicionar produtos: seleção de quantidade com controle de estoque em tempo real
+- Remover itens de comanda aberta
+- Fechar comanda: modal com forma de pagamento + desconto opcional
+- Baixa automática de estoque em $transaction atômica no fechamento
+- StockMovement registrado com reason: comanda_use
+- Cancelar comanda: estorna estoque se já estava fechada (reason: return)
+- Lista com filtros: abertas / hoje / fechadas / todas
+- PDV split-view: itens à esquerda, catálogo (serviços/produtos) à direita
+- commissionPct e commissionValue reservados no ComandaItem para o Dia 7
+- RBAC: owner = tudo; reception = abrir/fechar/ver; barber = apenas suas
 
 ---
 
 ## 8. PRÓXIMAS ETAPAS — ROADMAP
 
-### 🔜 DIA 6 — COMANDAS (PDV) (PRÓXIMO CHAT)
+### 🔜 DIA 7 — COMISSÕES (PRÓXIMO CHAT)
 
-- Models: Comanda, ComandaItem
-- Fluxo: abrir → itens (serviços + produtos) → fechar com forma de pagamento
-- Baixa automática de estoque no fechamento
-- Snapshot de comissão no fechamento
-
-### DIA 7 — COMISSÕES
-
-- Regras por Membership (% ou valor fixo)
-- Cálculo no fechamento da comanda
-- Relatório por profissional
+- Regras por Membership (commissionOnServices / commissionOnProducts — já existem como bool)
+- Evoluir para percentual configurável por papel
+- Cálculo no fechamento da comanda: preencher commissionPct e commissionValue em cada ComandaItem
+- Tela de relatório de comissões por profissional (período)
+- Dashboard do barbeiro: minhas comissões
 
 ### DIA 8 — DASHBOARDS & RELATÓRIOS
 
-- Dashboard do dono: operacional + estratégico
+- Dashboard do dono: faturamento por período, ticket médio, serviços mais vendidos
 - Dashboard do barbeiro: métricas próprias
+- Relatório mensal melhorado
 
 ### DIA 9 — PACOTES & MARKETING
 
@@ -430,8 +481,11 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - **Endereço obrigatório no onboarding** desde Dia 3. Barbearias antigas têm campos null.
 - **Mapa:** usa OpenStreetMap. Aparece só se barbershop.street && barbershop.city existirem.
 - **Slug:** gerado automaticamente no onboarding, somente leitura. Não deixar o barbeiro editar.
-- **priceInCents:** preços no banco em centavos. Sempre dividir por 100 ao exibir. Válido para produtos também (costInCents e priceInCents).
-- **stockQuantity em Product:** Int (unidades inteiras). StockMovement.quantity pode ser negativo (saída).
+- **priceInCents:** preços no banco em centavos. Sempre dividir por 100 ao exibir. Válido para produtos também (costInCents e priceInCents) e comandas (totalInCents, unitPriceInCents).
+- **stockQuantity em Product:** Int (unidades inteiras). StockMovement.quantity pode ser negativo (saída). Comanda_use gera StockMovement negativo no fechamento.
+- **appointmentId em Comanda:** @unique — um agendamento pode ter no máximo 1 comanda.
+- **Comanda cancelada após fechada:** estorna estoque via StockMovement com reason: return.
+- **commissionPct / commissionValue em ComandaItem:** null no Dia 6. Preenchidos no Dia 7.
 - **RESEND_FROM:** sempre noreply@livobarber.com.br. Nunca livo.com.br.
 - **Next.js 16 — params:** sempre `const { param } = await params` em rotas dinâmicas.
 - **Next.js 16 — Server Components:** não usar event handlers inline.
@@ -468,7 +522,9 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - **CPF dono:** salvo em User (único global). CPF cliente: salvo em Client (não único).
 - **@@map():** todos os models mapeados para snake_case — crítico para não dropar tabelas
 - **Agenda colunar:** Client Component com refreshData() sem reload.
-- **Estoque:** padrão "saldo + extrato" — stockQuantity no Product (consulta rápida) + StockMovement (auditoria completa). No Dia 6, fechamento de comanda cria StockMovement e decrementa stockQuantity em transação atômica ($transaction).
+- **Estoque:** padrão "saldo + extrato" — stockQuantity no Product (consulta rápida) + StockMovement (auditoria completa). Fechamento de comanda cria StockMovement e decrementa stockQuantity em $transaction.
+- **Comanda:** independente de agendamento (appointmentId optional). Snapshot de preço em cada ComandaItem. Baixa de estoque somente no fechamento (não na adição do item). Cancelamento de comanda fechada estorna o estoque.
+- **Comissões:** campos commissionPct e commissionValue já existem em ComandaItem (null no Dia 6). Dia 7 vai preenchê-los no fechamento com base nas regras do Membership.
 
 ---
 
@@ -516,3 +572,21 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - Filtros: busca, categoria, status de estoque
 - RBAC: barber = read-only; owner/reception = CRUD
 - Link "Produtos" adicionado no menu lateral do dashboard
+
+### 02/06/2026 — DIA 6
+
+- Migração dia6_comandas
+- Models: Comanda, ComandaItem + enums ComandaStatus, PaymentMethod, ComandaItemType
+- Relações inversas adicionadas em Barbershop, Professional, Appointment, Client, Service, Product
+- Fluxo completo: abrir → itens (serviços + produtos) → fechar com pagamento
+- Snapshot de preço e nome no ComandaItem (integridade histórica)
+- Baixa de estoque em $transaction atômica no fechamento
+- StockMovement gerado automaticamente com reason: comanda_use
+- Cancelamento com estorno de estoque (reason: return) se comanda já estava fechada
+- Desconto opcional no fechamento
+- PDV split-view: lista de itens + catálogo lateral (aba Serviços / Produtos)
+- Modal de fechamento com seleção de forma de pagamento e confirmação de total
+- Lista de comandas com filtros (abertas / hoje / fechadas / todas)
+- RBAC: owner = tudo; reception = abrir/fechar/ver; barber = apenas suas
+- commissionPct e commissionValue reservados em ComandaItem (Dia 7)
+- Link "Comandas" adicionado no menu lateral do dashboard

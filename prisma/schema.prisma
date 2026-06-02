@@ -142,6 +142,7 @@ model Barbershop {
   productCategories ProductCategory[]
   products          Product[]
   stockMovements    StockMovement[]
+  comandas          Comanda[]
 
   @@map("barbershops")
 }
@@ -161,6 +162,7 @@ model Professional {
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
   membership   Membership?
+  comandas     Comanda[]
 
   @@map("professionals")
 }
@@ -180,6 +182,7 @@ model Service {
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  comandaItems ComandaItem[]
 
   @@map("services")
 }
@@ -207,6 +210,7 @@ model Client {
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  comandas     Comanda[]
 
   @@unique([phone, barbershopId])
   @@map("clients")
@@ -234,6 +238,7 @@ model Appointment {
   professional Professional @relation(fields: [professionalId], references: [id])
   service      Service      @relation(fields: [serviceId], references: [id])
   client       Client?      @relation(fields: [clientId], references: [id])
+  comanda      Comanda?
 
   @@map("appointments")
 }
@@ -350,6 +355,7 @@ model Product {
   stockMovements StockMovement[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  comandaItems   ComandaItem[]
 
   @@map("products")
 }
@@ -366,4 +372,78 @@ model StockMovement {
   createdAt    DateTime            @default(now())
 
   @@map("stock_movements")
+}
+
+enum ComandaStatus {
+  open
+  closed
+  cancelled
+}
+
+enum PaymentMethod {
+  cash
+  pix
+  credit_card
+  debit_card
+  voucher
+}
+
+enum ComandaItemType {
+  service
+  product
+}
+
+model Comanda {
+  id            String         @id @default(cuid())
+  status        ComandaStatus  @default(open)
+  paymentMethod PaymentMethod?
+  clientId      String?
+  clientName    String         @default("")
+  notes         String?
+  totalInCents  Int            @default(0)
+  openedAt      DateTime       @default(now())
+  closedAt      DateTime?
+
+  barbershopId   String
+  professionalId String
+  appointmentId  String? @unique
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
+  professional Professional  @relation(fields: [professionalId], references: [id])
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
+  client       Client?       @relation(fields: [clientId], references: [id])
+  items        ComandaItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("comandas")
+}
+
+model ComandaItem {
+  id   String          @id @default(cuid())
+  type ComandaItemType
+
+  serviceId    String?
+  serviceName  String  @default("")
+  servicePrice Int     @default(0)
+
+  productId    String?
+  productName  String  @default("")
+  productPrice Int     @default(0)
+
+  quantity         Int
+  unitPriceInCents Int
+  totalInCents     Int
+
+  commissionPct   Decimal? @db.Decimal(5, 2)
+  commissionValue Int?
+
+  comandaId String
+  comanda   Comanda @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+
+  service Service? @relation(fields: [serviceId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("comanda_items")
 }

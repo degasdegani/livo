@@ -12,6 +12,7 @@ import { MemberRole } from "@prisma/client";
 import {
   BarChart2,
   CalendarDays,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Package,
@@ -51,6 +52,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/produtos",
     label: "Produtos",
     icon: Package,
+  },
+  {
+    href: "/dashboard/comandas",
+    label: "Comandas",
+    icon: ClipboardList,
   },
   {
     href: "/dashboard/relatorios",
