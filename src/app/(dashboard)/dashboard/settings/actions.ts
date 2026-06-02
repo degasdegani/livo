@@ -237,3 +237,121 @@ export async function updateMembershipComissao(data: {
   revalidatePath("/dashboard/settings/acessos");
   revalidatePath("/dashboard/comissoes");
 }
+// ─────────────────────────────────────────────────────────────
+// SERVIÇOS
+// ─────────────────────────────────────────────────────────────
+
+function parsePriceToCents(price: string): number {
+  return Math.round(Number(price.replace(/\./g, "").replace(",", ".")) * 100);
+}
+
+export async function addService(_: unknown, formData: FormData) {
+  const membership = await requireRole("owner");
+
+  try {
+    const name = String(formData.get("name") || "").trim();
+    const duration = Number(formData.get("duration"));
+    const price = String(formData.get("price") || "0");
+
+    if (!name) {
+      return { error: "Nome do serviço obrigatório." };
+    }
+
+    await db.service.create({
+      data: {
+        name,
+        durationMin: duration,
+        priceInCents: parsePriceToCents(price),
+        barbershopId: membership.barbershopId,
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+
+    return { success: true };
+  } catch {
+    return { error: "Erro ao criar serviço." };
+  }
+}
+
+export async function updateService(_: unknown, formData: FormData) {
+  const membership = await requireRole("owner");
+
+  try {
+    const serviceId = String(formData.get("serviceId"));
+    const name = String(formData.get("name") || "").trim();
+    const duration = Number(formData.get("duration"));
+    const price = String(formData.get("price") || "0");
+
+    const service = await db.service.findFirst({
+      where: {
+        id: serviceId,
+        barbershopId: membership.barbershopId,
+      },
+    });
+
+    if (!service) {
+      return { error: "Serviço não encontrado." };
+    }
+
+    await db.service.update({
+      where: { id: serviceId },
+      data: {
+        name,
+        durationMin: duration,
+        priceInCents: parsePriceToCents(price),
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+
+    return { success: true };
+  } catch {
+    return { error: "Erro ao atualizar serviço." };
+  }
+}
+
+export async function deleteService(serviceId: string) {
+  const membership = await requireRole("owner");
+
+  const service = await db.service.findFirst({
+    where: {
+      id: serviceId,
+      barbershopId: membership.barbershopId,
+    },
+  });
+
+  if (!service) {
+    throw new Error("Serviço não encontrado.");
+  }
+
+  await db.service.delete({
+    where: { id: serviceId },
+  });
+
+  revalidatePath("/dashboard/settings");
+}
+
+export async function toggleServiceActive(serviceId: string) {
+  const membership = await requireRole("owner");
+
+  const service = await db.service.findFirst({
+    where: {
+      id: serviceId,
+      barbershopId: membership.barbershopId,
+    },
+  });
+
+  if (!service) {
+    throw new Error("Serviço não encontrado.");
+  }
+
+  await db.service.update({
+    where: { id: serviceId },
+    data: {
+      isActive: !service.isActive,
+    },
+  });
+
+  revalidatePath("/dashboard/settings");
+}
