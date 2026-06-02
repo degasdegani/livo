@@ -119,13 +119,20 @@ raiz/
 │ ├── appointment-actions.tsx
 │ ├── agenda/
 │ │ ├── page.tsx
+│ │ ├── agenda-actions.ts
+│ │ ├── agenda-board.tsx
+│ │ ├── date-navigator.tsx
 │ │ └── new/
 │ │ ├── page.tsx
-│ │ └── actions.ts ← endTime nullable corrigido
+│ │ └── actions.ts
 │ ├── clients/
-│ │ ├── page.tsx ← Server component: carrega clientes + stats
-│ │ ├── clients-client.tsx ← UI com filtros, tabela, painel lateral
-│ │ └── actions.ts ← getClientsData, toggleClientBlock, getClientStats
+│ │ ├── page.tsx
+│ │ ├── clients-client.tsx
+│ │ └── actions.ts
+│ ├── produtos/
+│ │ ├── page.tsx ← Server Component
+│ │ ├── produtos-client.tsx ← Client Component: UI completa
+│ │ └── actions.ts ← Server Actions: CRUD + estoque
 │ ├── relatorios/
 │ ├── settings/
 │ │ ├── page.tsx
@@ -139,19 +146,15 @@ raiz/
 │ └── assinar/
 ├── (onboarding)/
 │ └── onboarding/
-│ ├── page.tsx ← 2 etapas. Endereço OBRIGATÓRIO.
-│ │ Slug gerado automaticamente (somente leitura).
-│ │ Data nascimento: máscara DD/MM/AAAA.
-│ │ CEP auto-preenche via ViaCEP.
-│ ├── actions.ts ← Salva CPF, birthDate, endereço estruturado.
-│ │ Import auth: "@/auth"
-│ └── data.ts ← PRESET_SERVICES
+│ ├── page.tsx
+│ ├── actions.ts
+│ └── data.ts
 ├── (legal)/
 ├── [slug]/
-│ ├── page.tsx ← Página pública com mapa OpenStreetMap
+│ ├── page.tsx
 │ └── book/
 │ ├── page.tsx
-│ └── actions.ts ← endTime nullable corrigido
+│ └── actions.ts
 ├── api/
 │ ├── auth/[...nextauth]/route.ts
 │ └── webhooks/asaas/route.ts
@@ -190,20 +193,26 @@ Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dro
 - Client → @@map("clients")
 - BusinessHour → @@map("business_hours")
 - WaitlistLead → @@map("waitlist_leads") ← CRÍTICO — 14 leads reais do workshop TX
+- ProductCategory → @@map("product_categories")
+- Product → @@map("products")
+- StockMovement → @@map("stock_movements")
 
 ### Models:
 
 - **User**: id, name, email (único), emailVerified, image, password, cpf (único, opcional), birthDate (opcional), createdAt, updatedAt
 - **Account**, **Session**, **VerificationToken**: Auth.js padrão
-- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep (todos opcionais), plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt
+- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep (todos opcionais), plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt — relations: productCategories, products, stockMovements
 - **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt
 - **Service**: id, name, description, durationMin, priceInCents (centavos!), isActive, barbershopId
-- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone, clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt
+- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt
 - **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf (opcional), birthDate (opcional), street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool, default false), createdAt, updatedAt — índice único: [phone, barbershopId]
 - **BusinessHour**: id, dayOfWeek, openTime, closeTime, isOpen, barbershopId — índice único: [dayOfWeek, barbershopId]
 - **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices, commissionOnProducts, isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
 - **Invitation**: id, email, role, token (único), status, expiresAt, professionalId (opcional), commissionOnServices, commissionOnProducts, barbershopId, invitedById, createdAt, acceptedAt
 - **WaitlistLead**: id, name, whatsapp, email, barbershopName, source, createdAt ⚠️ NUNCA DELETAR
+- **ProductCategory**: id, name, barbershopId — índice único: [name, barbershopId]
+- **Product**: id, name, description, costInCents, priceInCents, stockQuantity, minStockAlert, isActive, barbershopId, categoryId (opcional)
+- **StockMovement**: id, quantity (Int, pode ser negativo), reason (StockMovementReason), notes, productId, barbershopId, createdAt
 
 ### Enums:
 
@@ -213,6 +222,7 @@ enum AppointmentStatus { pending, confirmed, completed, cancelled, no_show }
 enum MemberRole { owner, reception, barber }
 enum InvitationStatus { pending, accepted, revoked, expired }
 enum ClientOrigem { Indicacao, Google, Instagram, Fachada, Outro }
+enum StockMovementReason { purchase, comanda_use, manual_adjustment, loss, return }
 ```
 
 ---
@@ -259,6 +269,12 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 **OWNER:** acesso total. Convida/revoga membros. Liga/desliga comissionamento.
 **RECEPTION:** vê todos os clientes e agendamentos. NÃO acessa financeiro geral.
 **BARBER:** escopo restrito ao próprio. Só seus clientes, agendamentos, comissões.
+
+### RBAC em Produtos:
+
+- **owner**: CRUD completo de produtos, categorias e movimentações
+- **reception**: pode ver e registrar movimentações; pode criar/editar produtos
+- **barber**: somente leitura
 
 ### Fluxo de convite: email → Invitation (token 7 dias) → /convite/[token] → Membership
 
@@ -311,33 +327,69 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - Integrado em /[slug] — aparece quando barbershop.street && barbershop.city existem
 - Link "Ver no Google Maps" abaixo do mapa
 
-**Correções de build:**
+### ✅ DIA 4 — AGENDA POR BARBEIRO
 
-- endTime nullable em agenda/new/actions.ts e [slug]/book/actions.ts
-- @@map() adicionado em todos os models (crítico — evita drop de tabelas)
-- WaitlistLead com @@map("waitlist_leads") — protege os 14 leads do workshop TX
+**Arquivos criados/modificados:**
+
+- `src/app/(dashboard)/dashboard/agenda/agenda-actions.ts`
+- `src/app/(dashboard)/dashboard/agenda/agenda-board.tsx`
+- `src/app/(dashboard)/dashboard/agenda/page.tsx`
+
+**Funcionalidades:**
+
+- Visão colunar: uma coluna por profissional ativo
+- Grade 08:00–20:00, slots de 30min, altura 56px por slot (SLOT_HEIGHT = 56)
+- Cartões coloridos por status
+- Navegação de data com setas + botão "Hoje"
+- Click em cartão → modal com detalhes + ações de status
+- Mover entre barbeiros (só owner e reception)
+- Click em slot vazio → modal de novo agendamento rápido
+- RBAC: barber só vê sua coluna
+
+### ✅ DIA 5 — PRODUTOS & ESTOQUE
+
+**Migração aplicada:** `dia5_produtos_estoque`
+
+**Models novos:**
+
+- ProductCategory → @@map("product_categories")
+- Product → @@map("products")
+- StockMovement → @@map("stock_movements")
+- Enum: StockMovementReason { purchase, comanda_use, manual_adjustment, loss, return }
+
+**Relações adicionadas em Barbershop:** productCategories, products, stockMovements
+
+**Arquivos criados:**
+
+- `src/app/(dashboard)/dashboard/produtos/page.tsx`
+- `src/app/(dashboard)/dashboard/produtos/produtos-client.tsx`
+- `src/app/(dashboard)/dashboard/produtos/actions.ts`
+
+**Funcionalidades:**
+
+- CRUD de categorias com confirmação de exclusão
+- CRUD de produtos com preço de custo, venda, estoque inicial e alerta mínimo
+- Máscara monetária no input (ex: digita 1990 → mostra 19,90)
+- Filtros: busca por nome, por categoria, por status de estoque (todos / baixo / zerado)
+- KPIs: produtos ativos, em alerta, sem estoque
+- Cartões com visual de alerta (amarelo = baixo, vermelho = zerado)
+- Modal de movimentação de estoque: entrada/saída, motivo, observação
+- Histórico de movimentações carregado sob demanda (last 50)
+- RBAC: barber = somente leitura; owner/reception = CRUD
+
+**Integração futura (Dia 6):**
+
+- Comandas vão decrementar stockQuantity e criar StockMovement com reason: "comanda_use"
 
 ---
 
 ## 8. PRÓXIMAS ETAPAS — ROADMAP
 
-### 🔜 DIA 4 — AGENDA POR BARBEIRO (PRÓXIMO CHAT)
-
-- Visão colunar (uma coluna por profissional)
-- Cores de status: confirmado=verde, pendente=amarelo, concluído=cinza, cancelado=vermelho
-- Remanejar agendamento entre barbeiros (só owner e reception)
-- Criar agendamento clicando em slot vazio
-
-### DIA 5 — PRODUTOS & ESTOQUE
-
-- Models: Product, ProductCategory, StockMovement
-- CRUD de produtos e categorias
-- Controle de estoque com alertas de mínimo
-
-### DIA 6 — COMANDAS (PDV)
+### 🔜 DIA 6 — COMANDAS (PDV) (PRÓXIMO CHAT)
 
 - Models: Comanda, ComandaItem
-- Fluxo: abrir → itens → fechar com forma de pagamento
+- Fluxo: abrir → itens (serviços + produtos) → fechar com forma de pagamento
+- Baixa automática de estoque no fechamento
 - Snapshot de comissão no fechamento
 
 ### DIA 7 — COMISSÕES
@@ -372,17 +424,19 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - **@@map() é OBRIGATÓRIO** em todos os models — sem ele o Prisma dropa tabelas ao migrar.
 - **WaitlistLead:** 14 registros reais do workshop TX. NUNCA deletar. NUNCA incluir em limpezas.
 - **endTime em Appointment é DateTime?** — sempre checar nulidade antes de chamar .getHours()
+- **clientPhone em Appointment é nullable** — sempre tratar como string | null
 - **auth.ts está em src/auth.ts** — importar sempre como `import { auth } from "@/auth"`
 - **CPF no User:** @unique global. CPF no Client: sem @unique (pode repetir entre barbearias).
 - **Endereço obrigatório no onboarding** desde Dia 3. Barbearias antigas têm campos null.
 - **Mapa:** usa OpenStreetMap. Aparece só se barbershop.street && barbershop.city existirem.
 - **Slug:** gerado automaticamente no onboarding, somente leitura. Não deixar o barbeiro editar.
-- **priceInCents:** preços no banco em centavos. Sempre dividir por 100 ao exibir.
+- **priceInCents:** preços no banco em centavos. Sempre dividir por 100 ao exibir. Válido para produtos também (costInCents e priceInCents).
+- **stockQuantity em Product:** Int (unidades inteiras). StockMovement.quantity pode ser negativo (saída).
 - **RESEND_FROM:** sempre noreply@livobarber.com.br. Nunca livo.com.br.
 - **Next.js 16 — params:** sempre `const { param } = await params` em rotas dinâmicas.
 - **Next.js 16 — Server Components:** não usar event handlers inline.
 - **PowerShell:** usar Select-String no lugar de grep. Caminhos com [colchetes] usar caminho absoluto.
-- **Plano START:** mantido no enum, não é mais vendido. Barbearias novas criadas como start, atualizar para pro via Prisma Studio.
+- **Plano START:** mantido no enum, não é mais vendido.
 - **QR Code VIP:** aponta para https://livobarber.com.br/vip.
 
 ---
@@ -413,6 +467,8 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - **Slug:** gerado automaticamente no onboarding, não editável pelo usuário
 - **CPF dono:** salvo em User (único global). CPF cliente: salvo em Client (não único).
 - **@@map():** todos os models mapeados para snake_case — crítico para não dropar tabelas
+- **Agenda colunar:** Client Component com refreshData() sem reload.
+- **Estoque:** padrão "saldo + extrato" — stockQuantity no Product (consulta rápida) + StockMovement (auditoria completa). No Dia 6, fechamento de comanda cria StockMovement e decrementa stockQuantity em transação atômica ($transaction).
 
 ---
 
@@ -435,3 +491,28 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 - Mapa OpenStreetMap na página pública /[slug]
 - Fix: endTime nullable em agenda/new/actions.ts e [slug]/book/actions.ts
 - Fix: import auth corrigido para "@/auth"
+
+### 02/06/2026 — DIA 4
+
+- Agenda colunar por barbeiro: grade 08:00–20:00, slots 30min
+- Cartões coloridos por status (pending/confirmed/completed/cancelled/no_show)
+- Modal de detalhes do agendamento com ações de status
+- Modal de remanejamento entre barbeiros (owner e reception)
+- Modal de novo agendamento rápido ao clicar em slot vazio
+- RBAC: barber vê apenas sua coluna
+- Fix: clientPhone tratado como nullable no tipo AgendaAppointment
+
+### 02/06/2026 — DIA 5
+
+- Migração dia5_produtos_estoque
+- Models: ProductCategory, Product, StockMovement + enum StockMovementReason
+- CRUD de categorias: criar, editar, excluir com confirmação (desvincula produtos antes)
+- CRUD de produtos: nome, descrição, categoria, custo, venda, estoque, alerta mínimo, ativo/inativo
+- Estoque inicial registrado como StockMovement (reason: purchase) no cadastro
+- Modal de movimentação: entrada/saída, motivo filtrado por tipo, observação
+- Transação atômica ($transaction) ao movimentar estoque
+- Histórico de movimentações sob demanda (last 50)
+- KPIs: ativos, estoque baixo, sem estoque
+- Filtros: busca, categoria, status de estoque
+- RBAC: barber = read-only; owner/reception = CRUD
+- Link "Produtos" adicionado no menu lateral do dashboard

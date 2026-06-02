@@ -131,14 +131,17 @@ model Barbershop {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  owner         User           @relation("BarbershopOwner", fields: [ownerId], references: [id])
-  professionals Professional[]
-  services      Service[]
-  appointments  Appointment[]
-  clients       Client[]
-  businessHours BusinessHour[]
-  memberships   Membership[]
-  invitations   Invitation[]
+  owner             User              @relation("BarbershopOwner", fields: [ownerId], references: [id])
+  professionals     Professional[]
+  services          Service[]
+  appointments      Appointment[]
+  clients           Client[]
+  businessHours     BusinessHour[]
+  memberships       Membership[]
+  invitations       Invitation[]
+  productCategories ProductCategory[]
+  products          Product[]
+  stockMovements    StockMovement[]
 
   @@map("barbershops")
 }
@@ -306,4 +309,61 @@ model WaitlistLead {
   createdAt      DateTime @default(now())
 
   @@map("waitlist_leads")
+}
+
+// ─── PRODUTOS & ESTOQUE ───────────────────────────────────────────────────
+
+enum StockMovementReason {
+  purchase
+  comanda_use
+  manual_adjustment
+  loss
+  return
+}
+
+model ProductCategory {
+  id           String     @id @default(cuid())
+  name         String
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  products     Product[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([name, barbershopId])
+  @@map("product_categories")
+}
+
+model Product {
+  id             String           @id @default(cuid())
+  name           String
+  description    String?
+  costInCents    Int              @default(0)
+  priceInCents   Int              @default(0)
+  stockQuantity  Int              @default(0)
+  minStockAlert  Int              @default(5)
+  isActive       Boolean          @default(true)
+  barbershopId   String
+  barbershop     Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  categoryId     String?
+  category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  stockMovements StockMovement[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@map("products")
+}
+
+model StockMovement {
+  id           String              @id @default(cuid())
+  quantity     Int
+  reason       StockMovementReason
+  notes        String?
+  productId    String
+  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barbershopId String
+  barbershop   Barbershop          @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+
+  @@map("stock_movements")
 }
