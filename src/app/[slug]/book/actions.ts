@@ -53,7 +53,9 @@ export async function getAvailableSlots({
 
     const appointmentsForCalculation = existingAppointments.map((appt) => ({
       startMinutes: appt.date.getHours() * 60 + appt.date.getMinutes(),
-      endMinutes: appt.endTime.getHours() * 60 + appt.endTime.getMinutes(),
+      endMinutes: appt.endTime
+        ? appt.endTime.getHours() * 60 + appt.endTime.getMinutes()
+        : 0,
     }));
 
     const today = new Date();
