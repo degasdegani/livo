@@ -355,3 +355,82 @@ export async function toggleServiceActive(serviceId: string) {
 
   revalidatePath("/dashboard/settings");
 }
+// ─────────────────────────────────────────────────────────────
+// INFORMAÇÕES BÁSICAS
+// ─────────────────────────────────────────────────────────────
+
+export async function updateBasicInfo(_: unknown, formData: FormData) {
+  const membership = await requireRole("owner");
+
+  try {
+    const name = String(formData.get("name") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const city = String(formData.get("city") || "").trim();
+
+    if (!name) {
+      return { error: "Nome da barbearia é obrigatório." };
+    }
+
+    await db.barbershop.update({
+      where: {
+        id: membership.barbershopId,
+      },
+      data: {
+        name,
+        phone: phone || null,
+        city: city || null,
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+
+    return { success: true };
+  } catch {
+    return { error: "Erro ao salvar informações." };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// HORÁRIOS DE FUNCIONAMENTO
+// ─────────────────────────────────────────────────────────────
+
+export async function updateBusinessHours(_: unknown, formData: FormData) {
+  const membership = await requireRole("owner");
+
+  try {
+    const businessHours = await db.businessHour.findMany({
+      where: {
+        barbershopId: membership.barbershopId,
+      },
+    });
+
+    for (const hour of businessHours) {
+      const isOpen = formData.get(`isOpen_${hour.dayOfWeek}`) === "true";
+
+      const openTime = String(
+        formData.get(`openTime_${hour.dayOfWeek}`) || hour.openTime,
+      );
+
+      const closeTime = String(
+        formData.get(`closeTime_${hour.dayOfWeek}`) || hour.closeTime,
+      );
+
+      await db.businessHour.update({
+        where: {
+          id: hour.id,
+        },
+        data: {
+          isOpen,
+          openTime,
+          closeTime,
+        },
+      });
+    }
+
+    revalidatePath("/dashboard/settings");
+
+    return { success: true };
+  } catch {
+    return { error: "Erro ao salvar horários." };
+  }
+}

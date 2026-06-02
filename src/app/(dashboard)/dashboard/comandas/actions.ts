@@ -6,10 +6,35 @@ import {
   ComandaStatus,
   MemberRole,
   PaymentMethod,
+  Prisma,
   StockMovementReason,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+export type ComandaWithItems = Prisma.ComandaGetPayload<{
+  include: {
+    professional: {
+      select: {
+        id: true;
+        name: true;
+      };
+    };
+    client: {
+      select: {
+        id: true;
+        name: true;
+        phone: true;
+      };
+    };
+    appointment: {
+      select: {
+        id: true;
+      };
+    };
+    items: true;
+  };
+}>;
 
 // ─── LISTAR COMANDAS ────────────────────────────────────────────────────────
 
@@ -514,4 +539,100 @@ export async function getComissoesData(
     dataFim,
     profissionais,
   };
+}
+// Compatibilidade com componentes antigos
+
+export const listComandas = getComandas;
+
+export const openComanda = abrirComanda;
+
+export const addServiceItem = addServicoItem;
+
+export const addProductItem = addProdutoItem;
+
+export const closeComanda = fecharComanda;
+
+export const cancelComanda = cancelarComanda;
+
+export const removeComandaItem = removeItem;
+// ─────────────────────────────────────────────────────────────
+// COMPATIBILIDADE PDV / NOVA COMANDA
+// ─────────────────────────────────────────────────────────────
+
+export async function getProfessionalsForComanda() {
+  const membership = await requireMembership();
+
+  return db.professional.findMany({
+    where: {
+      barbershopId: membership.barbershopId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
+export async function getClientsForComanda(search: string) {
+  const membership = await requireMembership();
+
+  return db.client.findMany({
+    where: {
+      barbershopId: membership.barbershopId,
+      OR: [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          phone: {
+            contains: search,
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+    },
+    take: 10,
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
+export async function getServicesForPDV() {
+  const membership = await requireMembership();
+
+  return db.service.findMany({
+    where: {
+      barbershopId: membership.barbershopId,
+      isActive: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
+export async function getProductsForPDV() {
+  const membership = await requireMembership();
+
+  return db.product.findMany({
+    where: {
+      barbershopId: membership.barbershopId,
+      isActive: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
 }

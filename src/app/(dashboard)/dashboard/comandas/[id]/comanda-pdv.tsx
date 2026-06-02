@@ -6,10 +6,10 @@ import { useState, useTransition } from "react";
 import {
   addProductItem,
   addServiceItem,
-  cancelComanda,
-  closeComanda,
+  cancelarComanda,
+  fecharComanda,
   getComanda,
-  removeComandaItem,
+  removeItem,
   type ComandaWithItems,
 } from "../actions";
 
@@ -74,7 +74,7 @@ export default function ComandaPDV({
   services,
   products,
   role,
-  myProfessionalId,
+  myProfessionalId: _myProfessionalId,
 }: Props) {
   const router = useRouter();
   const [comanda, setComanda] = useState(initial);
@@ -100,11 +100,13 @@ export default function ComandaPDV({
   function handleAddService(serviceId: string) {
     setError("");
     startTransition(async () => {
-      const res = await addServiceItem(comanda.id, serviceId);
-      if ("error" in res && res.error) {
-        setError(res.error);
-      } else {
+      try {
+        await addServiceItem(comanda.id, serviceId);
         await refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao adicionar serviço",
+        );
       }
     });
   }
@@ -113,12 +115,14 @@ export default function ComandaPDV({
     const qty = productQty[productId] || 1;
     setError("");
     startTransition(async () => {
-      const res = await addProductItem(comanda.id, productId, qty);
-      if ("error" in res && res.error) {
-        setError(res.error);
-      } else {
+      try {
+        await addProductItem(comanda.id, productId, qty);
         setProductQty((prev) => ({ ...prev, [productId]: 1 }));
         await refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao adicionar produto",
+        );
       }
     });
   }
@@ -126,11 +130,11 @@ export default function ComandaPDV({
   function handleRemoveItem(itemId: string) {
     setError("");
     startTransition(async () => {
-      const res = await removeComandaItem(comanda.id, itemId);
-      if ("error" in res && res.error) {
-        setError(res.error);
-      } else {
+      try {
+        await removeItem(itemId, comanda.id);
         await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao remover item");
       }
     });
   }
@@ -139,32 +143,31 @@ export default function ComandaPDV({
     const discountCents = parseDiscountInput(discountStr);
     setError("");
     startTransition(async () => {
-      const res = await closeComanda(comanda.id, paymentMethod, discountCents);
-      if ("error" in res && res.error) {
-        setError(res.error);
+      try {
+        await fecharComanda(comanda.id, paymentMethod, discountCents);
         setShowCloseModal(false);
-      } else {
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao fechar comanda");
         setShowCloseModal(false);
-        await refresh();
       }
     });
   }
 
   function handleCancel() {
     startTransition(async () => {
-      const res = await cancelComanda(comanda.id);
-      if ("error" in res && res.error) {
-        setError(res.error);
+      try {
+        await cancelarComanda(comanda.id);
         setShowCancelModal(false);
-      } else {
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao cancelar comanda",
+        );
         setShowCancelModal(false);
-        await refresh();
       }
     });
   }
 
   function parseDiscountInput(val: string): number {
-    // Aceita "10,00" ou "10.00" → centavos
     const cleaned = val.replace(/[^\d,\.]/g, "").replace(",", ".");
     const float = parseFloat(cleaned);
     return isNaN(float) ? 0 : Math.round(float * 100);
@@ -380,7 +383,6 @@ export default function ComandaPDV({
               </button>
             </div>
 
-            {/* Busca */}
             {tab === "services" && (
               <>
                 <input
@@ -558,7 +560,6 @@ export default function ComandaPDV({
               </div>
             )}
 
-            {/* Botão fechar */}
             {comanda.items.length > 0 && (
               <button
                 onClick={() => setShowCloseModal(true)}
@@ -625,7 +626,6 @@ export default function ComandaPDV({
               Confirme a forma de pagamento e desconto (se houver).
             </p>
 
-            {/* Resumo */}
             <div className="mb-4 rounded-lg bg-[#0B0B0D] p-3 text-sm">
               <div className="flex justify-between text-[#9A9AA6]">
                 <span>Subtotal</span>
@@ -645,7 +645,6 @@ export default function ComandaPDV({
               </div>
             </div>
 
-            {/* Desconto */}
             <div className="mb-4">
               <label className="mb-1.5 block text-sm text-[#9A9AA6]">
                 Desconto (R$)
@@ -659,7 +658,6 @@ export default function ComandaPDV({
               />
             </div>
 
-            {/* Forma de pagamento */}
             <div className="mb-6">
               <label className="mb-2 block text-sm text-[#9A9AA6]">
                 Forma de pagamento

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
-import { getClientsForComanda, openComanda } from "../actions";
+import { abrirComanda, getClientsForComanda } from "../actions";
 
 type Professional = { id: string; name: string };
 type ClientResult = { id: string; name: string; phone: string };
@@ -22,7 +22,6 @@ export default function NovaComandaForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  // Formulário
   const [professionalId, setProfessionalId] = useState(
     role === "barber" && myProfessionalId ? myProfessionalId : "",
   );
@@ -56,29 +55,26 @@ export default function NovaComandaForm({
       return;
     }
 
+    const resolvedClientName =
+      clientMode === "cadastrado" && selectedClient
+        ? selectedClient.name
+        : clientName || "Cliente avulso";
+
     setError("");
     startTransition(async () => {
-      const result = await openComanda({
-        professionalId,
-        clientId: selectedClient?.id || undefined,
-        clientName:
-          clientMode === "cadastrado" && selectedClient
-            ? selectedClient.name
-            : clientName || undefined,
-        notes: notes || undefined,
-      });
-
-      if ("error" in result && result.error) {
-        if (result.comandaId) {
-          router.push(`/dashboard/comandas/${result.comandaId}`);
-        } else {
-          setError(result.error);
-        }
-        return;
-      }
-
-      if (result.success && result.comandaId) {
-        router.push(`/dashboard/comandas/${result.comandaId}`);
+      try {
+        await abrirComanda({
+          professionalId,
+          clientId: selectedClient?.id || undefined,
+          clientName: resolvedClientName,
+          notes: notes || undefined,
+        });
+        // abrirComanda faz redirect() internamente — não chega aqui em caso de sucesso
+      } catch (err) {
+        // Next.js lança exceção interna no redirect — ignorar NEXT_REDIRECT
+        const message = err instanceof Error ? err.message : "";
+        if (message.includes("NEXT_REDIRECT")) return;
+        setError(message || "Erro ao abrir comanda.");
       }
     });
   }
@@ -116,7 +112,6 @@ export default function NovaComandaForm({
           Cliente
         </label>
 
-        {/* Toggle avulso / cadastrado */}
         <div className="mb-3 flex rounded-lg border border-[#2A2A33] bg-[#17171C] p-1">
           <button
             type="button"

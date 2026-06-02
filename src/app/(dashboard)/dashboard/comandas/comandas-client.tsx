@@ -2,7 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { listComandas, type ComandaListItem } from "./actions";
+import { getComandas } from "./actions";
+
+type ComandaListItem = {
+  id: string;
+  status: string;
+  paymentMethod: string | null;
+  clientId: string | null;
+  clientName: string;
+  totalInCents: number;
+  openedAt: Date;
+  closedAt: Date | null;
+  professional: { name: string };
+  client: { name: string } | null;
+  items: { type: string }[];
+};
 
 type Props = {
   initialComandas: ComandaListItem[];
@@ -51,20 +65,20 @@ function formatDate(date: Date | string) {
 export default function ComandasClient({
   initialComandas,
   role,
-  professionalId,
+  professionalId: _professionalId,
 }: Props) {
   const router = useRouter();
   const [comandas, setComandas] = useState<ComandaListItem[]>(initialComandas);
-  const [filter, setFilter] = useState<"all" | "open" | "closed" | "today">(
-    "open",
-  );
+  const [filter, setFilter] = useState<
+    "abertas" | "fechadas" | "hoje" | "todas"
+  >("abertas");
   const [isPending, startTransition] = useTransition();
 
   function changeFilter(f: typeof filter) {
     setFilter(f);
     startTransition(async () => {
-      const updated = await listComandas(f);
-      setComandas(updated);
+      const updated = await getComandas(f);
+      setComandas(updated as ComandaListItem[]);
     });
   }
 
@@ -104,7 +118,7 @@ export default function ComandasClient({
 
         {/* Filtros */}
         <div className="mt-4 flex gap-2">
-          {(["open", "today", "all", "closed"] as const).map((f) => (
+          {(["abertas", "hoje", "todas", "fechadas"] as const).map((f) => (
             <button
               key={f}
               onClick={() => changeFilter(f)}
@@ -114,10 +128,10 @@ export default function ComandasClient({
                   : "border-[#2A2A33] bg-[#17171C] text-[#9A9AA6] hover:text-white"
               }`}
             >
-              {f === "open" && "Abertas"}
-              {f === "today" && "Hoje"}
-              {f === "all" && "Todas"}
-              {f === "closed" && "Fechadas"}
+              {f === "abertas" && "Abertas"}
+              {f === "hoje" && "Hoje"}
+              {f === "todas" && "Todas"}
+              {f === "fechadas" && "Fechadas"}
             </button>
           ))}
         </div>

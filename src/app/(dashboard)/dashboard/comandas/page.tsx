@@ -1,10 +1,10 @@
 import { requireMembership } from "@/lib/permissions";
-import { listComandas } from "./actions";
+import { getComandas } from "./actions";
 import ComandasClient from "./comandas-client";
 
 export default async function ComandasPage() {
   const membership = await requireMembership();
-  const comandas = await listComandas("open");
+  const comandas = await getComandas("abertas");
 
   return (
     <ComandasClient
