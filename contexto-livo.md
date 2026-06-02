@@ -85,9 +85,7 @@ Scripts avulsos: npx tsx scripts/X.ts
 ## 3. ESTRUTURA DE PASTAS COMPLETA
 
 raiz/
-├── auth.ts ← NÃO EXISTE NA RAIZ — está em src/auth.ts
 ├── middleware.ts ← Protege /dashboard e /onboarding
-│ /convite, /vip e /[slug] são públicos
 ├── .env ← Estrutura pública (vai pro GitHub)
 ├── .env.local ← Segredos reais (NÃO vai pro GitHub)
 ├── contexto-livo.md ← Este arquivo
@@ -101,7 +99,7 @@ raiz/
 └── src/
 ├── auth.ts ← Config Auth.js v5 (importar como @/auth)
 ├── components/
-│ └── barbershop-map.tsx ← Mapa OpenStreetMap embed reutilizável
+│ └── barbershop-map.tsx
 └── app/
 ├── layout.tsx
 ├── page.tsx ← Landing page pública
@@ -112,9 +110,9 @@ raiz/
 │ ├── page.tsx
 │ └── actions.ts
 ├── (dashboard)/
-│ ├── layout.tsx ← PROTEGIDO: chama requireMembership()
+│ ├── layout.tsx ← PROTEGIDO: chama getCurrentMembership()
 │ └── dashboard/
-│ ├── page.tsx ← Dashboard principal (KPIs + agenda do dia)
+│ ├── page.tsx ← Dashboard principal + card comissões barber
 │ ├── actions.ts
 │ ├── appointment-actions.tsx
 │ ├── agenda/
@@ -130,19 +128,23 @@ raiz/
 │ │ ├── clients-client.tsx
 │ │ └── actions.ts
 │ ├── produtos/
-│ │ ├── page.tsx ← Server Component
-│ │ ├── produtos-client.tsx ← Client Component: UI completa
-│ │ └── actions.ts ← Server Actions: CRUD + estoque
+│ │ ├── page.tsx
+│ │ ├── produtos-client.tsx
+│ │ └── actions.ts
 │ ├── comandas/
-│ │ ├── page.tsx ← Server Component (lista)
-│ │ ├── comandas-client.tsx ← Client Component
-│ │ ├── actions.ts ← Server Actions: abrir/fechar/cancelar
+│ │ ├── page.tsx
+│ │ ├── comandas-client.tsx
+│ │ ├── actions.ts ← getComandas, abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComanda, getClientsForComanda, getComissoesData, type ResumoProf
 │ │ ├── nova/
-│ │ │ ├── page.tsx ← Server Component
-│ │ │ └── nova-comanda-form.tsx ← Client Component
+│ │ │ ├── page.tsx
+│ │ │ └── nova-comanda-form.tsx
 │ │ └── [id]/
-│ │ ├── page.tsx ← Server Component
-│ │ └── comanda-pdv.tsx ← Client Component (PDV)
+│ │ ├── page.tsx
+│ │ └── comanda-pdv.tsx
+│ ├── comissoes/
+│ │ ├── page.tsx
+│ │ ├── comissoes-client.tsx
+│ │ └── actions.ts ← re-export de getComissoesData
 │ ├── relatorios/
 │ ├── settings/
 │ │ ├── page.tsx
@@ -152,7 +154,7 @@ raiz/
 │ │ └── acessos/
 │ │ ├── page.tsx
 │ │ ├── acessos-client.tsx
-│ │ └── actions.ts
+│ │ └── actions.ts ← inclui updateMembershipComissao
 │ └── assinar/
 ├── (onboarding)/
 │ └── onboarding/
@@ -202,6 +204,8 @@ Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dro
 - Appointment → @@map("appointments")
 - Client → @@map("clients")
 - BusinessHour → @@map("business_hours")
+- Membership → @@map("memberships")
+- Invitation → @@map("invitations")
 - WaitlistLead → @@map("waitlist_leads") ← CRÍTICO — 14 leads reais do workshop TX
 - ProductCategory → @@map("product_categories")
 - Product → @@map("products")
@@ -213,20 +217,20 @@ Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dro
 
 - **User**: id, name, email (único), emailVerified, image, password, cpf (único, opcional), birthDate (opcional), createdAt, updatedAt
 - **Account**, **Session**, **VerificationToken**: Auth.js padrão
-- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep (todos opcionais), plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt — relations: productCategories, products, stockMovements, comandas
-- **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt — relations: comandas
-- **Service**: id, name, description, durationMin, priceInCents (centavos!), isActive, barbershopId — relations: comandaItems
+- **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep, plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt
+- **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt
+- **Service**: id, name, description, durationMin, priceInCents, isActive, barbershopId
 - **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt — relations: comanda (optional)
-- **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf (opcional), birthDate (opcional), street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool, default false), createdAt, updatedAt — relations: comandas — índice único: [phone, barbershopId]
+- **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf, birthDate, street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool), createdAt, updatedAt — índice único: [phone, barbershopId]
 - **BusinessHour**: id, dayOfWeek, openTime, closeTime, isOpen, barbershopId — índice único: [dayOfWeek, barbershopId]
-- **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices, commissionOnProducts, isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
+- **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices (bool, default false), commissionOnProducts (bool, default false), commissionServicePct (Decimal? @db.Decimal(5,2)), commissionProductPct (Decimal? @db.Decimal(5,2)), isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
 - **Invitation**: id, email, role, token (único), status, expiresAt, professionalId (opcional), commissionOnServices, commissionOnProducts, barbershopId, invitedById, createdAt, acceptedAt
 - **WaitlistLead**: id, name, whatsapp, email, barbershopName, source, createdAt ⚠️ NUNCA DELETAR
 - **ProductCategory**: id, name, barbershopId — índice único: [name, barbershopId]
-- **Product**: id, name, description, costInCents, priceInCents, stockQuantity, minStockAlert, isActive, barbershopId, categoryId (opcional) — relations: comandaItems
+- **Product**: id, name, description, costInCents, priceInCents, stockQuantity, minStockAlert, isActive, barbershopId, categoryId (opcional)
 - **StockMovement**: id, quantity (Int, pode ser negativo), reason (StockMovementReason), notes, productId, barbershopId, createdAt
-- **Comanda**: id, status (ComandaStatus), paymentMethod (PaymentMethod?), clientId?, clientName, notes, totalInCents, openedAt, closedAt?, barbershopId, professionalId, appointmentId? (@unique) — relations: barbershop, professional, appointment, client, items
-- **ComandaItem**: id, type (ComandaItemType), serviceId?, serviceName, servicePrice, productId?, productName, productPrice, quantity, unitPriceInCents, totalInCents, commissionPct (Decimal?), commissionValue (Int?), comandaId — relations: comanda, service, product
+- **Comanda**: id, status, paymentMethod?, clientId?, clientName, notes, totalInCents, openedAt, closedAt?, barbershopId, professionalId, appointmentId? (@unique)
+- **ComandaItem**: id, type, serviceId?, serviceName, servicePrice, productId?, productName, productPrice, quantity, unitPriceInCents, totalInCents, commissionPct (Decimal?), commissionValue (Int?), comandaId
 
 ### Enums:
 
@@ -248,18 +252,6 @@ enum ComandaItemType { service, product }
 
 ### Arquivo: src/lib/permissions.ts
 
-```typescript
-type MembershipContext = {
-  membershipId: string;
-  userId: string;
-  role: MemberRole;
-  barbershopId: string;
-  professionalId: string | null;
-  commissionOnServices: boolean;
-  commissionOnProducts: boolean;
-};
-```
-
 **Funções disponíveis:**
 
 - getCurrentUser() — retorna usuário logado ou null
@@ -274,30 +266,21 @@ type MembershipContext = {
 const membership = await requireMembership();
 const membership = await requireRole("owner");
 const membership = await requireRole(["owner", "reception"]);
-const clients = await db.client.findMany({ where: clientScope(membership) });
 ```
 
 ---
 
 ## 6. REGRAS DE NEGÓCIO DOS ACESSOS
 
-### Os 3 papéis do PRO:
-
-**OWNER:** acesso total. Convida/revoga membros. Liga/desliga comissionamento.
+**OWNER:** acesso total. Convida/revoga membros. Configura comissões.
 **RECEPTION:** vê todos os clientes e agendamentos. NÃO acessa financeiro geral.
-**BARBER:** escopo restrito ao próprio. Só seus clientes, agendamentos, comissões.
+**BARBER:** escopo restrito ao próprio.
 
-### RBAC em Produtos:
+### RBAC em Comissões:
 
-- **owner**: CRUD completo de produtos, categorias e movimentações
-- **reception**: pode ver e registrar movimentações; pode criar/editar produtos
-- **barber**: somente leitura
-
-### RBAC em Comandas:
-
-- **owner**: tudo — abrir, editar, fechar, cancelar, ver todas
-- **reception**: abrir, fechar, ver todas; não cancela
-- **barber**: só suas próprias comandas
+- **owner**: ver todas + configurar percentuais por barbeiro
+- **reception**: ver relatório geral (sem configurar)
+- **barber**: ver apenas as próprias comissões
 
 ### Fluxo de convite: email → Invitation (token 7 dias) → /convite/[token] → Membership
 
@@ -307,151 +290,75 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 
 ### ✅ SISTEMA BASE
 
-- Onboarding, trial 30 dias, página pública /[slug], dashboard KPIs, agenda, CRM automático, configurações, relatórios mensais, e-mail Resend, assinatura Asaas.
+Onboarding, trial 30 dias, página pública /[slug], dashboard KPIs, agenda, CRM, configurações, relatórios mensais, e-mail Resend, assinatura Asaas.
 
 ### ✅ DIA 1 — FUNDAÇÃO DE ACESSOS
 
-- Schema Membership + Invitation + WaitlistLead, RBAC completo, página VIP.
+Schema Membership + Invitation + WaitlistLead, RBAC completo, página VIP.
 
 ### ✅ DIA 2 — SISTEMA DE CONVITES
 
-- Tela /acessos, e-mail convite, página /convite/[token], revogar/reenviar convites.
+Tela /acessos, e-mail convite, página /convite/[token], revogar/reenviar convites.
 
 ### ✅ DIA 3 — CLIENTES COMPLETOS + ENDEREÇO + MAPA
 
-**Migração aplicada:** `20260602124008_dia3_endereco_clientes`
-
-- User: cpf (@unique), birthDate
-- Barbershop: street, neighborhood, cep
-- Client: cpf, birthDate, street, neighborhood, cep, origem (ClientOrigem?), bloqueado
-- Enum novo: ClientOrigem
-
-**Onboarding atualizado:**
-
-- Endereço obrigatório (street, neighborhood, cep, city, state)
-- Slug gerado automaticamente a partir do nome — somente leitura
-- Data nascimento: máscara DD/MM/AAAA (sem input type=date)
-- CEP auto-preenche via ViaCEP (onBlur)
-- CPF e birthDate salvos no banco
-- Import auth corrigido para "@/auth"
-
-**CRM de clientes:**
-
-- Busca por nome, telefone, e-mail, CPF
-- Filtros: origem, sumidos (30/60/90/120 dias), aniversariantes do mês, bloqueados
-- KPIs: total, aniversariantes deste mês, bloqueados
-- Painel lateral: detalhe completo + WhatsApp direto + bloquear/desbloquear
-- Escopo por papel (clientScope do RBAC)
-
-**Mapa:**
-
-- Componente src/components/barbershop-map.tsx
-- Usa OpenStreetMap embed (gratuito, sem API key, sem restrições)
-- Integrado em /[slug] — aparece quando barbershop.street && barbershop.city existem
-- Link "Ver no Google Maps" abaixo do mapa
+Migração dia3_endereco_clientes. CRM completo, mapa OpenStreetMap, onboarding enriquecido.
 
 ### ✅ DIA 4 — AGENDA POR BARBEIRO
 
-**Arquivos criados/modificados:**
-
-- `src/app/(dashboard)/dashboard/agenda/agenda-actions.ts`
-- `src/app/(dashboard)/dashboard/agenda/agenda-board.tsx`
-- `src/app/(dashboard)/dashboard/agenda/page.tsx`
-
-**Funcionalidades:**
-
-- Visão colunar: uma coluna por profissional ativo
-- Grade 08:00–20:00, slots de 30min, altura 56px por slot (SLOT_HEIGHT = 56)
-- Cartões coloridos por status
-- Navegação de data com setas + botão "Hoje"
-- Click em cartão → modal com detalhes + ações de status
-- Mover entre barbeiros (só owner e reception)
-- Click em slot vazio → modal de novo agendamento rápido
-- RBAC: barber só vê sua coluna
+Agenda colunar, grade 08:00–20:00, slots 30min, RBAC por coluna.
 
 ### ✅ DIA 5 — PRODUTOS & ESTOQUE
 
-**Migração aplicada:** `dia5_produtos_estoque`
-
-**Models novos:**
-
-- ProductCategory → @@map("product_categories")
-- Product → @@map("products")
-- StockMovement → @@map("stock_movements")
-- Enum: StockMovementReason { purchase, comanda_use, manual_adjustment, loss, return }
-
-**Arquivos criados:**
-
-- `src/app/(dashboard)/dashboard/produtos/page.tsx`
-- `src/app/(dashboard)/dashboard/produtos/produtos-client.tsx`
-- `src/app/(dashboard)/dashboard/produtos/actions.ts`
-
-**Funcionalidades:**
-
-- CRUD de categorias com confirmação de exclusão
-- CRUD de produtos com preço de custo, venda, estoque inicial e alerta mínimo
-- Máscara monetária no input (ex: digita 1990 → mostra 19,90)
-- Filtros: busca por nome, por categoria, por status de estoque (todos / baixo / zerado)
-- KPIs: produtos ativos, em alerta, sem estoque
-- Cartões com visual de alerta (amarelo = baixo, vermelho = zerado)
-- Modal de movimentação de estoque: entrada/saída, motivo, observação
-- Histórico de movimentações carregado sob demanda (last 50)
-- RBAC: barber = somente leitura; owner/reception = CRUD
+Migração dia5_produtos_estoque. CRUD produtos/categorias, movimentações, KPIs.
 
 ### ✅ DIA 6 — COMANDAS (PDV)
 
-**Migração aplicada:** `dia6_comandas`
+Migração dia6_comandas. Fluxo abrir→itens→fechar, baixa de estoque, cancelamento com estorno.
 
-**Models novos:**
+### ✅ DIA 7 — COMISSÕES
 
-- Comanda → @@map("comandas")
-- ComandaItem → @@map("comanda_items")
-- Enums: ComandaStatus { open, closed, cancelled }, PaymentMethod { cash, pix, credit_card, debit_card, voucher }, ComandaItemType { service, product }
+**Migração aplicada:** `20260602200000_dia7_comissoes`
+Tabelas Membership e Invitation renomeadas para snake_case com dados preservados.
 
-**Relações adicionadas:** Barbershop.comandas, Professional.comandas, Appointment.comanda, Client.comandas, Service.comandaItems, Product.comandaItems
+**Campos adicionados no Membership:**
+
+- commissionServicePct Decimal? @db.Decimal(5,2)
+- commissionProductPct Decimal? @db.Decimal(5,2)
 
 **Arquivos criados:**
 
-- `src/app/(dashboard)/dashboard/comandas/page.tsx`
-- `src/app/(dashboard)/dashboard/comandas/comandas-client.tsx`
-- `src/app/(dashboard)/dashboard/comandas/actions.ts`
-- `src/app/(dashboard)/dashboard/comandas/nova/page.tsx`
-- `src/app/(dashboard)/dashboard/comandas/nova/nova-comanda-form.tsx`
-- `src/app/(dashboard)/dashboard/comandas/[id]/page.tsx`
-- `src/app/(dashboard)/dashboard/comandas/[id]/comanda-pdv.tsx`
+- src/app/(dashboard)/dashboard/comissoes/page.tsx
+- src/app/(dashboard)/dashboard/comissoes/comissoes-client.tsx
+- src/app/(dashboard)/dashboard/comissoes/actions.ts
 
-**Funcionalidades:**
+**Arquivos modificados:**
 
-- Abrir comanda: livre (avulso ou cliente cadastrado) ou vinculada a agendamento
-- Barber só abre para si mesmo; owner/reception escolhem o profissional
-- Adicionar serviços: snapshot de nome + preço no momento da adição
-- Adicionar produtos: seleção de quantidade com controle de estoque em tempo real
-- Remover itens de comanda aberta
-- Fechar comanda: modal com forma de pagamento + desconto opcional
-- Baixa automática de estoque em $transaction atômica no fechamento
-- StockMovement registrado com reason: comanda_use
-- Cancelar comanda: estorna estoque se já estava fechada (reason: return)
-- Lista com filtros: abertas / hoje / fechadas / todas
-- PDV split-view: itens à esquerda, catálogo (serviços/produtos) à direita
-- commissionPct e commissionValue reservados no ComandaItem para o Dia 7
-- RBAC: owner = tudo; reception = abrir/fechar/ver; barber = apenas suas
+- comandas/actions.ts — fecharComanda calcula commissionPct/commissionValue na $transaction async. Exporta type ResumoProf. Nomes em português: abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComandas, getComanda.
+- comandas/comandas-client.tsx — filtros alinhados com actions (abertas/hoje/fechadas/todas). Tipo ComandaListItem definido localmente.
+- comandas/nova/nova-comanda-form.tsx — usa abrirComanda (não openComanda). clientName nunca undefined. NEXT_REDIRECT tratado no catch.
+- comandas/[id]/comanda-pdv.tsx — try/catch em todas as actions. removeItem com ordem correta (itemId, comandaId). Imports alinhados com nomes reais.
+- settings/acessos/actions.ts — updateMembershipComissao adicionada
+- dashboard/page.tsx — card de comissões para barber + import getCurrentMembership
+- (dashboard)/layout.tsx — link Comissões com ícone DollarSign. roleAccess usando MemberRole enum.
+- comandas/page.tsx — usa getComandas("abertas") em vez de listComandas("open")
+
+**Build:** ✅ 23 páginas, zero erros TypeScript
+
+**Lição crítica do Dia 7:**
+
+- $transaction SEMPRE usar padrão async: `db.$transaction(async (tx) => {...})` — NUNCA array de promises
+- Server Actions que fazem redirect() não retornam objeto — usar try/catch nos componentes, tratar NEXT_REDIRECT no catch
+- Nomes de funções no actions.ts devem ser consistentes em TODO o projeto — um nome errado num import quebra o build
 
 ---
 
 ## 8. PRÓXIMAS ETAPAS — ROADMAP
 
-### 🔜 DIA 7 — COMISSÕES (PRÓXIMO CHAT)
+### 🔜 DIA 8 — DASHBOARDS & RELATÓRIOS (PRÓXIMO CHAT)
 
-- Regras por Membership (commissionOnServices / commissionOnProducts — já existem como bool)
-- Evoluir para percentual configurável por papel
-- Cálculo no fechamento da comanda: preencher commissionPct e commissionValue em cada ComandaItem
-- Tela de relatório de comissões por profissional (período)
-- Dashboard do barbeiro: minhas comissões
-
-### DIA 8 — DASHBOARDS & RELATÓRIOS
-
-- Dashboard do dono: faturamento por período, ticket médio, serviços mais vendidos
-- Dashboard do barbeiro: métricas próprias
+- Dashboard do dono: faturamento por período, ticket médio, serviços mais vendidos, evolução mensal
+- Dashboard do barbeiro: métricas próprias consolidadas
 - Relatório mensal melhorado
 
 ### DIA 9 — PACOTES & MARKETING
@@ -472,26 +379,23 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 
 ## 9. PENDÊNCIAS & CUIDADOS
 
-- **@@map() é OBRIGATÓRIO** em todos os models — sem ele o Prisma dropa tabelas ao migrar.
-- **WaitlistLead:** 14 registros reais do workshop TX. NUNCA deletar. NUNCA incluir em limpezas.
-- **endTime em Appointment é DateTime?** — sempre checar nulidade antes de chamar .getHours()
-- **clientPhone em Appointment é nullable** — sempre tratar como string | null
+- **@@map() é OBRIGATÓRIO** em todos os models — Membership e Invitation agora estão corretos.
+- **WaitlistLead:** 14 registros reais do workshop TX. NUNCA deletar.
+- **endTime em Appointment é DateTime?** — sempre checar nulidade.
+- **clientPhone em Appointment é nullable** — sempre tratar como string | null.
 - **auth.ts está em src/auth.ts** — importar sempre como `import { auth } from "@/auth"`
-- **CPF no User:** @unique global. CPF no Client: sem @unique (pode repetir entre barbearias).
-- **Endereço obrigatório no onboarding** desde Dia 3. Barbearias antigas têm campos null.
-- **Mapa:** usa OpenStreetMap. Aparece só se barbershop.street && barbershop.city existirem.
-- **Slug:** gerado automaticamente no onboarding, somente leitura. Não deixar o barbeiro editar.
-- **priceInCents:** preços no banco em centavos. Sempre dividir por 100 ao exibir. Válido para produtos também (costInCents e priceInCents) e comandas (totalInCents, unitPriceInCents).
-- **stockQuantity em Product:** Int (unidades inteiras). StockMovement.quantity pode ser negativo (saída). Comanda_use gera StockMovement negativo no fechamento.
-- **appointmentId em Comanda:** @unique — um agendamento pode ter no máximo 1 comanda.
-- **Comanda cancelada após fechada:** estorna estoque via StockMovement com reason: return.
-- **commissionPct / commissionValue em ComandaItem:** null no Dia 6. Preenchidos no Dia 7.
-- **RESEND_FROM:** sempre noreply@livobarber.com.br. Nunca livo.com.br.
-- **Next.js 16 — params:** sempre `const { param } = await params` em rotas dinâmicas.
-- **Next.js 16 — Server Components:** não usar event handlers inline.
-- **PowerShell:** usar Select-String no lugar de grep. Caminhos com [colchetes] usar caminho absoluto.
+- **priceInCents:** sempre em centavos. Dividir por 100 ao exibir.
+- **$transaction:** SEMPRE usar padrão async `db.$transaction(async (tx) => { ... })` — NUNCA array de promises.
+- **Server Actions com redirect():** usar try/catch no componente. Tratar NEXT_REDIRECT no catch (ignorar).
+- **Nomes das functions em actions.ts:** abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComandas, getComanda, getClientsForComanda, getComissoesData.
+- **getComissoesData:** definida em comandas/actions.ts, re-exportada em comissoes/actions.ts. Exporta também `type ResumoProf`.
+- **commissionServicePct/commissionProductPct:** Decimal(5,2) nullable. Usar Number() para converter.
+- **RESEND_FROM:** sempre noreply@livobarber.com.br.
+- **Next.js 16 — params:** sempre `const { param } = await params`.
+- **PowerShell:** Select-String no lugar de grep. Caminhos com [colchetes] usar caminho absoluto.
 - **Plano START:** mantido no enum, não é mais vendido.
-- **QR Code VIP:** aponta para https://livobarber.com.br/vip.
+- **migration_lock.toml:** não editar manualmente.
+- **Nunca rodar `prisma migrate dev` sem antes rodar `prisma migrate diff`** para ver o que vai ser alterado.
 
 ---
 
@@ -514,17 +418,16 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 ## 11. DECISÕES ARQUITETURAIS
 
 - **Auth:** JWT, roles não no token, 1 query por request via getCurrentMembership()
-- **Membership:** Usuário → Membership → Barbearia (suporta múltiplas barbearias no futuro)
+- **Membership:** Usuário → Membership → Barbearia
 - **Convites:** token UUID, 7 dias, reenvio gera novo token
-- **Endereço:** campos separados desde Dia 3 (street, neighborhood, cep, city, state)
 - **Mapa:** OpenStreetMap embed, sem API key, gratuito
-- **Slug:** gerado automaticamente no onboarding, não editável pelo usuário
-- **CPF dono:** salvo em User (único global). CPF cliente: salvo em Client (não único).
-- **@@map():** todos os models mapeados para snake_case — crítico para não dropar tabelas
-- **Agenda colunar:** Client Component com refreshData() sem reload.
-- **Estoque:** padrão "saldo + extrato" — stockQuantity no Product (consulta rápida) + StockMovement (auditoria completa). Fechamento de comanda cria StockMovement e decrementa stockQuantity em $transaction.
-- **Comanda:** independente de agendamento (appointmentId optional). Snapshot de preço em cada ComandaItem. Baixa de estoque somente no fechamento (não na adição do item). Cancelamento de comanda fechada estorna o estoque.
-- **Comissões:** campos commissionPct e commissionValue já existem em ComandaItem (null no Dia 6). Dia 7 vai preenchê-los no fechamento com base nas regras do Membership.
+- **Slug:** gerado automaticamente no onboarding, não editável
+- **@@map():** todos os models mapeados para snake_case
+- **Estoque:** saldo + extrato (stockQuantity + StockMovement)
+- **Comanda:** independente de agendamento. Snapshot de preço. Baixa só no fechamento.
+- **Comissões:** percentuais em Membership. Calculados no fechamento via $transaction async. Histórico imutável em ComandaItem.
+- **$transaction:** sempre padrão async — não usar array de promises.
+- **Server Actions:** não retornam objeto quando fazem redirect(). Componentes usam try/catch.
 
 ---
 
@@ -532,61 +435,34 @@ const clients = await db.client.findMany({ where: clientScope(membership) });
 
 ### 31/05/2026
 
-- Membership, Invitation, WaitlistLead, RBAC, página VIP
+Membership, Invitation, WaitlistLead, RBAC, página VIP.
 
 ### 01/06/2026
 
-- 14 leads workshop TX, sistema de convites completo, onboarding enriquecido
+14 leads workshop TX, sistema de convites completo, onboarding enriquecido.
 
 ### 02/06/2026 — DIA 3
 
-- Migração dia3_endereco_clientes
-- @@map() adicionado em todos os models (correção crítica)
-- Onboarding: endereço obrigatório, slug somente leitura, data com máscara, CEP via ViaCEP
-- CRM clientes: busca, filtros, KPIs, painel lateral, bloquear/desbloquear
-- Mapa OpenStreetMap na página pública /[slug]
-- Fix: endTime nullable em agenda/new/actions.ts e [slug]/book/actions.ts
-- Fix: import auth corrigido para "@/auth"
+Migração dia3_endereco_clientes. CRM clientes completo. Mapa OpenStreetMap.
 
 ### 02/06/2026 — DIA 4
 
-- Agenda colunar por barbeiro: grade 08:00–20:00, slots 30min
-- Cartões coloridos por status (pending/confirmed/completed/cancelled/no_show)
-- Modal de detalhes do agendamento com ações de status
-- Modal de remanejamento entre barbeiros (owner e reception)
-- Modal de novo agendamento rápido ao clicar em slot vazio
-- RBAC: barber vê apenas sua coluna
-- Fix: clientPhone tratado como nullable no tipo AgendaAppointment
+Agenda colunar por barbeiro. RBAC por coluna.
 
 ### 02/06/2026 — DIA 5
 
-- Migração dia5_produtos_estoque
-- Models: ProductCategory, Product, StockMovement + enum StockMovementReason
-- CRUD de categorias: criar, editar, excluir com confirmação (desvincula produtos antes)
-- CRUD de produtos: nome, descrição, categoria, custo, venda, estoque, alerta mínimo, ativo/inativo
-- Estoque inicial registrado como StockMovement (reason: purchase) no cadastro
-- Modal de movimentação: entrada/saída, motivo filtrado por tipo, observação
-- Transação atômica ($transaction) ao movimentar estoque
-- Histórico de movimentações sob demanda (last 50)
-- KPIs: ativos, estoque baixo, sem estoque
-- Filtros: busca, categoria, status de estoque
-- RBAC: barber = read-only; owner/reception = CRUD
-- Link "Produtos" adicionado no menu lateral do dashboard
+Migração dia5_produtos_estoque. CRUD produtos/categorias/movimentações.
 
 ### 02/06/2026 — DIA 6
 
-- Migração dia6_comandas
-- Models: Comanda, ComandaItem + enums ComandaStatus, PaymentMethod, ComandaItemType
-- Relações inversas adicionadas em Barbershop, Professional, Appointment, Client, Service, Product
-- Fluxo completo: abrir → itens (serviços + produtos) → fechar com pagamento
-- Snapshot de preço e nome no ComandaItem (integridade histórica)
-- Baixa de estoque em $transaction atômica no fechamento
-- StockMovement gerado automaticamente com reason: comanda_use
-- Cancelamento com estorno de estoque (reason: return) se comanda já estava fechada
-- Desconto opcional no fechamento
-- PDV split-view: lista de itens + catálogo lateral (aba Serviços / Produtos)
-- Modal de fechamento com seleção de forma de pagamento e confirmação de total
-- Lista de comandas com filtros (abertas / hoje / fechadas / todas)
-- RBAC: owner = tudo; reception = abrir/fechar/ver; barber = apenas suas
-- commissionPct e commissionValue reservados em ComandaItem (Dia 7)
-- Link "Comandas" adicionado no menu lateral do dashboard
+Migração dia6_comandas. PDV completo. Baixa de estoque. Cancelamento com estorno.
+
+### 02/06/2026 — DIA 7
+
+Migração dia7_comissoes. Tabelas renomeadas para snake_case (dados preservados).
+commissionServicePct e commissionProductPct no Membership.
+fecharComanda calcula e grava comissões na transaction async.
+Página /comissoes com relatório, KPIs e configuração de percentuais.
+Dashboard do barbeiro com card de comissões do mês.
+Correção geral: imports alinhados, try/catch nas actions, NEXT_REDIRECT tratado.
+Build limpo: 23 páginas, zero erros TypeScript.

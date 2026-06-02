@@ -8,8 +8,50 @@ import { db } from "@/lib/db";
 import { getCurrentMembership } from "@/lib/permissions";
 import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
+
+// ── Componente auxiliar: mini gráfico de barras CSS ──────────
+function MiniGrafico({
+  dados,
+}: {
+  dados: { label: string; totalInCents: number }[];
+}) {
+  const maxValor = Math.max(...dados.map((d) => d.totalInCents), 1);
+  return (
+    <div className="flex items-end gap-1 h-16">
+      {dados.map((d, i) => {
+        const pct =
+          d.totalInCents > 0
+            ? Math.max(8, (d.totalInCents / maxValor) * 100)
+            : 4;
+        const ehAtual = i === dados.length - 1;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div
+              title={`${d.label}: ${(d.totalInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+              style={{
+                height: `${pct}%`,
+                background: ehAtual ? "#C8102E" : "#2A2A33",
+                borderRadius: 3,
+                width: "100%",
+                transition: "height 0.3s",
+              }}
+            />
+            {dados.length <= 12 && (
+              <span
+                style={{ fontSize: 7, color: "#6E6E78", whiteSpace: "nowrap" }}
+              >
+                {d.label}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -62,6 +104,12 @@ export default async function DashboardPage() {
   const comissoesDoMes =
     membership?.role === MemberRole.barber && membership.professionalId
       ? await getComissoesData("mes_atual", membership.professionalId)
+      : null;
+
+  // Analytics — só para owner (Dia 8)
+  const analytics =
+    membership?.role === MemberRole.owner
+      ? await getDashboardAnalytics(barbershop.id)
       : null;
 
   const hour = new Date().getHours();
@@ -591,6 +639,124 @@ export default async function DashboardPage() {
             </a>
           ))}
         </div>
+
+        {/* ── Analytics do owner (Dia 8) ───────────────────── */}
+        {analytics && (
+          <div className="space-y-6">
+            <div className="border-t border-[#2A2A33] pt-6">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                Performance do mês
+              </h2>
+            </div>
+
+            {/* Mini KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  titulo: "Faturamento",
+                  valor: (analytics.faturamentoMes / 100).toLocaleString(
+                    "pt-BR",
+                    { style: "currency", currency: "BRL" },
+                  ),
+                  cor: "#3FB950",
+                },
+                {
+                  titulo: "Comandas",
+                  valor: String(analytics.totalComandasMes),
+                  cor: "#C8A24C",
+                },
+                {
+                  titulo: "Ticket médio",
+                  valor: (analytics.ticketMedio / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  }),
+                  cor: "#C8102E",
+                },
+                {
+                  titulo: "Top serviço",
+                  valor: analytics.topServicos[0]?.nome ?? "—",
+                  cor: "#9A9AA6",
+                },
+              ].map((k, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: "#17171C",
+                    border: "1px solid #2A2A33",
+                    borderRadius: 12,
+                    padding: 20,
+                  }}
+                >
+                  <p className="text-xs text-[#6E6E78] uppercase tracking-wider mb-1">
+                    {k.titulo}
+                  </p>
+                  <p className="text-xl font-bold" style={{ color: k.cor }}>
+                    {k.valor}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Evolução 12 meses — gráfico CSS */}
+            <div
+              style={{
+                background: "#17171C",
+                border: "1px solid #2A2A33",
+                borderRadius: 12,
+                padding: 24,
+              }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider">
+                  Evolução — últimos 12 meses
+                </h3>
+                <a
+                  href="/dashboard/relatorios"
+                  className="text-xs text-[#C8102E] hover:underline"
+                >
+                  Ver relatório completo →
+                </a>
+              </div>
+              <MiniGrafico dados={analytics.evolucaoMensal} />
+            </div>
+
+            {/* Top 5 serviços */}
+            {analytics.topServicos.length > 0 && (
+              <div
+                style={{
+                  background: "#17171C",
+                  border: "1px solid #2A2A33",
+                  borderRadius: 12,
+                  padding: 24,
+                }}
+              >
+                <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider mb-4">
+                  Serviços mais vendidos este mês
+                </h3>
+                <div className="space-y-2">
+                  {analytics.topServicos.map((s, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="text-white">
+                        {i + 1}. {s.nome}
+                      </span>
+                      <span className="text-[#9A9AA6]">
+                        {s.quantidade}× ·{" "}
+                        {(s.totalInCents / 100).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
