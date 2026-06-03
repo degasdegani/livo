@@ -16,6 +16,7 @@ import {
   DollarSign,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Package,
   Settings,
   UserCog,
@@ -68,6 +69,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/relatorios",
     label: "Relatórios",
     icon: BarChart2,
+    roleAccess: [MemberRole.owner, MemberRole.reception],
+  },
+  {
+    href: "/dashboard/marketing",
+    label: "Marketing",
+    icon: Megaphone,
     roleAccess: [MemberRole.owner, MemberRole.reception],
   },
   {

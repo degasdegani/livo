@@ -70,15 +70,23 @@ Scripts avulsos: npx tsx scripts/X.ts
 - Variáveis que existem no .env.local: DATABASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL, RESEND_API_KEY, RESEND_FROM, ASAAS_API_KEY, NEXT_PUBLIC_GOOGLE_MAPS_KEY (opcional, vazio por enquanto)
 - RESEND_FROM deve ser "noreply@livobarber.com.br" — domínio livobarber.com.br está verificado no Resend. O domínio livo.com.br NÃO está verificado — nunca usar como remetente.
 
-**Atenção Next.js 16:**
+**Atenção Next.js 16 + Turbopack:**
 
 - params em rotas dinâmicas é uma Promise — sempre usar `const { param } = await params` antes de acessar.
 - Server Components não aceitam event handlers (onMouseEnter, onClick, etc) — usar classes Tailwind para hover ou criar Client Components.
+- **JSX com múltiplos atributos em tags `<a>`:** Turbopack é estrito no parsing — sempre colocar `href` e `target` na mesma linha de abertura da tag. Quebra de linha entre atributos causa erro `Expected '</', got 'target'`.
 
 **Atenção PowerShell Windows:**
 
 - Caminhos com colchetes como `[slug]` travam o PowerShell mesmo com aspas simples.
 - Usar o caminho absoluto: `Get-Content "C:\Projetos\livo\src\app\[slug]\page.tsx"`
+
+**Atenção $queryRaw — nomes de colunas:**
+
+- O Prisma só converte para snake_case colunas que têm `@map()` explícito no campo.
+- Campos sem `@map()` ficam com o nome camelCase no banco (ex: `birthDate`, `barbershopId`).
+- No `$queryRaw`, usar sempre o nome real da coluna com aspas duplas: `"birthDate"`, `"barbershopId"`.
+- IDs gerados por cuid() são `::text[]`, não `::uuid[]`.
 
 ---
 
@@ -112,8 +120,8 @@ raiz/
 ├── (dashboard)/
 │ ├── layout.tsx ← PROTEGIDO: chama getCurrentMembership()
 │ └── dashboard/
-│ ├── page.tsx ← Dashboard principal + card comissões barber
-│ ├── actions.ts
+│ ├── page.tsx ← Dashboard principal + analytics owner (Dia 8) + card comissões barber
+│ ├── actions.ts ← inclui getDashboardAnalytics() (Dia 8)
 │ ├── appointment-actions.tsx
 │ ├── agenda/
 │ │ ├── page.tsx
@@ -134,7 +142,7 @@ raiz/
 │ ├── comandas/
 │ │ ├── page.tsx
 │ │ ├── comandas-client.tsx
-│ │ ├── actions.ts ← getComandas, abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComanda, getClientsForComanda, getComissoesData, type ResumoProf
+│ │ ├── actions.ts
 │ │ ├── nova/
 │ │ │ ├── page.tsx
 │ │ │ └── nova-comanda-form.tsx
@@ -144,8 +152,15 @@ raiz/
 │ ├── comissoes/
 │ │ ├── page.tsx
 │ │ ├── comissoes-client.tsx
-│ │ └── actions.ts ← re-export de getComissoesData
+│ │ └── actions.ts
 │ ├── relatorios/
+│ │ ├── page.tsx
+│ │ ├── actions.ts
+│ │ └── relatorios-client.tsx
+│ ├── marketing/
+│ │ ├── page.tsx ← SSR + dados iniciais em paralelo (Dia 9)
+│ │ ├── actions.ts ← getClientesSumidos(dias) + getAniversariantes() (Dia 9)
+│ │ └── marketing-client.tsx ← abas, filtros, links WhatsApp (Dia 9)
 │ ├── settings/
 │ │ ├── page.tsx
 │ │ ├── basic-info-form.tsx
@@ -154,7 +169,7 @@ raiz/
 │ │ └── acessos/
 │ │ ├── page.tsx
 │ │ ├── acessos-client.tsx
-│ │ └── actions.ts ← inclui updateMembershipComissao
+│ │ └── actions.ts
 │ └── assinar/
 ├── (onboarding)/
 │ └── onboarding/
@@ -190,9 +205,9 @@ raiz/
 
 ## 4. BANCO DE DADOS — SCHEMA COMPLETO
 
-Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dropa as tabelas.
+Todos os models usam @@map() para snake_case na tabela. Campos individuais NÃO têm @map() — ficam em camelCase no banco.
 
-### Mapeamentos obrigatórios:
+### Mapeamentos obrigatórios (apenas tabelas):
 
 - User → @@map("users")
 - Account → @@map("accounts")
@@ -220,10 +235,10 @@ Todos os models usam @@map() para snake_case. Crítico — sem isso o Prisma dro
 - **Barbershop**: id, name, slug (único), phone, city, state, street, neighborhood, cep, plan, planStatus, trialEndsAt, asaasCustomerId, asaasSubscriptionId, isActive, ownerId (único), createdAt, updatedAt
 - **Professional**: id, name, bio, avatarUrl, isActive, barbershopId, createdAt, updatedAt
 - **Service**: id, name, description, durationMin, priceInCents, isActive, barbershopId
-- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt — relations: comanda (optional)
+- **Appointment**: id, date, endTime (DateTime? — nullable!), status, notes, clientName, clientPhone (nullable!), clientEmail, barbershopId, professionalId, serviceId, clientId (opcional), createdAt, updatedAt
 - **Client**: id, name, phone, email, notes, barbershopId, totalVisits, lastVisitAt, cpf, birthDate, street, neighborhood, cep, origem (ClientOrigem?), bloqueado (bool), createdAt, updatedAt — índice único: [phone, barbershopId]
 - **BusinessHour**: id, dayOfWeek, openTime, closeTime, isOpen, barbershopId — índice único: [dayOfWeek, barbershopId]
-- **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices (bool, default false), commissionOnProducts (bool, default false), commissionServicePct (Decimal? @db.Decimal(5,2)), commissionProductPct (Decimal? @db.Decimal(5,2)), isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
+- **Membership**: id, role, userId, barbershopId, professionalId (único, opcional), commissionOnServices (bool), commissionOnProducts (bool), commissionServicePct (Decimal?), commissionProductPct (Decimal?), isActive, createdAt, updatedAt — índice único: [userId, barbershopId]
 - **Invitation**: id, email, role, token (único), status, expiresAt, professionalId (opcional), commissionOnServices, commissionOnProducts, barbershopId, invitedById, createdAt, acceptedAt
 - **WaitlistLead**: id, name, whatsapp, email, barbershopName, source, createdAt ⚠️ NUNCA DELETAR
 - **ProductCategory**: id, name, barbershopId — índice único: [name, barbershopId]
@@ -282,6 +297,18 @@ const membership = await requireRole(["owner", "reception"]);
 - **reception**: ver relatório geral (sem configurar)
 - **barber**: ver apenas as próprias comissões
 
+### RBAC em Relatórios (Dia 8):
+
+- **owner**: acesso completo — todos os KPIs + ranking de barbeiros + métodos de pagamento
+- **reception**: acesso completo — todos os KPIs (sem ranking de barbeiros)
+- **barber**: sem acesso a /relatorios — ver métricas próprias em /comissoes
+
+### RBAC em Marketing (Dia 9):
+
+- **owner**: acesso completo — todos os clientes sumidos + todos os aniversariantes
+- **reception**: acesso completo — todos os clientes sumidos + todos os aniversariantes
+- **barber**: sem acesso — item não aparece no menu
+
 ### Fluxo de convite: email → Invitation (token 7 dias) → /convite/[token] → Membership
 
 ---
@@ -318,57 +345,63 @@ Migração dia6_comandas. Fluxo abrir→itens→fechar, baixa de estoque, cancel
 
 ### ✅ DIA 7 — COMISSÕES
 
-**Migração aplicada:** `20260602200000_dia7_comissoes`
-Tabelas Membership e Invitation renomeadas para snake_case com dados preservados.
+Migração dia7_comissoes. commissionServicePct + commissionProductPct no Membership.
+fecharComanda calcula e grava comissões na transaction async.
+Página /comissoes com relatório, KPIs e configuração de percentuais.
+Dashboard do barbeiro com card de comissões do mês.
+Build limpo: 23 páginas, zero erros TypeScript.
 
-**Campos adicionados no Membership:**
+### ✅ DIA 8 — DASHBOARDS & RELATÓRIOS
 
-- commissionServicePct Decimal? @db.Decimal(5,2)
-- commissionProductPct Decimal? @db.Decimal(5,2)
+**Zero migração de banco.**
+getDashboardAnalytics() em dashboard/actions.ts.
+getRelatorioData(periodo) em relatorios/actions.ts.
+RelatoriosClient — gráfico SVG, tabelas, ranking, métodos de pagamento.
+Build: 25 páginas, zero erros TypeScript.
+
+### ✅ DIA 9 — MARKETING & RETENÇÃO
+
+**Zero migração de banco.**
 
 **Arquivos criados:**
 
-- src/app/(dashboard)/dashboard/comissoes/page.tsx
-- src/app/(dashboard)/dashboard/comissoes/comissoes-client.tsx
-- src/app/(dashboard)/dashboard/comissoes/actions.ts
+- src/app/(dashboard)/dashboard/marketing/actions.ts — getClientesSumidos(dias) + getAniversariantes()
+- src/app/(dashboard)/dashboard/marketing/marketing-client.tsx — abas, filtros, links WhatsApp
+- src/app/(dashboard)/dashboard/marketing/page.tsx — SSR + Promise.all
 
 **Arquivos modificados:**
 
-- comandas/actions.ts — fecharComanda calcula commissionPct/commissionValue na $transaction async. Exporta type ResumoProf. Nomes em português: abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComandas, getComanda.
-- comandas/comandas-client.tsx — filtros alinhados com actions (abertas/hoje/fechadas/todas). Tipo ComandaListItem definido localmente.
-- comandas/nova/nova-comanda-form.tsx — usa abrirComanda (não openComanda). clientName nunca undefined. NEXT_REDIRECT tratado no catch.
-- comandas/[id]/comanda-pdv.tsx — try/catch em todas as actions. removeItem com ordem correta (itemId, comandaId). Imports alinhados com nomes reais.
-- settings/acessos/actions.ts — updateMembershipComissao adicionada
-- dashboard/page.tsx — card de comissões para barber + import getCurrentMembership
-- (dashboard)/layout.tsx — link Comissões com ícone DollarSign. roleAccess usando MemberRole enum.
-- comandas/page.tsx — usa getComandas("abertas") em vez de listComandas("open")
+- src/app/(dashboard)/layout.tsx — Megaphone importado + item Marketing no NAV_ITEMS
 
-**Build:** ✅ 23 páginas, zero erros TypeScript
+**Funcionalidades:**
 
-**Lição crítica do Dia 7:**
+- Clientes Sumidos: filtro 30/60/90 dias, última visita, total de visitas, link WhatsApp direto
+- Aniversariantes: mês atual via EXTRACT(MONTH), destaque dourado para aniversário de hoje
+- Links wa.me: sanitização automática de telefone BR → 55XXXXXXXXXXX
+- Mensagens pré-formatadas com nome do cliente e da barbearia
+- RBAC: owner e reception com acesso completo; barber sem item no menu
+- WhatsAppIcon extraído como componente SVG reutilizável
+- Build: 27 páginas, zero erros TypeScript
 
-- $transaction SEMPRE usar padrão async: `db.$transaction(async (tx) => {...})` — NUNCA array de promises
-- Server Actions que fazem redirect() não retornam objeto — usar try/catch nos componentes, tratar NEXT_REDIRECT no catch
-- Nomes de funções no actions.ts devem ser consistentes em TODO o projeto — um nome errado num import quebra o build
+**Lições do Dia 9:**
+
+- $queryRaw precisa usar nomes reais das colunas — camelCase com aspas duplas quando não há @map() no campo
+- cuid() é ::text[], não ::uuid[]
+- Turbopack: tags `<a>` com href e target devem estar na mesma linha de abertura
+- EXTRACT retorna Decimal no Prisma — sempre Number() para converter
+- Dois providers OAuth (Google + Credentials) para o mesmo usuário criam dois User distintos no banco — o Membership fica vinculado a apenas um deles
 
 ---
 
 ## 8. PRÓXIMAS ETAPAS — ROADMAP
 
-### 🔜 DIA 8 — DASHBOARDS & RELATÓRIOS (PRÓXIMO CHAT)
+### 🔜 DIA 10 — ACABAMENTO VISUAL
 
-- Dashboard do dono: faturamento por período, ticket médio, serviços mais vendidos, evolução mensal
-- Dashboard do barbeiro: métricas próprias consolidadas
-- Relatório mensal melhorado
-
-### DIA 9 — PACOTES & MARKETING
-
-- Pacotes/combos, ClientPackage
-- Sumidos, aniversariantes, notificações manuais
-
-### DIA 10 — ACABAMENTO VISUAL
-
-- Dark/light mode, visual premium, microinterações
+- Polish geral da UI: consistência visual entre todas as páginas
+- Active state no menu lateral (highlight da página atual)
+- Loading states e skeletons
+- Microinterações e transições
+- Responsividade mobile básica
 
 ### DEPOIS:
 
@@ -379,7 +412,8 @@ Tabelas Membership e Invitation renomeadas para snake_case com dados preservados
 
 ## 9. PENDÊNCIAS & CUIDADOS
 
-- **@@map() é OBRIGATÓRIO** em todos os models — Membership e Invitation agora estão corretos.
+- **@@map() é OBRIGATÓRIO** em todos os models — mas apenas nas tabelas, não nos campos.
+- **Campos sem @map():** ficam em camelCase no banco. No $queryRaw usar aspas duplas: `"birthDate"`, `"barbershopId"`, `"lastVisitAt"`.
 - **WaitlistLead:** 14 registros reais do workshop TX. NUNCA deletar.
 - **endTime em Appointment é DateTime?** — sempre checar nulidade.
 - **clientPhone em Appointment é nullable** — sempre tratar como string | null.
@@ -387,15 +421,21 @@ Tabelas Membership e Invitation renomeadas para snake_case com dados preservados
 - **priceInCents:** sempre em centavos. Dividir por 100 ao exibir.
 - **$transaction:** SEMPRE usar padrão async `db.$transaction(async (tx) => { ... })` — NUNCA array de promises.
 - **Server Actions com redirect():** usar try/catch no componente. Tratar NEXT_REDIRECT no catch (ignorar).
-- **Nomes das functions em actions.ts:** abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComandas, getComanda, getClientsForComanda, getComissoesData.
+- **Nomes das functions em actions.ts:** abrirComanda, fecharComanda, cancelarComanda, removeItem, addServicoItem, addProdutoItem, getComandas, getComanda, getClientsForComanda, getComissoesData, getDashboardAnalytics, getRelatorioData, getClientesSumidos, getAniversariantes.
 - **getComissoesData:** definida em comandas/actions.ts, re-exportada em comissoes/actions.ts. Exporta também `type ResumoProf`.
+- **PeriodoFiltro:** tipo exportado em relatorios/actions.ts — "semana" | "mes" | "mes_anterior" | "ano".
+- **DiasSumido:** tipo exportado em marketing/actions.ts — 30 | 60 | 90.
 - **commissionServicePct/commissionProductPct:** Decimal(5,2) nullable. Usar Number() para converter.
+- **commissionValue em ComandaItem:** Int (não Decimal).
+- **EXTRACT no $queryRaw:** retorna Decimal — sempre Number() para converter.
 - **RESEND_FROM:** sempre noreply@livobarber.com.br.
 - **Next.js 16 — params:** sempre `const { param } = await params`.
+- **Next.js 16 + Turbopack — JSX `<a>`:** href e target na mesma linha de abertura.
 - **PowerShell:** Select-String no lugar de grep. Caminhos com [colchetes] usar caminho absoluto.
 - **Plano START:** mantido no enum, não é mais vendido.
 - **migration_lock.toml:** não editar manualmente.
-- **Nunca rodar `prisma migrate dev` sem antes rodar `prisma migrate diff`** para ver o que vai ser alterado.
+- **Nunca rodar `prisma migrate dev` sem antes rodar `prisma migrate diff`.**
+- **Dois providers para o mesmo email criam dois User distintos** — Membership fica vinculado a apenas um. Usar sempre o mesmo provider para login.
 
 ---
 
@@ -422,10 +462,13 @@ Tabelas Membership e Invitation renomeadas para snake_case com dados preservados
 - **Convites:** token UUID, 7 dias, reenvio gera novo token
 - **Mapa:** OpenStreetMap embed, sem API key, gratuito
 - **Slug:** gerado automaticamente no onboarding, não editável
-- **@@map():** todos os models mapeados para snake_case
+- **@@map():** tabelas em snake_case, campos em camelCase (sem @map individual)
 - **Estoque:** saldo + extrato (stockQuantity + StockMovement)
 - **Comanda:** independente de agendamento. Snapshot de preço. Baixa só no fechamento.
 - **Comissões:** percentuais em Membership. Calculados no fechamento via $transaction async. Histórico imutável em ComandaItem.
+- **Relatórios:** queries de leitura pura. Sem tabela de cache. Sem migração.
+- **Marketing:** queries de leitura pura. $queryRaw para EXTRACT(MONTH). Links wa.me nativos.
+- **Gráficos:** SVG puro + CSS. Zero dependências externas.
 - **$transaction:** sempre padrão async — não usar array de promises.
 - **Server Actions:** não retornam objeto quando fazem redirect(). Componentes usam try/catch.
 
@@ -459,10 +502,20 @@ Migração dia6_comandas. PDV completo. Baixa de estoque. Cancelamento com estor
 
 ### 02/06/2026 — DIA 7
 
-Migração dia7_comissoes. Tabelas renomeadas para snake_case (dados preservados).
-commissionServicePct e commissionProductPct no Membership.
-fecharComanda calcula e grava comissões na transaction async.
-Página /comissoes com relatório, KPIs e configuração de percentuais.
-Dashboard do barbeiro com card de comissões do mês.
-Correção geral: imports alinhados, try/catch nas actions, NEXT_REDIRECT tratado.
-Build limpo: 23 páginas, zero erros TypeScript.
+Migração dia7_comissoes. Comissões por barbeiro. Dashboard do barbeiro. Build: 23 páginas.
+
+### 02/06/2026 — DIA 8
+
+Zero migração. Analytics dashboard owner. Relatórios com filtros e gráfico SVG. Build: 25 páginas.
+
+### 02/06/2026 — DIA 9
+
+Zero migração.
+getClientesSumidos(dias) e getAniversariantes() em marketing/actions.ts.
+$queryRaw com colunas camelCase entre aspas duplas — lição crítica registrada.
+MarketingClient — abas, filtros 30/60/90 dias, links WhatsApp nativos, WhatsAppIcon componente.
+marketing/page.tsx — SSR com Promise.all.
+layout.tsx — Megaphone + item Marketing no NAV_ITEMS (owner + reception).
+Correção Turbopack: href e target na mesma linha em tags <a>.
+Correção $queryRaw: birth_date → "birthDate", ::uuid[] → ::text[].
+Build: 27 páginas, zero erros TypeScript.
