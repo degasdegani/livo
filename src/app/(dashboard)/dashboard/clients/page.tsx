@@ -13,8 +13,13 @@ export default async function ClientsPage() {
   return (
     <div className="p-6 h-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Clientes</h1>
-        <p className="text-[#9A9AA6] text-sm mt-1">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Clientes
+        </h1>
+        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
           Gerencie sua base de clientes, filtre sumidos e veja aniversariantes.
         </p>
       </div>

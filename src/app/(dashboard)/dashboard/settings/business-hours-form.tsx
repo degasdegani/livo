@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/settings/business-hours-form.tsx
 "use client";
 
 import { useActionState, useState } from "react";
@@ -14,7 +15,6 @@ const DAYS = [
   "Sábado",
 ];
 
-// Gera opções de horário de 06:00 a 23:30 (a cada 30 min)
 function getTimeOptions(): string[] {
   const options: string[] = [];
   for (let h = 6; h <= 23; h++) {
@@ -35,7 +35,7 @@ function SaveButton() {
       type="submit"
       disabled={pending}
       className="px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 disabled:opacity-50"
-      style={{ background: "#FF2D55" }}
+      style={{ backgroundColor: "var(--color-primary)" }}
     >
       {pending ? "Salvando..." : "Salvar horários"}
     </button>
@@ -60,43 +60,49 @@ export function BusinessHoursForm({
     Object.fromEntries(businessHours.map((h) => [h.dayOfWeek, h.isOpen])),
   );
 
-  const selectStyle = {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#FFFFFF",
-    borderRadius: "10px",
+  const selectStyle: React.CSSProperties = {
+    backgroundColor: "var(--bg-card)",
+    border: "1px solid var(--border)",
+    color: "var(--text-primary)",
+    borderRadius: 10,
     padding: "8px 12px",
-    fontSize: "13px",
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: 600,
     outline: "none",
     cursor: "pointer",
-    appearance: "none" as const,
-    WebkitAppearance: "none" as const,
-    width: "90px",
-    textAlign: "center" as const,
+    appearance: "none",
+    WebkitAppearance: "none",
+    width: 90,
+    textAlign: "center",
   };
 
   return (
     <section
       className="rounded-2xl overflow-hidden"
-      style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ border: "1px solid var(--border)" }}
     >
       <div
         className="px-6 py-4"
         style={{
-          background: "#0A0A0A",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          backgroundColor: "var(--bg-card)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
-        <p className="font-bold text-white text-sm">
+        <p
+          className="font-bold text-sm"
+          style={{ color: "var(--text-primary)" }}
+        >
           Horários de funcionamento
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "#52525B" }}>
+        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
           Define quando os clientes podem agendar
         </p>
       </div>
 
-      <form action={action} style={{ background: "#080808" }}>
+      <form
+        action={action}
+        style={{ backgroundColor: "var(--bg-card-elevated)" }}
+      >
         <div className="p-6 flex flex-col gap-1">
           {businessHours.map((hour, i) => {
             const isOpen = openDays[hour.dayOfWeek];
@@ -107,11 +113,9 @@ export function BusinessHoursForm({
                 key={hour.dayOfWeek}
                 className="flex items-center gap-3 py-3"
                 style={{
-                  borderBottom:
-                    i < 6 ? "1px solid rgba(255,255,255,0.04)" : undefined,
+                  borderBottom: i < 6 ? "1px solid var(--border)" : undefined,
                 }}
               >
-                {/* Hidden: isOpen */}
                 <input
                   type="hidden"
                   name={`isOpen_${hour.dayOfWeek}`}
@@ -132,18 +136,21 @@ export function BusinessHoursForm({
                     width: 36,
                     height: 20,
                     borderRadius: 10,
-                    background: isOpen ? "#FF2D55" : "rgba(255,255,255,0.1)",
-                    transition: "background 0.2s",
+                    backgroundColor: isOpen
+                      ? "var(--color-primary)"
+                      : "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    transition: "background-color 0.2s",
                   }}
                 >
                   <span
                     className="absolute top-0.5"
                     style={{
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       borderRadius: "50%",
-                      background: "#FFFFFF",
-                      left: isOpen ? "18px" : "2px",
+                      backgroundColor: "var(--text-primary)",
+                      left: isOpen ? "19px" : "2px",
                       transition: "left 0.2s",
                     }}
                   />
@@ -153,19 +160,23 @@ export function BusinessHoursForm({
                 <span
                   className="text-sm font-semibold shrink-0"
                   style={{
-                    color: isOpen ? "#FFFFFF" : "#52525B",
-                    minWidth: "60px",
+                    color: isOpen
+                      ? "var(--text-primary)"
+                      : "var(--text-tertiary)",
+                    minWidth: 60,
                   }}
                 >
                   {DAYS[hour.dayOfWeek]}
                   {isToday && (
-                    <span className="ml-1 text-xs" style={{ color: "#FF2D55" }}>
+                    <span
+                      className="ml-1 text-xs"
+                      style={{ color: "var(--color-primary)" }}
+                    >
                       •
                     </span>
                   )}
                 </span>
 
-                {/* Seletores de horário ou "Fechado" */}
                 {isOpen ? (
                   <div className="flex items-center gap-2 flex-1">
                     <select
@@ -177,7 +188,7 @@ export function BusinessHoursForm({
                         <option
                           key={t}
                           value={t}
-                          style={{ background: "#1A1A1A" }}
+                          style={{ backgroundColor: "var(--bg-card)" }}
                         >
                           {t}
                         </option>
@@ -185,7 +196,7 @@ export function BusinessHoursForm({
                     </select>
                     <span
                       className="text-xs shrink-0"
-                      style={{ color: "#3F3F46" }}
+                      style={{ color: "var(--text-tertiary)" }}
                     >
                       até
                     </span>
@@ -198,7 +209,7 @@ export function BusinessHoursForm({
                         <option
                           key={t}
                           value={t}
-                          style={{ background: "#1A1A1A" }}
+                          style={{ backgroundColor: "var(--bg-card)" }}
                         >
                           {t}
                         </option>
@@ -207,7 +218,10 @@ export function BusinessHoursForm({
                   </div>
                 ) : (
                   <div className="flex-1">
-                    <span className="text-xs" style={{ color: "#3F3F46" }}>
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       Fechado
                     </span>
                     <input
@@ -229,7 +243,10 @@ export function BusinessHoursForm({
           {state?.error && (
             <p
               className="text-xs px-3 py-2 rounded-lg mt-2"
-              style={{ color: "#FF2D55", background: "rgba(255,45,85,0.08)" }}
+              style={{
+                color: "var(--color-primary)",
+                backgroundColor: "var(--color-primary-10)",
+              }}
             >
               {state.error}
             </p>
@@ -237,7 +254,10 @@ export function BusinessHoursForm({
           {state?.success && (
             <p
               className="text-xs px-3 py-2 rounded-lg mt-2"
-              style={{ color: "#00D4A0", background: "rgba(0,212,160,0.08)" }}
+              style={{
+                color: "var(--status-green)",
+                backgroundColor: "rgba(0,212,160,0.08)",
+              }}
             >
               ✓ Horários salvos com sucesso.
             </p>

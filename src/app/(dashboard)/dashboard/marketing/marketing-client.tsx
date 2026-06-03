@@ -9,40 +9,19 @@ import {
   type DiasSumido,
 } from "./actions";
 
-// ─────────────────────────────────────────────
-// UTILITÁRIO: Sanitiza telefone para wa.me
-// ─────────────────────────────────────────────
-
-/**
- * Transforma qualquer formato de telefone brasileiro em número limpo para wa.me.
- * Exemplos de entrada:
- *   "(16) 99999-8888" → "5516999998888"
- *   "16999998888"     → "5516999998888"
- *   "999998888"       → "55999998888" (sem DDD, adiciona 55 apenas)
- *   null / ""         → null
- */
 function sanitizarTelefone(phone: string | null): string | null {
   if (!phone) return null;
-  // Remove tudo que não é dígito
   const digits = phone.replace(/\D/g, "");
   if (digits.length === 0) return null;
-
-  // Se já começa com 55 e tem 12 ou 13 dígitos → já está no formato correto
   if (
     digits.startsWith("55") &&
     (digits.length === 12 || digits.length === 13)
   ) {
     return digits;
   }
-
-  // Adiciona 55 (Brasil)
   return `55${digits}`;
 }
 
-/**
- * Gera o link wa.me com mensagem pré-formatada.
- * encodeURIComponent garante que acentos e espaços funcionem no link.
- */
 function gerarLinkWhatsApp(
   phone: string | null,
   mensagem: string,
@@ -51,10 +30,6 @@ function gerarLinkWhatsApp(
   if (!numero) return null;
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }
-
-// ─────────────────────────────────────────────
-// UTILITÁRIOS DE DATA
-// ─────────────────────────────────────────────
 
 function formatarData(date: Date | null): string {
   if (!date) return "Nunca visitou";
@@ -81,19 +56,14 @@ function nomeMesAtual(): string {
   return new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date());
 }
 
-// ─────────────────────────────────────────────
-// PROPS DO COMPONENTE PRINCIPAL
-// ─────────────────────────────────────────────
+const whatsappIconPath =
+  "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z";
 
 type Props = {
   sumidosIniciais: ClienteSumido[];
   aniversariantesIniciais: Aniversariante[];
   nomeBarberaria: string;
 };
-
-// ─────────────────────────────────────────────
-// COMPONENTE PRINCIPAL
-// ─────────────────────────────────────────────
 
 export function MarketingClient({
   sumidosIniciais,
@@ -106,7 +76,6 @@ export function MarketingClient({
   const [aniversariantes] = useState<Aniversariante[]>(aniversariantesIniciais);
   const [isPending, startTransition] = useTransition();
 
-  // Quando o usuário troca o filtro de dias, busca novos dados
   function handleChangeDias(novosDias: DiasSumido) {
     setDiasSumido(novosDias);
     startTransition(async () => {
@@ -121,9 +90,8 @@ export function MarketingClient({
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#0B0B0D",
-        color: "#FFFFFF",
-        fontFamily: "system-ui, sans-serif",
+        backgroundColor: "var(--bg-base)",
+        color: "var(--text-primary)",
       }}
     >
       {/* HEADER */}
@@ -133,12 +101,18 @@ export function MarketingClient({
             fontSize: "24px",
             fontWeight: 700,
             margin: 0,
-            color: "#FFFFFF",
+            color: "var(--text-primary)",
           }}
         >
           Marketing & Retenção
         </h1>
-        <p style={{ color: "#9A9AA6", marginTop: "8px", fontSize: "14px" }}>
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            marginTop: "8px",
+            fontSize: "14px",
+          }}
+        >
           Reconquiste clientes sumidos e celebre aniversariantes — direto pelo
           WhatsApp.
         </p>
@@ -148,9 +122,9 @@ export function MarketingClient({
       <div
         style={{
           padding: "24px 32px 0 32px",
-          borderBottom: "1px solid #2A2A33",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
-          gap: "0",
+          gap: 0,
         }}
       >
         <button
@@ -162,9 +136,14 @@ export function MarketingClient({
             padding: "10px 20px",
             fontSize: "14px",
             fontWeight: aba === "sumidos" ? 600 : 400,
-            color: aba === "sumidos" ? "#FFFFFF" : "#9A9AA6",
+            color:
+              aba === "sumidos"
+                ? "var(--text-primary)"
+                : "var(--text-secondary)",
             borderBottom:
-              aba === "sumidos" ? "2px solid #C8102E" : "2px solid transparent",
+              aba === "sumidos"
+                ? "2px solid var(--color-primary)"
+                : "2px solid transparent",
             transition: "all 0.15s",
           }}
         >
@@ -172,8 +151,11 @@ export function MarketingClient({
           <span
             style={{
               marginLeft: "8px",
-              backgroundColor: aba === "sumidos" ? "#C8102E" : "#2A2A33",
-              color: "#FFFFFF",
+              backgroundColor:
+                aba === "sumidos"
+                  ? "var(--color-primary)"
+                  : "var(--bg-card-elevated)",
+              color: "var(--text-primary)",
               borderRadius: "10px",
               padding: "1px 8px",
               fontSize: "12px",
@@ -193,10 +175,13 @@ export function MarketingClient({
             padding: "10px 20px",
             fontSize: "14px",
             fontWeight: aba === "aniversariantes" ? 600 : 400,
-            color: aba === "aniversariantes" ? "#FFFFFF" : "#9A9AA6",
+            color:
+              aba === "aniversariantes"
+                ? "var(--text-primary)"
+                : "var(--text-secondary)",
             borderBottom:
               aba === "aniversariantes"
-                ? "2px solid #C8A24C"
+                ? "2px solid var(--color-gold)"
                 : "2px solid transparent",
             transition: "all 0.15s",
           }}
@@ -206,8 +191,13 @@ export function MarketingClient({
             style={{
               marginLeft: "8px",
               backgroundColor:
-                aba === "aniversariantes" ? "#C8A24C" : "#2A2A33",
-              color: aba === "aniversariantes" ? "#000000" : "#FFFFFF",
+                aba === "aniversariantes"
+                  ? "var(--color-gold)"
+                  : "var(--bg-card-elevated)",
+              color:
+                aba === "aniversariantes"
+                  ? "var(--bg-base)"
+                  : "var(--text-primary)",
               borderRadius: "10px",
               padding: "1px 8px",
               fontSize: "12px",
@@ -224,7 +214,6 @@ export function MarketingClient({
         {/* ─── ABA: CLIENTES SUMIDOS ─── */}
         {aba === "sumidos" && (
           <div>
-            {/* Filtro de dias */}
             <div
               style={{
                 display: "flex",
@@ -234,7 +223,9 @@ export function MarketingClient({
                 flexWrap: "wrap",
               }}
             >
-              <span style={{ color: "#9A9AA6", fontSize: "14px" }}>
+              <span
+                style={{ color: "var(--text-secondary)", fontSize: "14px" }}
+              >
                 Mostrar clientes sem visita há mais de:
               </span>
               {([30, 60, 90] as DiasSumido[]).map((d) => (
@@ -247,11 +238,11 @@ export function MarketingClient({
                     borderRadius: "20px",
                     border:
                       diasSumido === d
-                        ? "1px solid #C8102E"
-                        : "1px solid #2A2A33",
+                        ? "1px solid var(--color-primary)"
+                        : "1px solid var(--border)",
                     backgroundColor:
-                      diasSumido === d ? "#C8102E" : "transparent",
-                    color: "#FFFFFF",
+                      diasSumido === d ? "var(--color-primary)" : "transparent",
+                    color: "var(--text-primary)",
                     cursor: isPending ? "wait" : "pointer",
                     fontSize: "13px",
                     fontWeight: diasSumido === d ? 600 : 400,
@@ -263,13 +254,14 @@ export function MarketingClient({
                 </button>
               ))}
               {isPending && (
-                <span style={{ color: "#6E6E78", fontSize: "13px" }}>
+                <span
+                  style={{ color: "var(--text-tertiary)", fontSize: "13px" }}
+                >
                   Atualizando...
                 </span>
               )}
             </div>
 
-            {/* Lista de clientes sumidos */}
             {sumidos.length === 0 ? (
               <EstadoVazio
                 icone="🎉"
@@ -280,66 +272,35 @@ export function MarketingClient({
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "1px" }}
               >
-                {/* Cabeçalho da tabela */}
+                {/* Cabeçalho */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 140px 120px 1fr",
                     padding: "10px 16px",
-                    backgroundColor: "#17171C",
+                    backgroundColor: "var(--bg-card)",
                     borderRadius: "8px 8px 0 0",
-                    border: "1px solid #2A2A33",
+                    border: "1px solid var(--border)",
                     borderBottom: "none",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Cliente
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Última visita
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Visitas
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      textAlign: "right",
-                    }}
-                  >
-                    Ação
-                  </span>
+                  {["Cliente", "Última visita", "Visitas", ""].map((h, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--text-tertiary)",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        textAlign: i === 3 ? "right" : "left",
+                      }}
+                    >
+                      {h || "Ação"}
+                    </span>
+                  ))}
                 </div>
 
-                {/* Linhas */}
                 {sumidos.map((cliente, idx) => {
                   const mensagem = `Olá ${cliente.name}! 👋 Tô com saudade de você aqui na ${nomeBarberaria}. Que tal agendar um horário? 💈`;
                   const link = gerarLinkWhatsApp(cliente.phone, mensagem);
@@ -352,21 +313,20 @@ export function MarketingClient({
                         display: "grid",
                         gridTemplateColumns: "1fr 140px 120px 1fr",
                         padding: "14px 16px",
-                        backgroundColor: "#17171C",
-                        border: "1px solid #2A2A33",
+                        backgroundColor: "var(--bg-card)",
+                        border: "1px solid var(--border)",
                         borderTop: "none",
                         borderRadius: isUltimo ? "0 0 8px 8px" : "0",
                         alignItems: "center",
                       }}
                     >
-                      {/* Nome */}
                       <div>
                         <p
                           style={{
                             margin: 0,
                             fontSize: "14px",
                             fontWeight: 500,
-                            color: "#FFFFFF",
+                            color: "var(--text-primary)",
                           }}
                         >
                           {cliente.name}
@@ -376,7 +336,7 @@ export function MarketingClient({
                             style={{
                               margin: 0,
                               fontSize: "12px",
-                              color: "#6E6E78",
+                              color: "var(--text-tertiary)",
                               marginTop: "2px",
                             }}
                           >
@@ -385,13 +345,12 @@ export function MarketingClient({
                         )}
                       </div>
 
-                      {/* Última visita */}
                       <div>
                         <p
                           style={{
                             margin: 0,
                             fontSize: "13px",
-                            color: "#9A9AA6",
+                            color: "var(--text-secondary)",
                           }}
                         >
                           {formatarData(cliente.lastVisitAt)}
@@ -400,7 +359,7 @@ export function MarketingClient({
                           style={{
                             margin: 0,
                             fontSize: "12px",
-                            color: "#C8102E",
+                            color: "var(--color-primary)",
                             marginTop: "2px",
                             fontWeight: 500,
                           }}
@@ -409,13 +368,14 @@ export function MarketingClient({
                         </p>
                       </div>
 
-                      {/* Total de visitas */}
                       <div>
                         <span
                           style={{
                             fontSize: "13px",
                             color:
-                              cliente.totalVisits === 0 ? "#6E6E78" : "#9A9AA6",
+                              cliente.totalVisits === 0
+                                ? "var(--text-tertiary)"
+                                : "var(--text-secondary)",
                           }}
                         >
                           {cliente.totalVisits === 0
@@ -424,7 +384,6 @@ export function MarketingClient({
                         </span>
                       </div>
 
-                      {/* Botão WhatsApp */}
                       <div style={{ textAlign: "right" }}>
                         {link ? (
                           <a
@@ -457,12 +416,17 @@ export function MarketingClient({
                               viewBox="0 0 24 24"
                               fill="currentColor"
                             >
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              <path d={whatsappIconPath} />
                             </svg>
                             Chamar
                           </a>
                         ) : (
-                          <span style={{ fontSize: "12px", color: "#5E5E68" }}>
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "var(--text-tertiary)",
+                            }}
+                          >
                             Sem telefone
                           </span>
                         )}
@@ -478,11 +442,10 @@ export function MarketingClient({
         {/* ─── ABA: ANIVERSARIANTES ─── */}
         {aba === "aniversariantes" && (
           <div>
-            {/* Cabeçalho informativo */}
             <div
               style={{
-                backgroundColor: "#17171C",
-                border: "1px solid #2A2A33",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
                 borderRadius: "8px",
                 padding: "14px 18px",
                 marginBottom: "24px",
@@ -498,7 +461,7 @@ export function MarketingClient({
                     margin: 0,
                     fontSize: "14px",
                     fontWeight: 600,
-                    color: "#FFFFFF",
+                    color: "var(--text-primary)",
                   }}
                 >
                   Aniversariantes de {mes}
@@ -507,7 +470,7 @@ export function MarketingClient({
                   style={{
                     margin: 0,
                     fontSize: "13px",
-                    color: "#9A9AA6",
+                    color: "var(--text-secondary)",
                     marginTop: "3px",
                   }}
                 >
@@ -528,66 +491,44 @@ export function MarketingClient({
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "1px" }}
               >
-                {/* Cabeçalho da tabela */}
+                {/* Cabeçalho */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "60px 1fr 1fr",
                     padding: "10px 16px",
-                    backgroundColor: "#17171C",
+                    backgroundColor: "var(--bg-card)",
                     borderRadius: "8px 8px 0 0",
-                    border: "1px solid #2A2A33",
+                    border: "1px solid var(--border)",
                     borderBottom: "none",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Dia
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Cliente
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: "#6E6E78",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      textAlign: "right",
-                    }}
-                  >
-                    Ação
-                  </span>
+                  {["Dia", "Cliente", "Ação"].map((h, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--text-tertiary)",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        textAlign: i === 2 ? "right" : "left",
+                      }}
+                    >
+                      {h}
+                    </span>
+                  ))}
                 </div>
 
-                {/* Linhas */}
                 {aniversariantes.map((cliente, idx) => {
                   const hoje = new Date();
                   const diaHoje = hoje.getDate();
                   const eHoje = cliente.diaMes === diaHoje;
                   const isUltimo = idx === aniversariantes.length - 1;
-
                   const anoNascimento = new Date(
                     cliente.birthDate,
                   ).getFullYear();
                   const idadeCompleta = hoje.getFullYear() - anoNascimento;
-
                   const mensagem = `Feliz aniversário, ${cliente.name}! 🎉🎂 A equipe da ${nomeBarberaria} deseja um dia incrível pra você! Que tal comemorar com um corte especial? 💈`;
                   const link = gerarLinkWhatsApp(cliente.phone, mensagem);
 
@@ -598,14 +539,15 @@ export function MarketingClient({
                         display: "grid",
                         gridTemplateColumns: "60px 1fr 1fr",
                         padding: "14px 16px",
-                        backgroundColor: eHoje ? "#1A1208" : "#17171C",
-                        border: `1px solid ${eHoje ? "#C8A24C" : "#2A2A33"}`,
+                        backgroundColor: eHoje
+                          ? "rgba(212,175,55,0.06)"
+                          : "var(--bg-card)",
+                        border: `1px solid ${eHoje ? "var(--color-gold)" : "var(--border)"}`,
                         borderTop: "none",
                         borderRadius: isUltimo ? "0 0 8px 8px" : "0",
                         alignItems: "center",
                       }}
                     >
-                      {/* Dia */}
                       <div style={{ textAlign: "center" }}>
                         <span
                           style={{
@@ -615,8 +557,12 @@ export function MarketingClient({
                             width: "36px",
                             height: "36px",
                             borderRadius: "50%",
-                            backgroundColor: eHoje ? "#C8A24C" : "#2A2A33",
-                            color: eHoje ? "#000000" : "#9A9AA6",
+                            backgroundColor: eHoje
+                              ? "var(--color-gold)"
+                              : "var(--bg-card-elevated)",
+                            color: eHoje
+                              ? "var(--bg-base)"
+                              : "var(--text-secondary)",
                             fontSize: "14px",
                             fontWeight: 700,
                           }}
@@ -628,7 +574,7 @@ export function MarketingClient({
                             style={{
                               margin: "4px 0 0 0",
                               fontSize: "10px",
-                              color: "#C8A24C",
+                              color: "var(--color-gold)",
                               fontWeight: 600,
                             }}
                           >
@@ -637,14 +583,15 @@ export function MarketingClient({
                         )}
                       </div>
 
-                      {/* Nome */}
                       <div>
                         <p
                           style={{
                             margin: 0,
                             fontSize: "14px",
                             fontWeight: 500,
-                            color: eHoje ? "#C8A24C" : "#FFFFFF",
+                            color: eHoje
+                              ? "var(--color-gold)"
+                              : "var(--text-primary)",
                           }}
                         >
                           {eHoje && "🎉 "}
@@ -654,7 +601,7 @@ export function MarketingClient({
                           style={{
                             margin: 0,
                             fontSize: "12px",
-                            color: "#6E6E78",
+                            color: "var(--text-tertiary)",
                             marginTop: "2px",
                           }}
                         >
@@ -663,7 +610,6 @@ export function MarketingClient({
                         </p>
                       </div>
 
-                      {/* Botão WhatsApp */}
                       <div style={{ textAlign: "right" }}>
                         {link ? (
                           <a
@@ -675,8 +621,10 @@ export function MarketingClient({
                               alignItems: "center",
                               gap: "6px",
                               padding: "7px 14px",
-                              backgroundColor: eHoje ? "#C8A24C" : "#25D366",
-                              color: eHoje ? "#000000" : "#FFFFFF",
+                              backgroundColor: eHoje
+                                ? "var(--color-gold)"
+                                : "#25D366",
+                              color: eHoje ? "var(--bg-base)" : "#FFFFFF",
                               borderRadius: "6px",
                               fontSize: "13px",
                               fontWeight: 600,
@@ -696,12 +644,17 @@ export function MarketingClient({
                               viewBox="0 0 24 24"
                               fill="currentColor"
                             >
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              <path d={whatsappIconPath} />
                             </svg>
                             {eHoje ? "Parabenizar agora!" : "Parabenizar"}
                           </a>
                         ) : (
-                          <span style={{ fontSize: "12px", color: "#5E5E68" }}>
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "var(--text-tertiary)",
+                            }}
+                          >
                             Sem telefone
                           </span>
                         )}
@@ -717,10 +670,6 @@ export function MarketingClient({
     </div>
   );
 }
-
-// ─────────────────────────────────────────────
-// COMPONENTE: Estado vazio
-// ─────────────────────────────────────────────
 
 function EstadoVazio({
   icone,
@@ -739,8 +688,8 @@ function EstadoVazio({
         alignItems: "center",
         justifyContent: "center",
         padding: "64px 32px",
-        backgroundColor: "#17171C",
-        border: "1px solid #2A2A33",
+        backgroundColor: "var(--bg-card)",
+        border: "1px solid var(--border)",
         borderRadius: "8px",
         textAlign: "center",
       }}
@@ -751,7 +700,7 @@ function EstadoVazio({
           margin: 0,
           fontSize: "16px",
           fontWeight: 600,
-          color: "#FFFFFF",
+          color: "var(--text-primary)",
         }}
       >
         {titulo}
@@ -760,7 +709,7 @@ function EstadoVazio({
         style={{
           margin: "8px 0 0 0",
           fontSize: "14px",
-          color: "#9A9AA6",
+          color: "var(--text-secondary)",
           maxWidth: "400px",
         }}
       >

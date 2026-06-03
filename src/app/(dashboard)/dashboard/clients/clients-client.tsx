@@ -109,6 +109,17 @@ export function ClientsClient({
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    backgroundColor: "var(--bg-base)",
+    border: "1px solid var(--border)",
+    color: "var(--text-primary)",
+    borderRadius: 8,
+    padding: "10px 16px",
+    fontSize: 14,
+    outline: "none",
+    transition: "border-color 150ms ease",
+  };
+
   return (
     <div className="flex h-full gap-6">
       {/* Coluna principal */}
@@ -119,25 +130,34 @@ export function ClientsClient({
             {
               label: "Total de clientes",
               value: stats.total,
-              color: "text-white",
+              color: "var(--text-primary)",
             },
             {
               label: "Aniversariantes este mês",
               value: stats.aniversariantesMes,
-              color: "text-[#C8A24C]",
+              color: "var(--color-gold)",
             },
             {
               label: "Bloqueados",
               value: stats.bloqueados,
-              color: "text-red-400",
+              color: "var(--status-red)",
             },
           ].map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-[#17171C] border border-[#2A2A33] rounded-xl p-4"
+              className="rounded-xl p-4"
+              style={{
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+              }}
             >
-              <p className="text-sm text-[#9A9AA6]">{kpi.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${kpi.color}`}>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                {kpi.label}
+              </p>
+              <p
+                className="text-3xl font-bold mt-1"
+                style={{ color: kpi.color }}
+              >
                 {kpi.value}
               </p>
             </div>
@@ -145,18 +165,29 @@ export function ClientsClient({
         </div>
 
         {/* Barra de filtros */}
-        <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl p-4 space-y-3">
-          {/* Busca */}
+        <div
+          className="rounded-xl p-4 space-y-3"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
           <div className="flex gap-3">
             <input
-              className="flex-1 bg-[#0B0B0D] border border-[#2A2A33] rounded-lg px-4 py-2.5 text-white placeholder-[#6E6E78] focus:outline-none focus:border-[#C8102E] text-sm transition-colors"
+              style={{ ...inputStyle, flex: 1 }}
               placeholder="Buscar por nome, telefone, e-mail ou CPF..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleSearchKeyDown}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderColor = "var(--color-primary)")
+              }
+              onBlur={(e) =>
+                (e.currentTarget.style.borderColor = "var(--border)")
+              }
             />
             <select
-              className="bg-[#0B0B0D] border border-[#2A2A33] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C8102E] transition-colors"
+              style={inputStyle}
               value={origem}
               onChange={(e) => setOrigem(e.target.value)}
             >
@@ -170,7 +201,18 @@ export function ClientsClient({
             <button
               onClick={applyFilters}
               disabled={isPending}
-              className="bg-[#C8102E] hover:bg-[#E0263D] disabled:opacity-50 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors"
+              className="font-medium px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: "var(--color-primary)",
+                color: "#ffffff",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--color-primary)")
+              }
             >
               {isPending ? "..." : "Buscar"}
             </button>
@@ -188,7 +230,6 @@ export function ClientsClient({
                 key={f.key}
                 onClick={() => {
                   setFiltroAtivo(f.key as typeof filtroAtivo);
-                  // Auto-aplica ao trocar filtro
                   startTransition(async () => {
                     const result = await getClientsData({
                       search: search || undefined,
@@ -200,11 +241,19 @@ export function ClientsClient({
                     setClients(result as Client[]);
                   });
                 }}
-                className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
+                className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+                style={
                   filtroAtivo === f.key
-                    ? "bg-[#C8102E] text-white"
-                    : "bg-[#0B0B0D] border border-[#2A2A33] text-[#9A9AA6] hover:text-white hover:border-[#9A9AA6]"
-                }`}
+                    ? {
+                        backgroundColor: "var(--color-primary)",
+                        color: "#ffffff",
+                      }
+                    : {
+                        backgroundColor: "var(--bg-base)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                      }
+                }
               >
                 {f.label}
               </button>
@@ -212,9 +261,14 @@ export function ClientsClient({
 
             {filtroAtivo === "sumidos" && (
               <div className="flex items-center gap-2 ml-2">
-                <span className="text-xs text-[#9A9AA6]">há mais de</span>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  há mais de
+                </span>
                 <select
-                  className="bg-[#0B0B0D] border border-[#2A2A33] rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                  style={{ ...inputStyle, padding: "4px 8px", fontSize: 12 }}
                   value={sumidoDias}
                   onChange={(e) => {
                     const dias = Number(e.target.value);
@@ -236,9 +290,18 @@ export function ClientsClient({
         </div>
 
         {/* Lista de clientes */}
-        <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl overflow-hidden">
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
           {clients.length === 0 ? (
-            <div className="p-12 text-center text-[#6E6E78]">
+            <div
+              className="p-12 text-center"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               <p className="text-4xl mb-3">👤</p>
               <p className="font-medium">Nenhum cliente encontrado</p>
               <p className="text-sm mt-1">
@@ -248,61 +311,89 @@ export function ClientsClient({
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#2A2A33]">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#6E6E78] uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#6E6E78] uppercase tracking-wider">
-                    Contato
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#6E6E78] uppercase tracking-wider">
-                    Origem
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#6E6E78] uppercase tracking-wider">
-                    Visitas
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#6E6E78] uppercase tracking-wider">
-                    Última visita
-                  </th>
-                  <th className="px-4 py-3" />
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {[
+                    "Cliente",
+                    "Contato",
+                    "Origem",
+                    "Visitas",
+                    "Última visita",
+                    "",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client, i) => {
+                {clients.map((client) => {
                   const diasSumido = daysSince(client.lastVisitAt);
+                  const isSelected = selectedClient?.id === client.id;
                   return (
                     <tr
                       key={client.id}
-                      className={`border-b border-[#2A2A33] last:border-0 hover:bg-[#1F1F27] cursor-pointer transition-colors ${
-                        selectedClient?.id === client.id
-                          ? "bg-[#1F1F27]"
-                          : i % 2 === 0
-                            ? ""
-                            : "bg-[#0B0B0D]/30"
-                      }`}
+                      className="transition-colors cursor-pointer"
+                      style={{
+                        borderBottom: "1px solid var(--border)",
+                        backgroundColor: isSelected
+                          ? "var(--bg-card-elevated)"
+                          : "transparent",
+                      }}
                       onClick={() =>
-                        setSelectedClient(
-                          selectedClient?.id === client.id ? null : client,
-                        )
+                        setSelectedClient(isSelected ? null : client)
                       }
+                      onMouseEnter={(e) => {
+                        if (!isSelected)
+                          e.currentTarget.style.backgroundColor =
+                            "var(--bg-card-elevated)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected)
+                          e.currentTarget.style.backgroundColor = "transparent";
+                      }}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#C8102E]/20 flex items-center justify-center text-sm font-bold text-[#C8102E] shrink-0">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                            style={{
+                              backgroundColor: "var(--color-primary-10)",
+                              color: "var(--color-primary)",
+                            }}
+                          >
                             {client.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <p
-                              className={`font-medium text-sm ${client.bloqueado ? "text-red-400 line-through" : "text-white"}`}
+                              className="font-medium text-sm"
+                              style={{
+                                color: client.bloqueado
+                                  ? "var(--status-red)"
+                                  : "var(--text-primary)",
+                                textDecoration: client.bloqueado
+                                  ? "line-through"
+                                  : "none",
+                              }}
                             >
                               {client.name}
                             </p>
                             {client.birthDate && (
-                              <p className="text-xs text-[#C8A24C]">
+                              <p
+                                className="text-xs"
+                                style={{ color: "var(--color-gold)" }}
+                              >
                                 🎂{" "}
                                 {new Date(client.birthDate).toLocaleDateString(
                                   "pt-BR",
-                                  { day: "2-digit", month: "long" },
+                                  {
+                                    day: "2-digit",
+                                    month: "long",
+                                  },
                                 )}
                               </p>
                             )}
@@ -310,11 +401,17 @@ export function ClientsClient({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-white">
+                        <p
+                          className="text-sm"
+                          style={{ color: "var(--text-primary)" }}
+                        >
                           {formatPhone(client.phone)}
                         </p>
                         {client.email && (
-                          <p className="text-xs text-[#9A9AA6]">
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {client.email}
                           </p>
                         )}
@@ -327,21 +424,37 @@ export function ClientsClient({
                             {ORIGEM_LABELS[client.origem] ?? client.origem}
                           </span>
                         ) : (
-                          <span className="text-xs text-[#6E6E78]">—</span>
+                          <span
+                            style={{
+                              color: "var(--text-tertiary)",
+                              fontSize: 12,
+                            }}
+                          >
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-white font-medium">
+                        <span
+                          className="text-sm font-medium"
+                          style={{ color: "var(--text-primary)" }}
+                        >
                           {client.totalVisits}
                         </span>
-                        <span className="text-xs text-[#6E6E78] ml-1">
+                        <span
+                          className="text-xs ml-1"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
                           visitas
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {client.lastVisitAt ? (
                           <div>
-                            <p className="text-sm text-white">
+                            <p
+                              className="text-sm"
+                              style={{ color: "var(--text-primary)" }}
+                            >
                               {formatDate(client.lastVisitAt)}
                             </p>
                             {diasSumido !== null && diasSumido > 30 && (
@@ -351,12 +464,23 @@ export function ClientsClient({
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs text-[#6E6E78]">Nunca</span>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Nunca
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {client.bloqueado && (
-                          <span className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full">
+                          <span
+                            className="text-xs px-2 py-1 rounded-full"
+                            style={{
+                              color: "var(--status-red)",
+                              backgroundColor: "rgba(200,16,46,0.1)",
+                            }}
+                          >
                             Bloqueado
                           </span>
                         )}
@@ -369,32 +493,59 @@ export function ClientsClient({
           )}
         </div>
 
-        <p className="text-xs text-[#6E6E78] text-center">
+        <p
+          className="text-xs text-center"
+          style={{ color: "var(--text-tertiary)" }}
+        >
           {clients.length} cliente{clients.length !== 1 ? "s" : ""} exibido
           {clients.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {/* Painel lateral — detalhe do cliente */}
+      {/* Painel lateral */}
       {selectedClient && (
         <div className="w-80 shrink-0">
-          <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl p-5 sticky top-6 space-y-4">
+          <div
+            className="rounded-xl p-5 sticky top-6 space-y-4"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+            }}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <h3
-                  className={`font-semibold text-lg ${selectedClient.bloqueado ? "text-red-400" : "text-white"}`}
+                  className="font-semibold text-lg"
+                  style={{
+                    color: selectedClient.bloqueado
+                      ? "var(--status-red)"
+                      : "var(--text-primary)",
+                  }}
                 >
                   {selectedClient.name}
                 </h3>
                 {selectedClient.bloqueado && (
-                  <span className="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      color: "var(--status-red)",
+                      backgroundColor: "rgba(200,16,46,0.1)",
+                    }}
+                  >
                     Bloqueado
                   </span>
                 )}
               </div>
               <button
                 onClick={() => setSelectedClient(null)}
-                className="text-[#6E6E78] hover:text-white transition-colors"
+                className="transition-colors"
+                style={{ color: "var(--text-tertiary)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "var(--text-primary)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "var(--text-tertiary)")
+                }
               >
                 ✕
               </button>
@@ -402,23 +553,34 @@ export function ClientsClient({
 
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-[#6E6E78] text-xs uppercase tracking-wider mb-1">
+                <p
+                  className="text-xs uppercase tracking-wider mb-1"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Contato
                 </p>
-                <p className="text-white">
+                <p style={{ color: "var(--text-primary)" }}>
                   {formatPhone(selectedClient.phone)}
                 </p>
                 {selectedClient.email && (
-                  <p className="text-[#9A9AA6]">{selectedClient.email}</p>
+                  <p style={{ color: "var(--text-secondary)" }}>
+                    {selectedClient.email}
+                  </p>
                 )}
               </div>
 
               {selectedClient.cpf && (
                 <div>
-                  <p className="text-[#6E6E78] text-xs uppercase tracking-wider mb-1">
+                  <p
+                    className="text-xs uppercase tracking-wider mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     CPF
                   </p>
-                  <p className="text-white font-mono">
+                  <p
+                    className="font-mono"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {selectedClient.cpf.replace(
                       /(\d{3})(\d{3})(\d{3})(\d{2})/,
                       "$1.$2.$3-$4",
@@ -429,10 +591,13 @@ export function ClientsClient({
 
               {selectedClient.birthDate && (
                 <div>
-                  <p className="text-[#6E6E78] text-xs uppercase tracking-wider mb-1">
+                  <p
+                    className="text-xs uppercase tracking-wider mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Nascimento
                   </p>
-                  <p className="text-white">
+                  <p style={{ color: "var(--text-primary)" }}>
                     {formatDate(selectedClient.birthDate)} 🎂
                   </p>
                 </div>
@@ -440,7 +605,10 @@ export function ClientsClient({
 
               {selectedClient.origem && (
                 <div>
-                  <p className="text-[#6E6E78] text-xs uppercase tracking-wider mb-1">
+                  <p
+                    className="text-xs uppercase tracking-wider mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     Origem
                   </p>
                   <span
@@ -452,33 +620,66 @@ export function ClientsClient({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#2A2A33]">
-                <div className="bg-[#0B0B0D] rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-white">
+              <div
+                className="grid grid-cols-2 gap-3 pt-2"
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <div
+                  className="rounded-lg p-3 text-center"
+                  style={{ backgroundColor: "var(--bg-base)" }}
+                >
+                  <p
+                    className="text-2xl font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {selectedClient.totalVisits}
                   </p>
-                  <p className="text-xs text-[#6E6E78]">Visitas</p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Visitas
+                  </p>
                 </div>
-                <div className="bg-[#0B0B0D] rounded-lg p-3 text-center">
-                  <p className="text-sm font-bold text-white">
+                <div
+                  className="rounded-lg p-3 text-center"
+                  style={{ backgroundColor: "var(--bg-base)" }}
+                >
+                  <p
+                    className="text-sm font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {formatDate(selectedClient.lastVisitAt)}
                   </p>
-                  <p className="text-xs text-[#6E6E78]">Última visita</p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Última visita
+                  </p>
                 </div>
               </div>
 
               <div>
-                <p className="text-[#6E6E78] text-xs uppercase tracking-wider mb-1">
+                <p
+                  className="text-xs uppercase tracking-wider mb-1"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   Cliente desde
                 </p>
-                <p className="text-[#9A9AA6] text-xs">
+                <p
+                  className="text-xs"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {formatDate(selectedClient.createdAt)}
                 </p>
               </div>
             </div>
 
-            {/* Ações */}
-            <div className="pt-2 border-t border-[#2A2A33] space-y-2">
+            <div
+              className="pt-2 space-y-2"
+              style={{ borderTop: "1px solid var(--border)" }}
+            >
               <a
                 href={`https://wa.me/55${selectedClient.phone.replace(/\D/g, "")}`}
                 target="_blank"
@@ -489,11 +690,19 @@ export function ClientsClient({
               </a>
               <button
                 onClick={() => handleToggleBlock(selectedClient)}
-                className={`w-full text-sm font-medium py-2.5 rounded-lg transition-colors ${
+                className="w-full text-sm font-medium py-2.5 rounded-lg transition-colors"
+                style={
                   selectedClient.bloqueado
-                    ? "bg-[#1F1F27] hover:bg-[#2A2A33] text-[#9A9AA6]"
-                    : "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30"
-                }`}
+                    ? {
+                        backgroundColor: "var(--bg-card-elevated)",
+                        color: "var(--text-secondary)",
+                      }
+                    : {
+                        backgroundColor: "rgba(200,16,46,0.1)",
+                        color: "var(--status-red)",
+                        border: "1px solid rgba(200,16,46,0.3)",
+                      }
+                }
               >
                 {selectedClient.bloqueado
                   ? "✓ Desbloquear cliente"

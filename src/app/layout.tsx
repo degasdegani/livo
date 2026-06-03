@@ -23,8 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body
+        className={inter.className}
+        style={{ transition: "background-color 150ms ease, color 150ms ease" }}
+      >
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

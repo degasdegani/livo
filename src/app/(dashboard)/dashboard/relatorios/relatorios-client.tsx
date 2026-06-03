@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/relatorios/relatorios-client.tsx
 "use client";
 
 import { useState, useTransition } from "react";
@@ -36,7 +37,6 @@ function GraficoBarras({
   const areaLargura = largura - paddingLeft - 16;
   const areaAltura = altura - paddingBottom - paddingTop;
 
-  // Mostra no máximo 31 barras, comprimindo labels se necessário
   const mostrar =
     dados.length > 20
       ? dados.filter(
@@ -49,12 +49,13 @@ function GraficoBarras({
     Math.floor(areaLargura / mostrar.length) - 3,
   );
 
-  // Linhas guia: 4 linhas horizontais
   const linhas = [0.25, 0.5, 0.75, 1].map((frac) => ({
     y: paddingTop + areaAltura * (1 - frac),
     valor: Math.round(maxValor * frac),
   }));
 
+  // Cores via currentColor não funcionam bem em SVG inline — usamos
+  // variáveis CSS como string literal pois SVG aceita var() em fill/stroke
   return (
     <div className="w-full overflow-x-auto">
       <svg
@@ -70,7 +71,7 @@ function GraficoBarras({
               y1={l.y}
               x2={largura - 16}
               y2={l.y}
-              stroke="#2A2A33"
+              stroke="var(--border)"
               strokeWidth="1"
               strokeDasharray="4 4"
             />
@@ -79,7 +80,7 @@ function GraficoBarras({
               y={l.y + 4}
               textAnchor="end"
               fontSize="9"
-              fill="#6E6E78"
+              fill="var(--text-tertiary)"
             >
               {l.valor >= 100 ? `R$${Math.round(l.valor / 100)}` : "0"}
             </text>
@@ -97,24 +98,24 @@ function GraficoBarras({
 
           return (
             <g key={i}>
-              {/* Barra com gradiente vermelho */}
               <rect
                 x={x}
                 y={y}
                 width={larguraBarra}
                 height={altBarra}
                 rx="2"
-                fill={d.totalInCents > 0 ? "#C8102E" : "#2A2A33"}
+                fill={
+                  d.totalInCents > 0 ? "var(--color-primary)" : "var(--border)"
+                }
                 opacity={d.totalInCents > 0 ? 1 : 0.4}
               />
-              {/* Label do eixo X — só se couber */}
               {mostrar.length <= 20 && (
                 <text
                   x={x + larguraBarra / 2}
                   y={altura - 6}
                   textAnchor="middle"
                   fontSize="8"
-                  fill="#6E6E78"
+                  fill="var(--text-tertiary)"
                   transform={
                     mostrar.length > 12
                       ? `rotate(-45, ${x + larguraBarra / 2}, ${altura - 6})`
@@ -134,7 +135,7 @@ function GraficoBarras({
           y1={paddingTop}
           x2={paddingLeft}
           y2={paddingTop + areaAltura}
-          stroke="#2A2A33"
+          stroke="var(--border)"
           strokeWidth="1"
         />
       </svg>
@@ -180,17 +181,28 @@ export function RelatoriosClient({
             key={p.value}
             onClick={() => trocarPeriodo(p.value)}
             disabled={isPending}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            style={
               periodo === p.value
-                ? "bg-[#C8102E] text-white"
-                : "bg-[#17171C] text-[#9A9AA6] border border-[#2A2A33] hover:border-[#C8102E] hover:text-white"
-            } disabled:opacity-50`}
+                ? {
+                    backgroundColor: "var(--color-primary)",
+                    color: "#ffffff",
+                  }
+                : {
+                    backgroundColor: "var(--bg-card)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border)",
+                  }
+            }
           >
             {p.label}
           </button>
         ))}
         {isPending && (
-          <span className="text-xs text-[#6E6E78] self-center ml-2 animate-pulse">
+          <span
+            className="text-xs self-center ml-2 animate-pulse"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             Carregando...
           </span>
         )}
@@ -198,8 +210,13 @@ export function RelatoriosClient({
 
       {/* ── Título do período ── */}
       <div>
-        <h2 className="text-xl font-semibold text-white">{periodoLabel}</h2>
-        <p className="text-sm text-[#6E6E78] mt-0.5">
+        <h2
+          className="text-xl font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          {periodoLabel}
+        </h2>
+        <p className="text-sm mt-0.5" style={{ color: "var(--text-tertiary)" }}>
           Relatório baseado em comandas fechadas
         </p>
       </div>
@@ -210,42 +227,48 @@ export function RelatoriosClient({
           titulo="Faturamento"
           valor={fmt(kpis.faturamentoTotal)}
           sub="comandas fechadas"
-          cor="#3FB950"
+          cor="var(--status-green)"
         />
         <KpiCard
           titulo="Comandas"
           valor={String(kpis.totalComandas)}
           sub="atendimentos"
-          cor="#C8A24C"
+          cor="var(--color-gold)"
         />
         <KpiCard
           titulo="Ticket Médio"
           valor={fmt(kpis.ticketMedio)}
           sub="por comanda"
-          cor="#C8102E"
+          cor="var(--color-primary)"
         />
         <KpiCard
           titulo="Clientes"
           valor={String(kpis.clientesUnicos)}
           sub="nomes únicos"
-          cor="#9A9AA6"
+          cor="var(--text-secondary)"
         />
       </div>
 
       {/* ── Gráfico de evolução ── */}
       <div
         style={{
-          background: "#17171C",
-          border: "1px solid #2A2A33",
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
           borderRadius: "12px",
           padding: "24px",
         }}
       >
-        <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider mb-4">
+        <h3
+          className="text-sm font-semibold uppercase tracking-wider mb-4"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Evolução de faturamento
         </h3>
         {evolucao.every((e) => e.totalInCents === 0) ? (
-          <p className="text-sm text-[#6E6E78] text-center py-8">
+          <p
+            className="text-sm text-center py-8"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             Nenhuma comanda fechada neste período
           </p>
         ) : (
@@ -255,7 +278,6 @@ export function RelatoriosClient({
 
       {/* ── Grid: Serviços + Métodos de pagamento ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top serviços */}
         <TabelaSimples
           titulo="Serviços mais realizados"
           colunas={["Serviço", "Qtd", "Total"]}
@@ -270,17 +292,22 @@ export function RelatoriosClient({
         {/* Métodos de pagamento */}
         <div
           style={{
-            background: "#17171C",
-            border: "1px solid #2A2A33",
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
             borderRadius: "12px",
             padding: "24px",
           }}
         >
-          <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider mb-4">
+          <h3
+            className="text-sm font-semibold uppercase tracking-wider mb-4"
+            style={{ color: "var(--text-secondary)" }}
+          >
             Métodos de pagamento
           </h3>
           {pagamentos.length === 0 ? (
-            <p className="text-sm text-[#6E6E78]">Nenhum registro</p>
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+              Nenhum registro
+            </p>
           ) : (
             <div className="space-y-3">
               {pagamentos.map((p, i) => {
@@ -288,26 +315,34 @@ export function RelatoriosClient({
                   kpis.faturamentoTotal > 0
                     ? Math.round((p.total / kpis.faturamentoTotal) * 100)
                     : 0;
+                // Cores sequenciais para as barras de progresso
+                const barCores = [
+                  "var(--color-primary)",
+                  "var(--color-gold)",
+                  "var(--status-green)",
+                ];
                 return (
                   <div key={i}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-white">{p.metodo}</span>
-                      <span className="text-[#9A9AA6]">
+                      <span style={{ color: "var(--text-primary)" }}>
+                        {p.metodo}
+                      </span>
+                      <span style={{ color: "var(--text-secondary)" }}>
                         {fmt(p.total)}{" "}
-                        <span className="text-[#6E6E78]">({pct}%)</span>
+                        <span style={{ color: "var(--text-tertiary)" }}>
+                          ({pct}%)
+                        </span>
                       </span>
                     </div>
-                    <div className="h-1.5 bg-[#2A2A33] rounded-full overflow-hidden">
+                    <div
+                      className="h-1.5 rounded-full overflow-hidden"
+                      style={{ backgroundColor: "var(--border)" }}
+                    >
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{
                           width: `${pct}%`,
-                          background:
-                            i === 0
-                              ? "#C8102E"
-                              : i === 1
-                                ? "#C8A24C"
-                                : "#3FB950",
+                          backgroundColor: barCores[i % barCores.length],
                         }}
                       />
                     </div>
@@ -367,19 +402,24 @@ function KpiCard({
   return (
     <div
       style={{
-        background: "#17171C",
-        border: "1px solid #2A2A33",
+        backgroundColor: "var(--bg-card)",
+        border: "1px solid var(--border)",
         borderRadius: "12px",
         padding: "20px",
       }}
     >
-      <p className="text-xs font-semibold text-[#6E6E78] uppercase tracking-wider mb-2">
+      <p
+        className="text-xs font-semibold uppercase tracking-wider mb-2"
+        style={{ color: "var(--text-tertiary)" }}
+      >
         {titulo}
       </p>
       <p className="text-2xl font-bold" style={{ color: cor }}>
         {valor}
       </p>
-      <p className="text-xs text-[#6E6E78] mt-1">{sub}</p>
+      <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+        {sub}
+      </p>
     </div>
   );
 }
@@ -398,17 +438,22 @@ function TabelaSimples({
   return (
     <div
       style={{
-        background: "#17171C",
-        border: "1px solid #2A2A33",
+        backgroundColor: "var(--bg-card)",
+        border: "1px solid var(--border)",
         borderRadius: "12px",
         padding: "24px",
       }}
     >
-      <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider mb-4">
+      <h3
+        className="text-sm font-semibold uppercase tracking-wider mb-4"
+        style={{ color: "var(--text-secondary)" }}
+      >
         {titulo}
       </h3>
       {linhas.length === 0 ? (
-        <p className="text-sm text-[#6E6E78]">{vazio || "Nenhum registro"}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+          {vazio || "Nenhum registro"}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -417,7 +462,8 @@ function TabelaSimples({
                 {colunas.map((col, i) => (
                   <th
                     key={i}
-                    className="text-left text-xs text-[#6E6E78] font-medium pb-3 pr-4"
+                    className="text-left text-xs font-medium pb-3 pr-4"
+                    style={{ color: "var(--text-tertiary)" }}
                   >
                     {col}
                   </th>
@@ -426,17 +472,17 @@ function TabelaSimples({
             </thead>
             <tbody>
               {linhas.map((linha, i) => (
-                <tr
-                  key={i}
-                  style={{
-                    borderTop: "1px solid #2A2A33",
-                  }}
-                >
+                <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
                   {linha.map((cel, j) => (
                     <td
                       key={j}
-                      className="py-2.5 pr-4 text-white"
-                      style={{ color: j === 0 ? "#FFFFFF" : "#9A9AA6" }}
+                      className="py-2.5 pr-4"
+                      style={{
+                        color:
+                          j === 0
+                            ? "var(--text-primary)"
+                            : "var(--text-secondary)",
+                      }}
                     >
                       {cel}
                     </td>

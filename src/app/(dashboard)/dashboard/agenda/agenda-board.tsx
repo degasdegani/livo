@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/agenda/agenda-board.tsx
 "use client";
 
 import {
@@ -26,7 +27,7 @@ import {
   updateAppointmentStatus,
 } from "./agenda-actions";
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const HOUR_START = 8;
 const HOUR_END = 20;
@@ -34,6 +35,7 @@ const SLOT_MINUTES = 30;
 const SLOT_HEIGHT = 56;
 const TOTAL_SLOTS = ((HOUR_END - HOUR_START) * 60) / SLOT_MINUTES;
 
+// STATUS_CONFIG usa classes Tailwind semânticas — mantidas pois não são hardcodes de tema
 const STATUS_CONFIG = {
   pending: {
     label: "Pendente",
@@ -162,8 +164,6 @@ export default function AgendaBoard({
   } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // ── Navegação ────────────────────────────────────────────────────────────
-
   async function navigate(delta: number) {
     const next = new Date(dateKey + "T12:00:00");
     next.setDate(next.getDate() + delta);
@@ -194,14 +194,10 @@ export default function AgendaBoard({
     setData(fresh);
   }
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-
   function showToast(msg: string, type: "success" | "error") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   }
-
-  // ── Ações ────────────────────────────────────────────────────────────────
 
   async function handleStatusChange(
     appointmentId: string,
@@ -252,14 +248,10 @@ export default function AgendaBoard({
     });
   }
 
-  // ── Profissionais visíveis por papel ─────────────────────────────────────
-
   const visibleProfessionals =
     data.userRole === "barber" && data.userProfessionalId
       ? data.professionals.filter((p) => p.id === data.userProfessionalId)
       : data.professionals;
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -282,27 +274,54 @@ export default function AgendaBoard({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2A33] flex-shrink-0">
+      <div
+        className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-lg hover:bg-[#1F1F27] text-[#9A9AA6] hover:text-white transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor =
+                "var(--bg-card-elevated)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "transparent")
+            }
           >
             <ChevronLeft size={18} />
           </button>
 
           <div className="text-center min-w-48">
-            <p className="text-white font-semibold capitalize">
+            <p
+              className="font-semibold capitalize"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatDateLabel(dateKey)}
             </p>
             {isTodayKey(dateKey) && (
-              <span className="text-xs text-[#C8102E] font-medium">HOJE</span>
+              <span
+                className="text-xs font-medium"
+                style={{ color: "var(--color-primary)" }}
+              >
+                HOJE
+              </span>
             )}
           </div>
 
           <button
             onClick={() => navigate(1)}
-            className="p-2 rounded-lg hover:bg-[#1F1F27] text-[#9A9AA6] hover:text-white transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.backgroundColor =
+                "var(--bg-card-elevated)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.backgroundColor = "transparent")
+            }
           >
             <ChevronRight size={18} />
           </button>
@@ -312,12 +331,22 @@ export default function AgendaBoard({
           {!isTodayKey(dateKey) && (
             <button
               onClick={goToday}
-              className="px-3 py-1.5 text-sm rounded-lg border border-[#2A2A33] text-[#9A9AA6] hover:text-white hover:border-[#3A3A43] transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--text-primary)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--text-secondary)")
+              }
             >
               Hoje
             </button>
           )}
-          <span className="text-xs text-[#6E6E78]">
+          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {data.appointments.length} agendamento
             {data.appointments.length !== 1 ? "s" : ""}
           </span>
@@ -327,14 +356,26 @@ export default function AgendaBoard({
       {/* Grade */}
       <div className="flex-1 overflow-auto min-h-0">
         {loadingNav ? (
-          <div className="flex items-center justify-center h-64 text-[#6E6E78]">
+          <div
+            className="flex items-center justify-center h-64"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             <div className="flex items-center gap-3">
-              <div className="w-4 h-4 border-2 border-[#C8102E] border-t-transparent rounded-full animate-spin" />
+              <div
+                className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                style={{
+                  borderColor: "var(--color-primary)",
+                  borderTopColor: "transparent",
+                }}
+              />
               <span className="text-sm">Carregando...</span>
             </div>
           </div>
         ) : visibleProfessionals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#6E6E78]">
+          <div
+            className="flex flex-col items-center justify-center h-64 gap-3"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             <Scissors size={32} className="opacity-40" />
             <p className="text-sm">Nenhum profissional ativo cadastrado.</p>
             <p className="text-xs">Adicione profissionais em Configurações.</p>
@@ -422,21 +463,34 @@ export default function AgendaBoard({
 function TimeColumn() {
   const slots = Array.from({ length: TOTAL_SLOTS }, (_, i) => i);
   return (
-    <div className="w-14 flex-shrink-0 border-r border-[#2A2A33] sticky left-0 bg-[#0B0B0D] z-10">
+    <div
+      className="w-14 flex-shrink-0 sticky left-0 z-10"
+      style={{
+        borderRight: "1px solid var(--border)",
+        backgroundColor: "var(--bg-base)",
+      }}
+    >
       <div
-        className="border-b border-[#2A2A33] flex items-center justify-center"
-        style={{ height: 48 }}
+        className="flex items-center justify-center"
+        style={{ height: 48, borderBottom: "1px solid var(--border)" }}
       >
-        <Clock size={12} className="text-[#6E6E78]" />
+        <Clock size={12} style={{ color: "var(--text-tertiary)" }} />
       </div>
       {slots.map((i) => (
         <div
           key={i}
-          className="border-b border-[#2A2A33]/50 flex items-start px-2 pt-1"
-          style={{ height: SLOT_HEIGHT }}
+          className="flex items-start px-2 pt-1"
+          style={{
+            height: SLOT_HEIGHT,
+            borderBottom: "1px solid var(--border)",
+            opacity: 0.5,
+          }}
         >
           {i % 2 === 0 && (
-            <span className="text-[10px] text-[#6E6E78] font-mono leading-none">
+            <span
+              className="text-[10px] font-mono leading-none"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               {slotToTime(i)}
             </span>
           )}
@@ -481,13 +535,19 @@ function ProfessionalColumn({
   }
 
   return (
-    <div className="w-48 flex-shrink-0 border-r border-[#2A2A33]">
+    <div
+      className="w-48 flex-shrink-0"
+      style={{ borderRight: "1px solid var(--border)" }}
+    >
       {/* Header */}
       <div
-        className="border-b border-[#2A2A33] flex items-center gap-2 px-3"
-        style={{ height: 48 }}
+        className="flex items-center gap-2 px-3"
+        style={{ height: 48, borderBottom: "1px solid var(--border)" }}
       >
-        <div className="w-7 h-7 rounded-full bg-[#C8102E]/20 flex items-center justify-center flex-shrink-0">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: "var(--color-primary-10)" }}
+        >
           {professional.avatarUrl ? (
             <img
               src={professional.avatarUrl}
@@ -495,12 +555,18 @@ function ProfessionalColumn({
               className="w-7 h-7 rounded-full object-cover"
             />
           ) : (
-            <span className="text-[10px] font-bold text-[#C8102E]">
+            <span
+              className="text-[10px] font-bold"
+              style={{ color: "var(--color-primary)" }}
+            >
               {professional.name.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
-        <span className="text-xs font-medium text-white truncate">
+        <span
+          className="text-xs font-medium truncate"
+          style={{ color: "var(--text-primary)" }}
+        >
           {professional.name}
         </span>
       </div>
@@ -514,8 +580,10 @@ function ProfessionalColumn({
             return (
               <div
                 key={i}
-                className="border-b border-[#2A2A33]/50"
-                style={{ height: SLOT_HEIGHT }}
+                style={{
+                  height: SLOT_HEIGHT,
+                  borderBottom: "1px solid var(--border)",
+                }}
               />
             );
           }
@@ -528,8 +596,11 @@ function ProfessionalColumn({
             return (
               <div
                 key={i}
-                className="border-b border-[#2A2A33]/50 px-1 py-0.5 relative"
-                style={{ height: SLOT_HEIGHT }}
+                className="px-1 py-0.5 relative"
+                style={{
+                  height: SLOT_HEIGHT,
+                  borderBottom: "1px solid var(--border)",
+                }}
               >
                 <button
                   onClick={() => onAppointmentClick(apt)}
@@ -540,15 +611,24 @@ function ProfessionalColumn({
                     <div
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`}
                     />
-                    <span className="text-[11px] font-semibold text-white truncate">
+                    <span
+                      className="text-[11px] font-semibold truncate"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {apt.clientName}
                     </span>
                   </div>
-                  <p className="text-[10px] text-[#9A9AA6] truncate">
+                  <p
+                    className="text-[10px] truncate"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {apt.serviceName}
                   </p>
                   {slotCount >= 2 && (
-                    <p className="text-[10px] text-[#6E6E78]">
+                    <p
+                      className="text-[10px]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       {formatTime(new Date(apt.date))}
                       {apt.endTime
                         ? ` → ${formatTime(new Date(apt.endTime))}`
@@ -564,11 +644,21 @@ function ProfessionalColumn({
             <div
               key={i}
               onClick={() => onSlotClick(i)}
-              className="border-b border-[#2A2A33]/50 hover:bg-[#1F1F27]/60 cursor-pointer transition-colors group"
-              style={{ height: SLOT_HEIGHT }}
+              className="cursor-pointer transition-colors group"
+              style={{
+                height: SLOT_HEIGHT,
+                borderBottom: "1px solid var(--border)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  "var(--bg-card-elevated)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }
             >
               <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Plus size={12} className="text-[#6E6E78]" />
+                <Plus size={12} style={{ color: "var(--text-tertiary)" }} />
               </div>
             </div>
           );
@@ -613,8 +703,17 @@ function AppointmentModal({
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2A33]">
+      <div
+        className="rounded-xl w-full max-w-md shadow-2xl"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
             <span className={`text-xs font-medium ${cfg.text}`}>
@@ -623,7 +722,14 @@ function AppointmentModal({
           </div>
           <button
             onClick={onClose}
-            className="text-[#6E6E78] hover:text-white transition-colors"
+            className="transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--text-primary)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--text-tertiary)")
+            }
           >
             <X size={16} />
           </button>
@@ -631,20 +737,29 @@ function AppointmentModal({
 
         <div className="px-5 py-4 space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1F1F27] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <User size={14} className="text-[#9A9AA6]" />
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ backgroundColor: "var(--bg-card-elevated)" }}
+            >
+              <User size={14} style={{ color: "var(--text-secondary)" }} />
             </div>
             <div>
-              <p className="text-white font-semibold">
+              <p
+                className="font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {appointment.clientName}
               </p>
-              <p className="text-sm text-[#9A9AA6]">
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {appointment.clientPhone ?? "Sem telefone"}
               </p>
             </div>
           </div>
 
-          <div className="bg-[#1F1F27] rounded-lg p-3 space-y-2">
+          <div
+            className="rounded-lg p-3 space-y-2"
+            style={{ backgroundColor: "var(--bg-card-elevated)" }}
+          >
             <InfoRow
               label="Serviço"
               value={`${appointment.serviceName} — ${formatCurrency(appointment.servicePriceInCents)}`}
@@ -684,14 +799,24 @@ function AppointmentModal({
                       onClick={() =>
                         onStatusChange(appointment.id, "completed")
                       }
-                      className="w-full py-2.5 rounded-lg bg-[#2A2A33] border border-[#3A3A43] text-white text-sm font-medium hover:bg-[#3A3A43] transition-colors disabled:opacity-50"
+                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      style={{
+                        backgroundColor: "var(--bg-card-elevated)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-primary)",
+                      }}
                     >
                       Marcar como concluído
                     </button>
                     <button
                       disabled={isPending}
                       onClick={() => onStatusChange(appointment.id, "no_show")}
-                      className="w-full py-2.5 rounded-lg bg-[#2A2A33] border border-[#3A3A43] text-[#9A9AA6] text-sm font-medium hover:bg-[#3A3A43] transition-colors disabled:opacity-50"
+                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      style={{
+                        backgroundColor: "var(--bg-card-elevated)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                      }}
                     >
                       Não compareceu
                     </button>
@@ -714,7 +839,20 @@ function AppointmentModal({
             appointment.status !== "cancelled" && (
               <button
                 onClick={onMove}
-                className="w-full py-2.5 rounded-lg border border-[#2A2A33] text-[#9A9AA6] text-sm font-medium hover:bg-[#1F1F27] hover:text-white transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                style={{
+                  border: "1px solid var(--border)",
+                  color: "var(--text-secondary)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "var(--bg-card-elevated)";
+                  e.currentTarget.style.color = "var(--text-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                }}
               >
                 <ArrowRight size={14} />
                 Mover para outro barbeiro
@@ -749,23 +887,53 @@ function MoveModal({
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl w-full max-w-sm shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2A33]">
-          <p className="text-white font-semibold text-sm">Mover agendamento</p>
+      <div
+        className="rounded-xl w-full max-w-sm shadow-2xl"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+          <p
+            className="font-semibold text-sm"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Mover agendamento
+          </p>
           <button
             onClick={onClose}
-            className="text-[#6E6E78] hover:text-white transition-colors"
+            className="transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--text-primary)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--text-tertiary)")
+            }
           >
             <X size={16} />
           </button>
         </div>
         <div className="px-5 py-4">
-          <p className="text-xs text-[#9A9AA6] mb-3">
+          <p
+            className="text-xs mb-3"
+            style={{ color: "var(--text-secondary)" }}
+          >
             Selecione o novo barbeiro para{" "}
-            <span className="text-white">{appointment.clientName}</span>:
+            <span style={{ color: "var(--text-primary)" }}>
+              {appointment.clientName}
+            </span>
+            :
           </p>
           {others.length === 0 ? (
-            <p className="text-sm text-[#6E6E78] text-center py-4">
+            <p
+              className="text-sm text-center py-4"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Não há outros profissionais disponíveis.
             </p>
           ) : (
@@ -775,14 +943,35 @@ function MoveModal({
                   key={prof.id}
                   disabled={isPending}
                   onClick={() => onMove(prof.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2A2A33] hover:border-[#C8102E]/40 hover:bg-[#C8102E]/5 transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  style={{ border: "1px solid var(--border)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary)";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--color-primary-10)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#C8102E]/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[10px] font-bold text-[#C8102E]">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: "var(--color-primary-10)" }}
+                  >
+                    <span
+                      className="text-[10px] font-bold"
+                      style={{ color: "var(--color-primary)" }}
+                    >
                       {prof.name.slice(0, 2).toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-sm text-white">{prof.name}</span>
+                  <span
+                    className="text-sm"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {prof.name}
+                  </span>
                 </button>
               ))}
             </div>
@@ -845,20 +1034,59 @@ function NewAppointmentModal({
     });
   }
 
+  const inputStyle = {
+    backgroundColor: "var(--bg-card-elevated)",
+    border: "1px solid var(--border)",
+    color: "var(--text-primary)",
+    borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 14,
+    width: "100%",
+    outline: "none",
+  };
+
+  const labelStyle = {
+    display: "block",
+    fontSize: 12,
+    color: "var(--text-secondary)",
+    marginBottom: 6,
+  };
+
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-[#17171C] border border-[#2A2A33] rounded-xl w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2A2A33]">
+      <div
+        className="rounded-xl w-full max-w-md shadow-2xl"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
           <div>
-            <p className="text-white font-semibold text-sm">Novo agendamento</p>
-            <p className="text-xs text-[#9A9AA6]">
+            <p
+              className="font-semibold text-sm"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Novo agendamento
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
               {timeStr} —{" "}
               {professionals.find((p) => p.id === selectedProfId)?.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#6E6E78] hover:text-white transition-colors"
+            className="transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--text-primary)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--text-tertiary)")
+            }
           >
             <X size={16} />
           </button>
@@ -867,13 +1095,11 @@ function NewAppointmentModal({
         <div className="px-5 py-4 space-y-3">
           {professionals.length > 1 && (
             <div>
-              <label className="block text-xs text-[#9A9AA6] mb-1.5">
-                Barbeiro
-              </label>
+              <label style={labelStyle}>Barbeiro</label>
               <select
                 value={selectedProfId}
                 onChange={(e) => setSelectedProfId(e.target.value)}
-                className="w-full bg-[#1F1F27] border border-[#2A2A33] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C8102E]/50"
+                style={inputStyle}
               >
                 {professionals.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -885,13 +1111,11 @@ function NewAppointmentModal({
           )}
 
           <div>
-            <label className="block text-xs text-[#9A9AA6] mb-1.5">
-              Serviço
-            </label>
+            <label style={labelStyle}>Serviço</label>
             <select
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
-              className="w-full bg-[#1F1F27] border border-[#2A2A33] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C8102E]/50"
+              style={inputStyle}
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -903,46 +1127,46 @@ function NewAppointmentModal({
           </div>
 
           <div>
-            <label className="block text-xs text-[#9A9AA6] mb-1.5">
-              Nome do cliente
-            </label>
+            <label style={labelStyle}>Nome do cliente</label>
             <input
               type="text"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="Ex: João Silva"
-              className="w-full bg-[#1F1F27] border border-[#2A2A33] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6E6E78] focus:outline-none focus:border-[#C8102E]/50"
+              style={inputStyle}
             />
           </div>
 
           <div>
-            <label className="block text-xs text-[#9A9AA6] mb-1.5">
-              Telefone / WhatsApp
-            </label>
+            <label style={labelStyle}>Telefone / WhatsApp</label>
             <input
               type="tel"
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
               placeholder="(11) 99999-9999"
-              className="w-full bg-[#1F1F27] border border-[#2A2A33] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6E6E78] focus:outline-none focus:border-[#C8102E]/50"
+              style={inputStyle}
             />
           </div>
 
           <div>
-            <label className="block text-xs text-[#9A9AA6] mb-1.5">
-              Observações (opcional)
-            </label>
+            <label style={labelStyle}>Observações (opcional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Ex: cliente prefere tesoura"
-              className="w-full bg-[#1F1F27] border border-[#2A2A33] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6E6E78] focus:outline-none focus:border-[#C8102E]/50 resize-none"
+              style={{ ...inputStyle, resize: "none" }}
             />
           </div>
 
           {selectedService && (
-            <div className="bg-[#1F1F27] rounded-lg px-3 py-2 text-xs text-[#9A9AA6]">
+            <div
+              className="rounded-lg px-3 py-2 text-xs"
+              style={{
+                backgroundColor: "var(--bg-card-elevated)",
+                color: "var(--text-secondary)",
+              }}
+            >
               {timeStr} → termina ~
               {(() => {
                 const end = new Date(dateISO);
@@ -962,7 +1186,16 @@ function NewAppointmentModal({
               !clientPhone.trim() ||
               !serviceId
             }
-            className="w-full py-2.5 bg-[#C8102E] hover:bg-[#E0263D] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+            className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: "var(--color-primary)" }}
+            onMouseEnter={(e) => {
+              if (!isPending)
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+            }}
           >
             {isPending ? "Criando..." : "Criar agendamento"}
           </button>
@@ -999,8 +1232,12 @@ function ModalOverlay({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-2 text-sm">
-      <span className="text-[#6E6E78] flex-shrink-0">{label}</span>
-      <span className="text-[#9A9AA6] text-right">{value}</span>
+      <span className="flex-shrink-0" style={{ color: "var(--text-tertiary)" }}>
+        {label}
+      </span>
+      <span className="text-right" style={{ color: "var(--text-secondary)" }}>
+        {value}
+      </span>
     </div>
   );
 }

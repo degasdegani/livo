@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/comandas/nova/page.tsx
 import { requireMembership } from "@/lib/permissions";
 import { getProfessionalsForComanda } from "../actions";
 import NovaComandaForm from "./nova-comanda-form";
@@ -7,10 +8,24 @@ export default async function NovaComandaPage() {
   const professionals = await getProfessionalsForComanda();
 
   return (
-    <div className="min-h-screen bg-[#0B0B0D]">
-      <div className="border-b border-[#2A2A33] bg-[#0B0B0D] px-6 py-4">
-        <h1 className="text-xl font-semibold text-white">Nova Comanda</h1>
-        <p className="mt-0.5 text-sm text-[#9A9AA6]">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
+      <div
+        className="px-6 py-4"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg-base)",
+        }}
+      >
+        <h1
+          className="text-xl font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Nova Comanda
+        </h1>
+        <p
+          className="mt-0.5 text-sm"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Abra um atendimento ou venda avulsa
         </p>
       </div>

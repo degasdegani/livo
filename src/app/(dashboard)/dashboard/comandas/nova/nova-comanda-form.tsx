@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/comandas/nova/nova-comanda-form.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -6,11 +7,21 @@ import { abrirComanda, getClientsForComanda } from "../actions";
 
 type Professional = { id: string; name: string };
 type ClientResult = { id: string; name: string; phone: string };
-
 type Props = {
   professionals: Professional[];
   myProfessionalId: string | null;
   role: string;
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--bg-card)",
+  padding: "12px 16px",
+  color: "var(--text-primary)",
+  fontSize: 14,
+  outline: "none",
 };
 
 export default function NovaComandaForm({
@@ -21,7 +32,6 @@ export default function NovaComandaForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
-
   const [professionalId, setProfessionalId] = useState(
     role === "barber" && myProfessionalId ? myProfessionalId : "",
   );
@@ -54,12 +64,10 @@ export default function NovaComandaForm({
       setError("Selecione um profissional.");
       return;
     }
-
     const resolvedClientName =
       clientMode === "cadastrado" && selectedClient
         ? selectedClient.name
         : clientName || "Cliente avulso";
-
     setError("");
     startTransition(async () => {
       try {
@@ -69,9 +77,7 @@ export default function NovaComandaForm({
           clientName: resolvedClientName,
           notes: notes || undefined,
         });
-        // abrirComanda faz redirect() internamente — não chega aqui em caso de sucesso
       } catch (err) {
-        // Next.js lança exceção interna no redirect — ignorar NEXT_REDIRECT
         const message = err instanceof Error ? err.message : "";
         if (message.includes("NEXT_REDIRECT")) return;
         setError(message || "Erro ao abrir comanda.");
@@ -83,18 +89,28 @@ export default function NovaComandaForm({
     <div className="space-y-6">
       {/* Profissional */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#9A9AA6]">
-          Profissional <span className="text-[#C8102E]">*</span>
+        <label
+          className="mb-1.5 block text-sm font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Profissional <span style={{ color: "var(--color-primary)" }}>*</span>
         </label>
         {role === "barber" ? (
-          <div className="rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-3 text-white">
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--bg-card)",
+              color: "var(--text-primary)",
+            }}
+          >
             {professionals.find((p) => p.id === myProfessionalId)?.name || "—"}
           </div>
         ) : (
           <select
             value={professionalId}
             onChange={(e) => setProfessionalId(e.target.value)}
-            className="w-full rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-3 text-white outline-none focus:border-[#C8102E]/50"
+            style={inputStyle}
           >
             <option value="">Selecione...</option>
             {professionals.map((p) => (
@@ -108,40 +124,43 @@ export default function NovaComandaForm({
 
       {/* Cliente */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#9A9AA6]">
+        <label
+          className="mb-1.5 block text-sm font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Cliente
         </label>
-
-        <div className="mb-3 flex rounded-lg border border-[#2A2A33] bg-[#17171C] p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setClientMode("avulso");
-              setSelectedClient(null);
-              setClientSearch("");
-            }}
-            className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
-              clientMode === "avulso"
-                ? "bg-[#2A2A33] text-white"
-                : "text-[#9A9AA6] hover:text-white"
-            }`}
-          >
-            Avulso
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setClientMode("cadastrado");
-              setClientName("");
-            }}
-            className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
-              clientMode === "cadastrado"
-                ? "bg-[#2A2A33] text-white"
-                : "text-[#9A9AA6] hover:text-white"
-            }`}
-          >
-            Do cadastro
-          </button>
+        <div
+          className="mb-3 flex rounded-lg p-1"
+          style={{
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--bg-card)",
+          }}
+        >
+          {(["avulso", "cadastrado"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => {
+                setClientMode(m);
+                if (m === "avulso") {
+                  setSelectedClient(null);
+                  setClientSearch("");
+                } else setClientName("");
+              }}
+              className="flex-1 rounded-md py-1.5 text-sm font-medium transition-colors"
+              style={
+                clientMode === m
+                  ? {
+                      backgroundColor: "var(--bg-card-elevated)",
+                      color: "var(--text-primary)",
+                    }
+                  : { color: "var(--text-secondary)" }
+              }
+            >
+              {m === "avulso" ? "Avulso" : "Do cadastro"}
+            </button>
+          ))}
         </div>
 
         {clientMode === "avulso" && (
@@ -150,19 +169,31 @@ export default function NovaComandaForm({
             placeholder="Nome do cliente (opcional)"
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
-            className="w-full rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-3 text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+            style={inputStyle}
           />
         )}
 
         {clientMode === "cadastrado" && (
           <div className="relative">
             {selectedClient ? (
-              <div className="flex items-center justify-between rounded-lg border border-[#3FB950]/30 bg-[#3FB950]/5 px-4 py-3">
+              <div
+                className="flex items-center justify-between rounded-lg px-4 py-3"
+                style={{
+                  border: "1px solid var(--status-green)",
+                  backgroundColor: "rgba(0,212,160,0.05)",
+                }}
+              >
                 <div>
-                  <p className="text-sm font-medium text-white">
+                  <p
+                    className="text-sm font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {selectedClient.name}
                   </p>
-                  <p className="text-xs text-[#9A9AA6]">
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {selectedClient.phone}
                   </p>
                 </div>
@@ -173,7 +204,7 @@ export default function NovaComandaForm({
                     setClientSearch("");
                     setClientResults([]);
                   }}
-                  className="text-[#9A9AA6] hover:text-white"
+                  style={{ color: "var(--text-secondary)" }}
                 >
                   <svg
                     className="h-4 w-4"
@@ -197,15 +228,27 @@ export default function NovaComandaForm({
                   placeholder="Buscar por nome ou telefone..."
                   value={clientSearch}
                   onChange={(e) => searchClients(e.target.value)}
-                  className="w-full rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-3 text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+                  style={inputStyle}
                 />
                 {searchPending && (
                   <div className="absolute right-3 top-3.5">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#2A2A33] border-t-[#C8102E]" />
+                    <div
+                      className="h-4 w-4 animate-spin rounded-full border-2"
+                      style={{
+                        borderColor: "var(--border)",
+                        borderTopColor: "var(--color-primary)",
+                      }}
+                    />
                   </div>
                 )}
                 {clientResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-lg border border-[#2A2A33] bg-[#1F1F27] shadow-xl">
+                  <div
+                    className="absolute z-10 mt-1 w-full rounded-lg shadow-xl"
+                    style={{
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--bg-card-elevated)",
+                    }}
+                  >
                     {clientResults.map((c) => (
                       <button
                         key={c.id}
@@ -215,16 +258,38 @@ export default function NovaComandaForm({
                           setClientResults([]);
                           setClientSearch("");
                         }}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#2A2A33]"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "var(--bg-card)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "transparent")
+                        }
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C8102E]/20 text-sm font-medium text-[#C8102E]">
+                        <div
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium"
+                          style={{
+                            backgroundColor: "var(--color-primary-10)",
+                            color: "var(--color-primary)",
+                          }}
+                        >
                           {c.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p
+                            className="text-sm font-medium"
+                            style={{ color: "var(--text-primary)" }}
+                          >
                             {c.name}
                           </p>
-                          <p className="text-xs text-[#9A9AA6]">{c.phone}</p>
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {c.phone}
+                          </p>
                         </div>
                       </button>
                     ))}
@@ -238,7 +303,10 @@ export default function NovaComandaForm({
 
       {/* Observações */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#9A9AA6]">
+        <label
+          className="mb-1.5 block text-sm font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Observações (opcional)
         </label>
         <textarea
@@ -246,12 +314,19 @@ export default function NovaComandaForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          className="w-full resize-none rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-3 text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+          style={{ ...inputStyle, resize: "none" }}
         />
       </div>
 
       {error && (
-        <div className="rounded-lg border border-[#C8102E]/20 bg-[#C8102E]/10 px-4 py-3 text-sm text-[#C8102E]">
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{
+            border: "1px solid var(--color-primary-20)",
+            backgroundColor: "var(--color-primary-10)",
+            color: "var(--color-primary)",
+          }}
+        >
           {error}
         </div>
       )}
@@ -260,7 +335,12 @@ export default function NovaComandaForm({
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex-1 rounded-lg border border-[#2A2A33] bg-[#17171C] py-3 text-sm font-medium text-[#9A9AA6] transition-colors hover:text-white"
+          className="flex-1 rounded-lg py-3 text-sm font-medium transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           Cancelar
         </button>
@@ -268,7 +348,8 @@ export default function NovaComandaForm({
           type="button"
           onClick={handleSubmit}
           disabled={isPending || !professionalId}
-          className="flex-1 rounded-lg bg-[#C8102E] py-3 text-sm font-medium text-white transition-colors hover:bg-[#E0263D] disabled:opacity-50"
+          className="flex-1 rounded-lg py-3 text-sm font-medium text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
         >
           {isPending ? "Abrindo..." : "Abrir Comanda"}
         </button>

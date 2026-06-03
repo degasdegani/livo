@@ -144,28 +144,34 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onClick}
-      className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-        transition-all duration-150 group
-        ${
-          isActive
-            ? "bg-[#C8102E]/15 text-[#C8102E] border border-[#C8102E]/20"
-            : "text-[#9A9AA6] hover:bg-[#1F1F27] hover:text-white border border-transparent"
-        }
-      `}
+      style={
+        isActive
+          ? {
+              backgroundColor: "var(--color-primary-10)",
+              color: "var(--color-primary)",
+              border: "1px solid var(--color-primary-20)",
+            }
+          : {
+              color: "var(--text-secondary)",
+              border: "1px solid transparent",
+            }
+      }
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group nav-link"
     >
       <span
-        className={`transition-colors ${
-          isActive
-            ? "text-[#C8102E]"
-            : "text-[#6E6E78] group-hover:text-[#9A9AA6]"
-        }`}
+        style={{
+          color: isActive ? "var(--color-primary)" : "var(--text-tertiary)",
+          transition: "color 150ms ease",
+        }}
       >
         {item.icon}
       </span>
       {item.label}
       {isActive && (
-        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#C8102E]" />
+        <span
+          className="ml-auto w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        />
       )}
     </Link>
   );
@@ -188,15 +194,18 @@ function ThemeToggle({
       title={
         theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"
       }
-      className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium w-full
-        text-[#9A9AA6] hover:bg-[#1F1F27] hover:text-white
-        transition-all duration-150 group border border-transparent"
+      className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium w-full nav-link transition-all duration-150 group border border-transparent"
+      style={{ color: "var(--text-secondary)" }}
     >
       {theme === "dark" ? (
         <>
           <Sun
             size={18}
-            className="text-[#6E6E78] group-hover:text-[#C8A24C] transition-colors"
+            style={{
+              color: "var(--text-tertiary)",
+              transition: "color 150ms ease",
+            }}
+            className="group-hover:!text-[#d4af37]"
           />
           <span>Tema claro</span>
         </>
@@ -204,7 +213,10 @@ function ThemeToggle({
         <>
           <Moon
             size={18}
-            className="text-[#6E6E78] group-hover:text-[#9A9AA6] transition-colors"
+            style={{
+              color: "var(--text-tertiary)",
+              transition: "color 150ms ease",
+            }}
           />
           <span>Tema escuro</span>
         </>
@@ -235,7 +247,10 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-[#2A2A33]">
+      <div
+        className="px-4 py-5"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <Link
           href="/dashboard"
           className="flex items-center"
@@ -264,17 +279,23 @@ function SidebarContent({
       </nav>
 
       {/* Footer da sidebar: tema + logout */}
-      <div className="px-3 py-4 border-t border-[#2A2A33] space-y-1">
+      <div
+        className="px-3 py-4 space-y-1"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
         <ThemeToggle theme={theme} toggle={toggleTheme} />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-            text-[#9A9AA6] hover:bg-[#1F1F27] hover:text-[#C8102E]
-            transition-all duration-150 w-full group border border-transparent"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium nav-link transition-all duration-150 w-full group border border-transparent"
+          style={{ color: "var(--text-secondary)" }}
         >
           <LogOut
             size={18}
-            className="text-[#6E6E78] group-hover:text-[#C8102E] transition-colors"
+            style={{
+              color: "var(--text-tertiary)",
+              transition: "color 150ms ease",
+            }}
+            className="group-hover:!text-[var(--color-primary)]"
           />
           Sair
         </button>
@@ -318,9 +339,19 @@ export default function DashboardLayout({
   const role: MemberRole = "owner";
 
   return (
-    <div className="min-h-screen bg-[#0B0B0D] flex" data-theme={theme}>
+    <div
+      className="min-h-screen flex"
+      style={{ backgroundColor: "var(--bg-base)" }}
+      data-theme={theme}
+    >
       {/* SIDEBAR DESKTOP */}
-      <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 border-r border-[#2A2A33] bg-[#0B0B0D]">
+      <aside
+        className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0"
+        style={{
+          borderRight: "1px solid var(--border)",
+          backgroundColor: "var(--bg-sidebar)",
+        }}
+      >
         <SidebarContent
           role={role}
           pathname={pathname}
@@ -332,7 +363,8 @@ export default function DashboardLayout({
       {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-40 lg:hidden backdrop-blur-sm"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -340,14 +372,19 @@ export default function DashboardLayout({
       {/* SIDEBAR MOBILE */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 border-r border-[#2A2A33] bg-[#0B0B0D]
+          fixed inset-y-0 left-0 z-50 w-72
           transform transition-transform duration-300 ease-out lg:hidden
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
+        style={{
+          borderRight: "1px solid var(--border)",
+          backgroundColor: "var(--bg-sidebar)",
+        }}
       >
         <button
           onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#6E6E78] hover:text-white hover:bg-[#1F1F27] transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
           aria-label="Fechar menu"
         >
           <X size={18} />
@@ -364,10 +401,17 @@ export default function DashboardLayout({
       {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 flex flex-col lg:ml-60">
         {/* Header mobile */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-[#2A2A33] bg-[#0B0B0D] sticky top-0 z-30">
+        <header
+          className="lg:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-30"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            backgroundColor: "var(--bg-sidebar)",
+          }}
+        >
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg text-[#9A9AA6] hover:text-white hover:bg-[#1F1F27] transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
             aria-label="Abrir menu"
           >
             <Menu size={20} />
@@ -381,7 +425,8 @@ export default function DashboardLayout({
           />
           <button
             onClick={toggle}
-            className="p-2 rounded-lg text-[#9A9AA6] hover:text-white hover:bg-[#1F1F27] transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
             aria-label="Alternar tema"
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}

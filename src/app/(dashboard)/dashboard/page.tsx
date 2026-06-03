@@ -1,9 +1,4 @@
 // src/app/(dashboard)/dashboard/page.tsx
-// ============================================================
-// LIVO — Dashboard Real
-// Painel principal com KPIs, agenda e ações rápidas
-// ============================================================
-
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { getCurrentMembership } from "@/lib/permissions";
@@ -13,7 +8,6 @@ import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
 
-// ── Mapeamento de planos ──────────────────────────────────────
 const PLAN_LABELS: Record<string, string> = {
   start: "START",
   pro: "PRO",
@@ -26,22 +20,21 @@ const PLAN_COLORS: Record<
 > = {
   start: {
     bg: "rgba(94,94,104,0.12)",
-    text: "#9A9AA6",
+    text: "var(--text-secondary)",
     border: "rgba(94,94,104,0.3)",
   },
   pro: {
-    bg: "rgba(200,16,46,0.10)",
-    text: "#C8102E",
-    border: "rgba(200,16,46,0.25)",
+    bg: "var(--color-primary-10)",
+    text: "var(--color-primary)",
+    border: "var(--color-primary-20)",
   },
   prime: {
-    bg: "rgba(200,162,76,0.12)",
-    text: "#C8A24C",
-    border: "rgba(200,162,76,0.3)",
+    bg: "rgba(212,175,55,0.12)",
+    text: "var(--color-gold)",
+    border: "rgba(212,175,55,0.3)",
   },
 };
 
-// ── Saudação dinâmica ─────────────────────────────────────────
 function getSaudacao(): string {
   const hora = new Date().getHours();
   if (hora < 12) return "Bom dia";
@@ -49,7 +42,6 @@ function getSaudacao(): string {
   return "Boa noite";
 }
 
-// ── Componente auxiliar: mini gráfico de barras CSS ──────────
 function MiniGrafico({
   dados,
 }: {
@@ -70,7 +62,7 @@ function MiniGrafico({
               title={`${d.label}: ${(d.totalInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
               style={{
                 height: `${pct}%`,
-                background: ehAtual ? "#C8102E" : "#2A2A33",
+                background: ehAtual ? "var(--color-primary)" : "var(--border)",
                 borderRadius: 3,
                 width: "100%",
                 transition: "height 0.3s",
@@ -78,7 +70,11 @@ function MiniGrafico({
             />
             {dados.length <= 12 && (
               <span
-                style={{ fontSize: 7, color: "#6E6E78", whiteSpace: "nowrap" }}
+                style={{
+                  fontSize: 7,
+                  color: "var(--text-tertiary)",
+                  whiteSpace: "nowrap",
+                }}
               >
                 {d.label}
               </span>
@@ -101,14 +97,11 @@ export default async function DashboardPage() {
     include: {
       services: { where: { isActive: true }, orderBy: { name: "asc" } },
       professionals: { where: { isActive: true } },
-      _count: {
-        select: { clients: true, appointments: true },
-      },
+      _count: { select: { clients: true, appointments: true } },
     },
   });
   if (!barbershop) redirect("/onboarding");
 
-  // Badge do plano
   const planKey = barbershop.plan as string;
   const planLabel = PLAN_LABELS[planKey] ?? planKey.toUpperCase();
   const planColor = PLAN_COLORS[planKey] ?? PLAN_COLORS.start;
@@ -142,13 +135,11 @@ export default async function DashboardPage() {
     },
   });
 
-  // Card de comissões — só para barbeiros
   const comissoesDoMes =
     membership?.role === MemberRole.barber && membership.professionalId
       ? await getComissoesData("mes_atual", membership.professionalId)
       : null;
 
-  // Analytics — só para owner
   const analytics =
     membership?.role === MemberRole.owner
       ? await getDashboardAnalytics(barbershop.id)
@@ -157,11 +148,11 @@ export default async function DashboardPage() {
   const greeting = getSaudacao();
 
   const statusColors = {
-    pending: "#FFB020",
-    confirmed: "#FF2D55",
-    completed: "#00D4A0",
-    cancelled: "#3F3F46",
-    no_show: "#3F3F46",
+    pending: "var(--status-yellow)",
+    confirmed: "var(--color-primary)",
+    completed: "var(--status-green)",
+    cancelled: "var(--status-gray)",
+    no_show: "var(--status-gray)",
   } as const;
 
   const statusLabels = {
@@ -173,36 +164,38 @@ export default async function DashboardPage() {
   } as const;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
-      {/* ── Header ────────────────────────────────────────── */}
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
+      {/* Header */}
       <header
         className="sticky top-0 z-40 flex items-center justify-between px-6 h-14"
         style={{
-          background: "rgba(5,5,5,0.9)",
+          backgroundColor: "var(--bg-base)",
           backdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid var(--border)",
+          opacity: 0.97,
         }}
       >
         <div className="flex items-center gap-3">
-          {/* Dot de status online */}
           <span
             style={{
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "#3FB950",
+              background: "var(--status-green)",
               display: "inline-block",
-              boxShadow: "0 0 8px rgba(63,185,80,0.6)",
+              boxShadow: "0 0 8px rgba(0,212,160,0.5)",
             }}
           />
-          {/* ── AJUSTE 1: Nome da barbearia ── */}
           <span
-            className="font-black text-white"
-            style={{ fontSize: "16px", letterSpacing: "-0.3px" }}
+            className="font-black"
+            style={{
+              fontSize: "16px",
+              letterSpacing: "-0.3px",
+              color: "var(--text-primary)",
+            }}
           >
             {barbershop.name}
           </span>
-          {/* ── AJUSTE 2: Badge do plano dinâmico ── */}
           <span
             className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{
@@ -215,11 +208,10 @@ export default async function DashboardPage() {
             {planLabel}
           </span>
         </div>
-
         <div className="flex items-center gap-4">
           <span
             className="text-sm hidden sm:block"
-            style={{ color: "#52525B" }}
+            style={{ color: "var(--text-tertiary)" }}
           >
             {session.user.name}
           </span>
@@ -232,7 +224,7 @@ export default async function DashboardPage() {
             <button
               type="submit"
               className="text-xs font-semibold transition-colors hover:text-white"
-              style={{ color: "#52525B" }}
+              style={{ color: "var(--text-tertiary)" }}
             >
               Sair
             </button>
@@ -240,37 +232,40 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Conteúdo ──────────────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
-        {/* ── AJUSTE 3: Saudação com nome da barbearia ── */}
+        {/* Saudação */}
         <div>
           <h1
-            className="font-black text-white mb-1"
-            style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
+            className="font-black mb-1"
+            style={{
+              fontSize: "28px",
+              letterSpacing: "-0.5px",
+              color: "var(--text-primary)",
+            }}
           >
             {greeting}, {barbershop.name} ✦
           </h1>
-          <p style={{ color: "#52525B", fontSize: "14px" }}>
+          <p style={{ color: "var(--text-tertiary)", fontSize: "14px" }}>
             {todayAppointments.length === 0
               ? "Nenhum agendamento para hoje ainda."
               : `Hoje você tem ${todayAppointments.length} agendamento${todayAppointments.length > 1 ? "s" : ""}.`}
           </p>
         </div>
 
-        {/* ── KPIs ────────────────────────────────────────── */}
+        {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             {
               label: "HOJE",
               value: todayAppointments.length.toString(),
               sub: "agendamentos",
-              color: "#FF2D55",
+              color: "var(--color-primary)",
             },
             {
               label: "RECEITA",
               value: `R$${(todayRevenue / 100).toFixed(0)}`,
               sub: "hoje",
-              color: "#00D4A0",
+              color: "var(--status-green)",
             },
             {
               label: "CLIENTES",
@@ -289,13 +284,13 @@ export default async function DashboardPage() {
               key={kpi.label}
               className="rounded-2xl p-5"
               style={{
-                background: "#0A0A0A",
-                border: "1px solid rgba(255,255,255,0.06)",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
               }}
             >
               <p
                 className="text-xs font-bold tracking-widest mb-3"
-                style={{ color: "#3F3F46" }}
+                style={{ color: "var(--text-tertiary)" }}
               >
                 {kpi.label}
               </p>
@@ -310,14 +305,17 @@ export default async function DashboardPage() {
               >
                 {kpi.value}
               </p>
-              <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+              <p
+                className="text-xs mt-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
                 {kpi.sub}
               </p>
             </div>
           ))}
         </div>
 
-        {/* ── Card de Comissões (só para barbeiros) ─────────── */}
+        {/* Comissões do barbeiro */}
         {comissoesDoMes &&
           comissoesDoMes.resumo.length > 0 &&
           (() => {
@@ -325,8 +323,12 @@ export default async function DashboardPage() {
             return (
               <div>
                 <h2
-                  className="font-bold text-white mb-4"
-                  style={{ fontSize: "16px", letterSpacing: "-0.3px" }}
+                  className="font-bold mb-4"
+                  style={{
+                    fontSize: "16px",
+                    letterSpacing: "-0.3px",
+                    color: "var(--text-primary)",
+                  }}
                 >
                   Minhas Comissões — Este Mês
                 </h2>
@@ -336,7 +338,7 @@ export default async function DashboardPage() {
                       label: "COMANDAS",
                       value: meu.totalComandas,
                       sub: "fechadas",
-                      color: "#FFFFFF",
+                      color: "var(--text-primary)",
                       size: "32px",
                     },
                     {
@@ -346,7 +348,7 @@ export default async function DashboardPage() {
                         { style: "currency", currency: "BRL" },
                       ),
                       sub: "no período",
-                      color: "#FFFFFF",
+                      color: "var(--text-primary)",
                       size: "26px",
                     },
                     {
@@ -356,7 +358,7 @@ export default async function DashboardPage() {
                         { style: "currency", currency: "BRL" },
                       ),
                       sub: "este mês",
-                      color: "#3FB950",
+                      color: "var(--status-green)",
                       size: "26px",
                     },
                     {
@@ -366,7 +368,7 @@ export default async function DashboardPage() {
                         currency: "BRL",
                       }),
                       sub: "ver histórico →",
-                      color: "#C8A24C",
+                      color: "var(--color-gold)",
                       size: "26px",
                       href: "/dashboard/comissoes",
                     },
@@ -375,13 +377,13 @@ export default async function DashboardPage() {
                       key={card.label}
                       className="rounded-2xl p-5"
                       style={{
-                        background: "#0A0A0A",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        backgroundColor: "var(--bg-card)",
+                        border: "1px solid var(--border)",
                       }}
                     >
                       <p
                         className="text-xs font-bold tracking-widest mb-3"
-                        style={{ color: "#3F3F46" }}
+                        style={{ color: "var(--text-tertiary)" }}
                       >
                         {card.label}
                       </p>
@@ -396,9 +398,15 @@ export default async function DashboardPage() {
                       >
                         {card.value}
                       </p>
-                      <p className="text-xs mt-1" style={{ color: "#52525B" }}>
-                        {card.href ? (
-                          <a href={card.href} style={{ color: "#C8102E" }}>
+                      <p
+                        className="text-xs mt-1"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {"href" in card && card.href ? (
+                          <a
+                            href={card.href}
+                            style={{ color: "var(--color-primary)" }}
+                          >
                             {card.sub}
                           </a>
                         ) : (
@@ -412,21 +420,26 @@ export default async function DashboardPage() {
             );
           })()}
 
-        {/* ── Agenda do dia ────────────────────────────────── */}
+        {/* Agenda do dia */}
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ border: "1px solid var(--border)" }}
         >
           <div
             className="flex items-center justify-between px-6 py-4"
             style={{
-              background: "#0A0A0A",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              backgroundColor: "var(--bg-card)",
+              borderBottom: "1px solid var(--border)",
             }}
           >
             <div>
-              <p className="font-bold text-white text-sm">Agenda de hoje</p>
-              <p className="text-xs" style={{ color: "#52525B" }}>
+              <p
+                className="font-bold text-sm"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Agenda de hoje
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                 {new Date().toLocaleDateString("pt-BR", {
                   weekday: "long",
                   day: "numeric",
@@ -437,11 +450,14 @@ export default async function DashboardPage() {
             <span
               className="text-xs font-bold px-3 py-1 rounded-full"
               style={{
-                background:
+                backgroundColor:
                   todayAppointments.length > 0
-                    ? "rgba(63,185,80,0.1)"
-                    : "rgba(255,255,255,0.04)",
-                color: todayAppointments.length > 0 ? "#3FB950" : "#3F3F46",
+                    ? "rgba(0,212,160,0.1)"
+                    : "var(--bg-card-elevated)",
+                color:
+                  todayAppointments.length > 0
+                    ? "var(--status-green)"
+                    : "var(--text-tertiary)",
               }}
             >
               {todayAppointments.length} confirmado
@@ -452,15 +468,18 @@ export default async function DashboardPage() {
           {todayAppointments.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-16 text-center"
-              style={{ background: "#080808" }}
+              style={{ backgroundColor: "var(--bg-card-elevated)" }}
             >
               <div className="text-4xl mb-4">📅</div>
-              <p className="font-bold text-white mb-2">
+              <p
+                className="font-bold mb-2"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Nenhum agendamento hoje
               </p>
               <p
                 className="text-sm mb-6"
-                style={{ color: "#52525B", maxWidth: "280px" }}
+                style={{ color: "var(--text-tertiary)", maxWidth: "280px" }}
               >
                 Compartilhe o link da sua página para seus clientes agendarem
                 online.
@@ -468,40 +487,39 @@ export default async function DashboardPage() {
               <div
                 className="px-4 py-2 rounded-xl"
                 style={{
-                  background: "rgba(200,16,46,0.06)",
-                  border: "1px solid rgba(200,16,46,0.15)",
+                  backgroundColor: "var(--color-primary-10)",
+                  border: "1px solid var(--color-primary-20)",
                 }}
               >
-                <span className="text-xs" style={{ color: "#C8102E" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   livobarber.com.br/{barbershop.slug}
                 </span>
               </div>
             </div>
           ) : (
-            <div style={{ background: "#080808" }}>
+            <div style={{ backgroundColor: "var(--bg-card-elevated)" }}>
               {todayAppointments.map((appointment) => {
                 const time = new Date(appointment.date).toLocaleTimeString(
                   "pt-BR",
-                  {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  },
+                  { hour: "2-digit", minute: "2-digit" },
                 );
                 const color = statusColors[appointment.status];
                 const isActive =
                   appointment.status === "confirmed" ||
                   appointment.status === "pending";
-
                 return (
                   <div
                     key={appointment.id}
                     className="flex items-center gap-4 px-6 py-4"
-                    style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                    style={{ borderBottom: "1px solid var(--border)" }}
                   >
                     <span
                       className="font-bold shrink-0"
                       style={{
-                        color: "#A1A1AA",
+                        color: "var(--text-secondary)",
                         fontSize: "13px",
                         minWidth: "45px",
                       }}
@@ -522,9 +540,9 @@ export default async function DashboardPage() {
                       style={{
                         width: 36,
                         height: 36,
-                        background: "#1A1A1A",
-                        border: `1.5px solid ${color}40`,
-                        color: "#A1A1AA",
+                        backgroundColor: "var(--bg-card)",
+                        border: `1.5px solid ${color}`,
+                        color: "var(--text-secondary)",
                       }}
                     >
                       {appointment.clientName.charAt(0).toUpperCase()}
@@ -532,11 +550,14 @@ export default async function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p
                         className="font-semibold text-sm truncate"
-                        style={{ color: "#FFFFFF" }}
+                        style={{ color: "var(--text-primary)" }}
                       >
                         {appointment.clientName}
                       </p>
-                      <p className="text-xs" style={{ color: "#52525B" }}>
+                      <p
+                        className="text-xs"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
                         {appointment.service.name} ·{" "}
                         {appointment.professional.name}
                       </p>
@@ -544,7 +565,7 @@ export default async function DashboardPage() {
                     <div className="text-right shrink-0 mr-3 hidden sm:block">
                       <p
                         className="text-sm font-bold"
-                        style={{ color: "#A1A1AA" }}
+                        style={{ color: "var(--text-secondary)" }}
                       >
                         R$ {(appointment.service.priceInCents / 100).toFixed(0)}
                       </p>
@@ -559,9 +580,9 @@ export default async function DashboardPage() {
                         <span
                           className="text-xs font-bold px-2 py-1 rounded-full"
                           style={{
-                            background: `${color}15`,
+                            backgroundColor: `${color}20`,
                             color,
-                            border: `1px solid ${color}30`,
+                            border: `1px solid ${color}40`,
                           }}
                         >
                           {statusLabels[appointment.status]}
@@ -575,7 +596,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* ── Ações rápidas ────────────────────────────────── */}
+        {/* Ações rápidas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
@@ -598,19 +619,27 @@ export default async function DashboardPage() {
             },
           ].map((action) => (
             <a
-              href={action.href}
               key={action.label}
+              href={action.href}
               className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 hover:opacity-80"
               style={{
-                background: "#0A0A0A",
-                border: "1px solid rgba(255,255,255,0.06)",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
                 textDecoration: "none",
               }}
             >
               <span className="text-2xl">{action.icon}</span>
               <div>
-                <p className="font-bold text-white text-sm">{action.label}</p>
-                <p className="text-xs" style={{ color: "#52525B" }}>
+                <p
+                  className="font-bold text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {action.label}
+                </p>
+                <p
+                  className="text-xs"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
                   {action.desc}
                 </p>
               </div>
@@ -618,15 +647,20 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Analytics do owner ───────────────────────────── */}
+        {/* Analytics do owner */}
         {analytics && (
           <div className="space-y-6">
-            <div className="border-t border-[#2A2A33] pt-6">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div
+              className="border-t pt-6"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <h2
+                className="text-lg font-semibold mb-4"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Performance do mês
               </h2>
             </div>
-
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {
@@ -635,12 +669,12 @@ export default async function DashboardPage() {
                     "pt-BR",
                     { style: "currency", currency: "BRL" },
                   ),
-                  cor: "#3FB950",
+                  cor: "var(--status-green)",
                 },
                 {
                   titulo: "Comandas",
                   valor: String(analytics.totalComandasMes),
-                  cor: "#C8A24C",
+                  cor: "var(--color-gold)",
                 },
                 {
                   titulo: "Ticket médio",
@@ -648,24 +682,27 @@ export default async function DashboardPage() {
                     style: "currency",
                     currency: "BRL",
                   }),
-                  cor: "#C8102E",
+                  cor: "var(--color-primary)",
                 },
                 {
                   titulo: "Top serviço",
                   valor: analytics.topServicos[0]?.nome ?? "—",
-                  cor: "#9A9AA6",
+                  cor: "var(--text-secondary)",
                 },
               ].map((k, i) => (
                 <div
                   key={i}
                   style={{
-                    background: "#17171C",
-                    border: "1px solid #2A2A33",
+                    backgroundColor: "var(--bg-card)",
+                    border: "1px solid var(--border)",
                     borderRadius: 12,
                     padding: 20,
                   }}
                 >
-                  <p className="text-xs text-[#6E6E78] uppercase tracking-wider mb-1">
+                  <p
+                    className="text-xs uppercase tracking-wider mb-1"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     {k.titulo}
                   </p>
                   <p className="text-xl font-bold" style={{ color: k.cor }}>
@@ -677,19 +714,23 @@ export default async function DashboardPage() {
 
             <div
               style={{
-                background: "#17171C",
-                border: "1px solid #2A2A33",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 padding: 24,
               }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider">
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Evolução — últimos 12 meses
                 </h3>
                 <a
                   href="/dashboard/relatorios"
-                  className="text-xs text-[#C8102E] hover:underline"
+                  className="text-xs hover:underline"
+                  style={{ color: "var(--color-primary)" }}
                 >
                   Ver relatório completo →
                 </a>
@@ -700,13 +741,16 @@ export default async function DashboardPage() {
             {analytics.topServicos.length > 0 && (
               <div
                 style={{
-                  background: "#17171C",
-                  border: "1px solid #2A2A33",
+                  backgroundColor: "var(--bg-card)",
+                  border: "1px solid var(--border)",
                   borderRadius: 12,
                   padding: 24,
                 }}
               >
-                <h3 className="text-sm font-semibold text-[#9A9AA6] uppercase tracking-wider mb-4">
+                <h3
+                  className="text-sm font-semibold uppercase tracking-wider mb-4"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Serviços mais vendidos este mês
                 </h3>
                 <div className="space-y-2">
@@ -715,10 +759,10 @@ export default async function DashboardPage() {
                       key={i}
                       className="flex items-center justify-between text-sm"
                     >
-                      <span className="text-white">
+                      <span style={{ color: "var(--text-primary)" }}>
                         {i + 1}. {s.nome}
                       </span>
-                      <span className="text-[#9A9AA6]">
+                      <span style={{ color: "var(--text-secondary)" }}>
                         {s.quantidade}× ·{" "}
                         {(s.totalInCents / 100).toLocaleString("pt-BR", {
                           style: "currency",

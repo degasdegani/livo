@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/comandas/[id]/comanda-pdv.tsx
 "use client";
 
 import { PaymentMethod } from "@prisma/client";
@@ -25,7 +26,6 @@ type Product = {
   priceInCents: number;
   stockQuantity: number;
 };
-
 type Props = {
   comanda: NonNullable<ComandaWithItems>;
   services: Service[];
@@ -41,7 +41,6 @@ const PAYMENT_OPTS: { value: PaymentMethod; label: string }[] = [
   { value: "debit_card", label: "💳 Cartão de Débito" },
   { value: "voucher", label: "🎟️ Voucher" },
 ];
-
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "Dinheiro",
   pix: "PIX",
@@ -50,12 +49,23 @@ const PAYMENT_LABEL: Record<string, string> = {
   voucher: "Voucher",
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  open: "text-[#3FB950] bg-[#3FB950]/10 border-[#3FB950]/20",
-  closed: "text-[#9A9AA6] bg-[#9A9AA6]/10 border-[#9A9AA6]/20",
-  cancelled: "text-[#C8102E] bg-[#C8102E]/10 border-[#C8102E]/20",
+const STATUS_STYLE: Record<string, React.CSSProperties> = {
+  open: {
+    color: "var(--status-green)",
+    backgroundColor: "rgba(0,212,160,0.1)",
+    border: "1px solid rgba(0,212,160,0.2)",
+  },
+  closed: {
+    color: "var(--text-secondary)",
+    backgroundColor: "var(--bg-card-elevated)",
+    border: "1px solid var(--border)",
+  },
+  cancelled: {
+    color: "var(--status-red)",
+    backgroundColor: "var(--color-primary-10)",
+    border: "1px solid var(--color-primary-20)",
+  },
 };
-
 const STATUS_LABEL: Record<string, string> = {
   open: "Aberta",
   closed: "Fechada",
@@ -68,6 +78,17 @@ function formatCents(cents: number) {
     currency: "BRL",
   });
 }
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--bg-base)",
+  padding: "10px 16px",
+  color: "var(--text-primary)",
+  fontSize: 14,
+  outline: "none",
+};
 
 export default function ComandaPDV({
   comanda: initial,
@@ -179,7 +200,6 @@ export default function ComandaPDV({
     0,
   );
   const totalLiquido = Math.max(0, totalBruto - discountCents);
-
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(searchService.toLowerCase()),
   );
@@ -188,13 +208,26 @@ export default function ComandaPDV({
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0B0B0D]">
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ backgroundColor: "var(--bg-base)" }}
+    >
       {/* Header */}
-      <div className="border-b border-[#2A2A33] bg-[#0B0B0D] px-6 py-4">
+      <div
+        className="px-6 py-4"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg-base)",
+        }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/dashboard/comandas")}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2A2A33] text-[#9A9AA6] transition-colors hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
           >
             <svg
               className="h-4 w-4"
@@ -210,21 +243,25 @@ export default function ComandaPDV({
               />
             </svg>
           </button>
-
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-white">
+              <h1
+                className="text-lg font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
                 Comanda #{comanda.id.slice(-6).toUpperCase()}
               </h1>
               <span
-                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                  STATUS_COLOR[comanda.status]
-                }`}
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                style={STATUS_STYLE[comanda.status]}
               >
                 {STATUS_LABEL[comanda.status]}
               </span>
             </div>
-            <p className="mt-0.5 text-sm text-[#9A9AA6]">
+            <p
+              className="mt-0.5 text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {comanda.professional.name}
               {(comanda.clientName || comanda.client?.name) && (
                 <> · {comanda.clientName || comanda.client?.name}</>
@@ -234,11 +271,22 @@ export default function ComandaPDV({
               )}
             </p>
           </div>
-
           {canCancel && comanda.status !== "cancelled" && (
             <button
               onClick={() => setShowCancelModal(true)}
-              className="rounded-lg border border-[#2A2A33] px-3 py-1.5 text-sm text-[#9A9AA6] transition-colors hover:border-[#C8102E]/30 hover:text-[#C8102E]"
+              className="rounded-lg px-3 py-1.5 text-sm transition-colors"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
             >
               Cancelar
             </button>
@@ -247,17 +295,27 @@ export default function ComandaPDV({
       </div>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        {/* Coluna esquerda: itens da comanda */}
-        <div className="flex flex-1 flex-col border-b border-[#2A2A33] p-6 lg:border-b-0 lg:border-r">
-          <h2 className="mb-4 text-sm font-medium text-[#9A9AA6]">
+        {/* Itens da comanda */}
+        <div
+          className="flex flex-1 flex-col p-6"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+          <h2
+            className="mb-4 text-sm font-medium"
+            style={{ color: "var(--text-secondary)" }}
+          >
             ITENS DA COMANDA ({comanda.items.length})
           </h2>
 
           {comanda.items.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#17171C]">
+              <div
+                className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: "var(--bg-card)" }}
+              >
                 <svg
-                  className="h-6 w-6 text-[#6E6E78]"
+                  className="h-6 w-6"
+                  style={{ color: "var(--text-tertiary)" }}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -270,7 +328,7 @@ export default function ComandaPDV({
                   />
                 </svg>
               </div>
-              <p className="text-sm text-[#6E6E78]">
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                 {isReadOnly ? "Nenhum item." : "Adicione serviços ou produtos."}
               </p>
             </div>
@@ -279,38 +337,68 @@ export default function ComandaPDV({
               {comanda.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-[#2A2A33] bg-[#17171C] p-3"
+                  className="flex items-center justify-between rounded-lg p-3"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-card)",
+                  }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
+                        className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+                        style={
                           item.type === "service"
-                            ? "bg-[#C8102E]/10 text-[#C8102E]"
-                            : "bg-[#C8A24C]/10 text-[#C8A24C]"
-                        }`}
+                            ? {
+                                backgroundColor: "var(--color-primary-10)",
+                                color: "var(--color-primary)",
+                              }
+                            : {
+                                backgroundColor: "rgba(212,175,55,0.1)",
+                                color: "var(--color-gold)",
+                              }
+                        }
                       >
                         {item.type === "service" ? "Serviço" : "Produto"}
                       </span>
-                      <p className="truncate text-sm font-medium text-white">
+                      <p
+                        className="truncate text-sm font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {item.type === "service"
                           ? item.serviceName
                           : item.productName}
                       </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-[#9A9AA6]">
+                    <p
+                      className="mt-0.5 text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {item.quantity}× {formatCents(item.unitPriceInCents)}
                     </p>
                   </div>
                   <div className="ml-3 flex items-center gap-3">
-                    <span className="font-medium text-white">
+                    <span
+                      className="font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {formatCents(item.totalInCents)}
                     </span>
                     {!isReadOnly && (
                       <button
                         onClick={() => handleRemoveItem(item.id)}
                         disabled={isPending}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-[#6E6E78] transition-colors hover:bg-[#C8102E]/10 hover:text-[#C8102E] disabled:opacity-50"
+                        className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
+                        style={{ color: "var(--text-tertiary)" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--color-primary-10)";
+                          e.currentTarget.style.color = "var(--color-primary)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.color = "var(--text-tertiary)";
+                        }}
                       >
                         <svg
                           className="h-4 w-4"
@@ -333,22 +421,35 @@ export default function ComandaPDV({
             </div>
           )}
 
-          {/* Total */}
           {comanda.items.length > 0 && (
-            <div className="mt-6 rounded-xl border border-[#2A2A33] bg-[#17171C] p-4">
-              <div className="flex items-center justify-between text-sm text-[#9A9AA6]">
+            <div
+              className="mt-6 rounded-xl p-4"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--bg-card)",
+              }}
+            >
+              <div
+                className="flex items-center justify-between text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 <span>Subtotal</span>
                 <span>{formatCents(totalBruto)}</span>
               </div>
-              {comanda.status === "closed" && discountCents > 0 && (
-                <div className="mt-1 flex items-center justify-between text-sm text-[#D4A72C]">
-                  <span>Desconto</span>
-                  <span>− {formatCents(discountCents)}</span>
-                </div>
-              )}
-              <div className="mt-2 flex items-center justify-between border-t border-[#2A2A33] pt-2">
-                <span className="font-semibold text-white">Total</span>
-                <span className="text-lg font-bold text-white">
+              <div
+                className="mt-2 flex items-center justify-between pt-2"
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <span
+                  className="font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Total
+                </span>
+                <span
+                  className="text-lg font-bold"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {formatCents(comanda.totalInCents)}
                 </span>
               </div>
@@ -356,31 +457,33 @@ export default function ComandaPDV({
           )}
         </div>
 
-        {/* Coluna direita: adicionar itens */}
+        {/* Adicionar itens */}
         {!isReadOnly && (
           <div className="w-full p-6 lg:w-96">
-            {/* Tabs */}
-            <div className="mb-4 flex rounded-lg border border-[#2A2A33] bg-[#17171C] p-1">
-              <button
-                onClick={() => setTab("services")}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  tab === "services"
-                    ? "bg-[#2A2A33] text-white"
-                    : "text-[#9A9AA6] hover:text-white"
-                }`}
-              >
-                Serviços
-              </button>
-              <button
-                onClick={() => setTab("products")}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  tab === "products"
-                    ? "bg-[#2A2A33] text-white"
-                    : "text-[#9A9AA6] hover:text-white"
-                }`}
-              >
-                Produtos
-              </button>
+            <div
+              className="mb-4 flex rounded-lg p-1"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--bg-card)",
+              }}
+            >
+              {(["services", "products"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className="flex-1 rounded-md py-2 text-sm font-medium transition-colors"
+                  style={
+                    tab === t
+                      ? {
+                          backgroundColor: "var(--bg-card-elevated)",
+                          color: "var(--text-primary)",
+                        }
+                      : { color: "var(--text-secondary)" }
+                  }
+                >
+                  {t === "services" ? "Serviços" : "Produtos"}
+                </button>
+              ))}
             </div>
 
             {tab === "services" && (
@@ -390,14 +493,22 @@ export default function ComandaPDV({
                   placeholder="Buscar serviço..."
                   value={searchService}
                   onChange={(e) => setSearchService(e.target.value)}
-                  className="mb-3 w-full rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-2.5 text-sm text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+                  className="mb-3 w-full rounded-lg px-4 py-2.5 text-sm outline-none"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                  }}
                 />
                 <div
                   className="space-y-2 overflow-y-auto"
                   style={{ maxHeight: "60vh" }}
                 >
                   {filteredServices.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-[#6E6E78]">
+                    <p
+                      className="py-8 text-center text-sm"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       Nenhum serviço encontrado.
                     </p>
                   ) : (
@@ -406,22 +517,47 @@ export default function ComandaPDV({
                         key={s.id}
                         onClick={() => handleAddService(s.id)}
                         disabled={isPending}
-                        className="flex w-full items-center justify-between rounded-lg border border-[#2A2A33] bg-[#17171C] p-3 text-left transition-all hover:border-[#C8102E]/30 hover:bg-[#1F1F27] disabled:opacity-50"
+                        className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:opacity-50"
+                        style={{
+                          border: "1px solid var(--border)",
+                          backgroundColor: "var(--bg-card)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor =
+                            "var(--color-primary)";
+                          e.currentTarget.style.backgroundColor =
+                            "var(--bg-card-elevated)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.backgroundColor =
+                            "var(--bg-card)";
+                        }}
                       >
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p
+                            className="text-sm font-medium"
+                            style={{ color: "var(--text-primary)" }}
+                          >
                             {s.name}
                           </p>
-                          <p className="text-xs text-[#9A9AA6]">
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
                             {s.durationMin} min
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-[#C8102E]">
+                          <span
+                            className="text-sm font-semibold"
+                            style={{ color: "var(--color-primary)" }}
+                          >
                             {formatCents(s.priceInCents)}
                           </span>
                           <svg
-                            className="h-4 w-4 text-[#6E6E78]"
+                            className="h-4 w-4"
+                            style={{ color: "var(--text-tertiary)" }}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -448,14 +584,22 @@ export default function ComandaPDV({
                   placeholder="Buscar produto..."
                   value={searchProduct}
                   onChange={(e) => setSearchProduct(e.target.value)}
-                  className="mb-3 w-full rounded-lg border border-[#2A2A33] bg-[#17171C] px-4 py-2.5 text-sm text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+                  className="mb-3 w-full rounded-lg px-4 py-2.5 text-sm outline-none"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                  }}
                 />
                 <div
                   className="space-y-2 overflow-y-auto"
                   style={{ maxHeight: "60vh" }}
                 >
                   {filteredProducts.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-[#6E6E78]">
+                    <p
+                      className="py-8 text-center text-sm"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       Nenhum produto encontrado.
                     </p>
                   ) : (
@@ -465,18 +609,25 @@ export default function ComandaPDV({
                       return (
                         <div
                           key={p.id}
-                          className={`rounded-lg border p-3 ${
-                            noStock
-                              ? "border-[#C8102E]/20 bg-[#C8102E]/5 opacity-60"
-                              : "border-[#2A2A33] bg-[#17171C]"
-                          }`}
+                          className="rounded-lg p-3"
+                          style={{
+                            border: `1px solid ${noStock ? "var(--color-primary)" : "var(--border)"}`,
+                            backgroundColor: "var(--bg-card)",
+                            opacity: noStock ? 0.6 : 1,
+                          }}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="truncate text-sm font-medium text-white">
+                              <p
+                                className="truncate text-sm font-medium"
+                                style={{ color: "var(--text-primary)" }}
+                              >
                                 {p.name}
                               </p>
-                              <p className="text-xs text-[#9A9AA6]">
+                              <p
+                                className="text-xs"
+                                style={{ color: "var(--text-secondary)" }}
+                              >
                                 Estoque: {p.stockQuantity} ·{" "}
                                 {formatCents(p.priceInCents)}
                               </p>
@@ -484,7 +635,10 @@ export default function ComandaPDV({
                           </div>
                           {!noStock && (
                             <div className="mt-2 flex items-center gap-2">
-                              <div className="flex items-center rounded-lg border border-[#2A2A33]">
+                              <div
+                                className="flex items-center rounded-lg"
+                                style={{ border: "1px solid var(--border)" }}
+                              >
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -496,11 +650,15 @@ export default function ComandaPDV({
                                       ),
                                     }))
                                   }
-                                  className="flex h-8 w-8 items-center justify-center text-[#9A9AA6] hover:text-white"
+                                  className="flex h-8 w-8 items-center justify-center"
+                                  style={{ color: "var(--text-secondary)" }}
                                 >
                                   −
                                 </button>
-                                <span className="w-8 text-center text-sm text-white">
+                                <span
+                                  className="w-8 text-center text-sm"
+                                  style={{ color: "var(--text-primary)" }}
+                                >
                                   {qty}
                                 </span>
                                 <button
@@ -514,7 +672,8 @@ export default function ComandaPDV({
                                       ),
                                     }))
                                   }
-                                  className="flex h-8 w-8 items-center justify-center text-[#9A9AA6] hover:text-white"
+                                  className="flex h-8 w-8 items-center justify-center"
+                                  style={{ color: "var(--text-secondary)" }}
                                 >
                                   +
                                 </button>
@@ -522,7 +681,11 @@ export default function ComandaPDV({
                               <button
                                 onClick={() => handleAddProduct(p.id)}
                                 disabled={isPending}
-                                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#C8A24C]/10 py-1.5 text-sm font-medium text-[#C8A24C] transition-colors hover:bg-[#C8A24C]/20 disabled:opacity-50"
+                                className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
+                                style={{
+                                  backgroundColor: "rgba(212,175,55,0.1)",
+                                  color: "var(--color-gold)",
+                                }}
                               >
                                 <svg
                                   className="h-3.5 w-3.5"
@@ -542,7 +705,10 @@ export default function ComandaPDV({
                             </div>
                           )}
                           {noStock && (
-                            <p className="mt-2 text-xs text-[#C8102E]">
+                            <p
+                              className="mt-2 text-xs"
+                              style={{ color: "var(--color-primary)" }}
+                            >
                               Sem estoque
                             </p>
                           )}
@@ -555,7 +721,14 @@ export default function ComandaPDV({
             )}
 
             {error && (
-              <div className="mt-3 rounded-lg border border-[#C8102E]/20 bg-[#C8102E]/10 px-3 py-2 text-sm text-[#C8102E]">
+              <div
+                className="mt-3 rounded-lg px-3 py-2 text-sm"
+                style={{
+                  border: "1px solid var(--color-primary-20)",
+                  backgroundColor: "var(--color-primary-10)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 {error}
               </div>
             )}
@@ -564,7 +737,8 @@ export default function ComandaPDV({
               <button
                 onClick={() => setShowCloseModal(true)}
                 disabled={isPending}
-                className="mt-4 w-full rounded-xl bg-[#C8102E] py-3.5 text-sm font-semibold text-white shadow-lg transition-all hover:bg-[#E0263D] disabled:opacity-50"
+                className="mt-4 w-full rounded-xl py-3.5 text-sm font-semibold text-white shadow-lg transition-all disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
               >
                 Fechar Comanda · {formatCents(totalBruto)}
               </button>
@@ -572,41 +746,71 @@ export default function ComandaPDV({
           </div>
         )}
 
-        {/* Comanda fechada/cancelada: resumo */}
+        {/* Resumo readonly */}
         {isReadOnly && (
           <div className="w-full p-6 lg:w-96">
-            <div className="rounded-xl border border-[#2A2A33] bg-[#17171C] p-4">
-              <h2 className="mb-3 text-sm font-medium text-[#9A9AA6]">
+            <div
+              className="rounded-xl p-4"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--bg-card)",
+              }}
+            >
+              <h2
+                className="mb-3 text-sm font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 RESUMO
               </h2>
               {comanda.status === "closed" && (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#9A9AA6]">Pagamento</span>
-                    <span className="font-medium text-white">
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Pagamento
+                    </span>
+                    <span
+                      className="font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {comanda.paymentMethod
                         ? PAYMENT_LABEL[comanda.paymentMethod]
                         : "—"}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-[#9A9AA6]">Fechado em</span>
-                    <span className="text-white">
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Fechado em
+                    </span>
+                    <span style={{ color: "var(--text-primary)" }}>
                       {comanda.closedAt
                         ? new Date(comanda.closedAt).toLocaleString("pt-BR")
                         : "—"}
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-[#2A2A33] pt-3">
-                    <span className="font-semibold text-white">Total pago</span>
-                    <span className="text-lg font-bold text-[#3FB950]">
+                  <div
+                    className="mt-3 flex items-center justify-between pt-3"
+                    style={{ borderTop: "1px solid var(--border)" }}
+                  >
+                    <span
+                      className="font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Total pago
+                    </span>
+                    <span
+                      className="text-lg font-bold"
+                      style={{ color: "var(--status-green)" }}
+                    >
                       {formatCents(comanda.totalInCents)}
                     </span>
                   </div>
                 </>
               )}
               {comanda.status === "cancelled" && (
-                <p className="text-sm text-[#C8102E]">
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   Esta comanda foi cancelada.
                 </p>
               )}
@@ -615,38 +819,68 @@ export default function ComandaPDV({
         )}
       </div>
 
-      {/* Modal: Fechar comanda */}
+      {/* Modal Fechar */}
       {showCloseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#2A2A33] bg-[#17171C] p-6 shadow-2xl">
-            <h2 className="mb-1 text-lg font-semibold text-white">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <h2
+              className="mb-1 text-lg font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
               Fechar Comanda
             </h2>
-            <p className="mb-6 text-sm text-[#9A9AA6]">
+            <p
+              className="mb-6 text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
               Confirme a forma de pagamento e desconto (se houver).
             </p>
 
-            <div className="mb-4 rounded-lg bg-[#0B0B0D] p-3 text-sm">
-              <div className="flex justify-between text-[#9A9AA6]">
+            <div
+              className="mb-4 rounded-lg p-3 text-sm"
+              style={{ backgroundColor: "var(--bg-base)" }}
+            >
+              <div
+                className="flex justify-between"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 <span>Subtotal</span>
                 <span>{formatCents(totalBruto)}</span>
               </div>
               {discountCents > 0 && (
-                <div className="mt-1 flex justify-between text-[#D4A72C]">
+                <div
+                  className="mt-1 flex justify-between"
+                  style={{ color: "var(--status-yellow)" }}
+                >
                   <span>Desconto</span>
                   <span>− {formatCents(discountCents)}</span>
                 </div>
               )}
-              <div className="mt-2 flex justify-between border-t border-[#2A2A33] pt-2 font-semibold text-white">
-                <span>Total</span>
-                <span className="text-[#3FB950]">
+              <div
+                className="mt-2 flex justify-between pt-2 font-semibold"
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <span style={{ color: "var(--text-primary)" }}>Total</span>
+                <span style={{ color: "var(--status-green)" }}>
                   {formatCents(totalLiquido)}
                 </span>
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="mb-1.5 block text-sm text-[#9A9AA6]">
+              <label
+                className="mb-1.5 block text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Desconto (R$)
               </label>
               <input
@@ -654,12 +888,15 @@ export default function ComandaPDV({
                 placeholder="0,00"
                 value={discountStr}
                 onChange={(e) => setDiscountStr(e.target.value)}
-                className="w-full rounded-lg border border-[#2A2A33] bg-[#0B0B0D] px-4 py-2.5 text-white placeholder-[#6E6E78] outline-none focus:border-[#C8102E]/50"
+                style={inputStyle}
               />
             </div>
 
             <div className="mb-6">
-              <label className="mb-2 block text-sm text-[#9A9AA6]">
+              <label
+                className="mb-2 block text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Forma de pagamento
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -668,11 +905,20 @@ export default function ComandaPDV({
                     key={opt.value}
                     type="button"
                     onClick={() => setPaymentMethod(opt.value)}
-                    className={`rounded-lg border py-2.5 text-sm font-medium transition-all ${
+                    className="rounded-lg py-2.5 text-sm font-medium transition-all"
+                    style={
                       paymentMethod === opt.value
-                        ? "border-[#C8102E] bg-[#C8102E]/10 text-white"
-                        : "border-[#2A2A33] bg-[#0B0B0D] text-[#9A9AA6] hover:text-white"
-                    }`}
+                        ? {
+                            border: "1px solid var(--color-primary)",
+                            backgroundColor: "var(--color-primary-10)",
+                            color: "var(--text-primary)",
+                          }
+                        : {
+                            border: "1px solid var(--border)",
+                            backgroundColor: "var(--bg-base)",
+                            color: "var(--text-secondary)",
+                          }
+                    }
                   >
                     {opt.label}
                   </button>
@@ -681,7 +927,14 @@ export default function ComandaPDV({
             </div>
 
             {error && (
-              <div className="mb-4 rounded-lg border border-[#C8102E]/20 bg-[#C8102E]/10 px-3 py-2 text-sm text-[#C8102E]">
+              <div
+                className="mb-4 rounded-lg px-3 py-2 text-sm"
+                style={{
+                  border: "1px solid var(--color-primary-20)",
+                  backgroundColor: "var(--color-primary-10)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 {error}
               </div>
             )}
@@ -692,14 +945,19 @@ export default function ComandaPDV({
                   setShowCloseModal(false);
                   setError("");
                 }}
-                className="flex-1 rounded-lg border border-[#2A2A33] py-3 text-sm text-[#9A9AA6] transition-colors hover:text-white"
+                className="flex-1 rounded-lg py-3 text-sm transition-colors"
+                style={{
+                  border: "1px solid var(--border)",
+                  color: "var(--text-secondary)",
+                }}
               >
                 Voltar
               </button>
               <button
                 onClick={handleClose}
                 disabled={isPending}
-                className="flex-1 rounded-lg bg-[#3FB950] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#3FB950]/80 disabled:opacity-50"
+                className="flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "var(--status-green)" }}
               >
                 {isPending
                   ? "Fechando..."
@@ -710,14 +968,29 @@ export default function ComandaPDV({
         </div>
       )}
 
-      {/* Modal: Cancelar comanda */}
+      {/* Modal Cancelar */}
       {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-[#2A2A33] bg-[#17171C] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-semibold text-white">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <h2
+              className="mb-2 text-lg font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
               Cancelar Comanda
             </h2>
-            <p className="mb-6 text-sm text-[#9A9AA6]">
+            <p
+              className="mb-6 text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
               {comanda.status === "closed"
                 ? "Esta comanda já foi fechada. Cancelar vai estornar o estoque dos produtos. Tem certeza?"
                 : "Tem certeza que deseja cancelar esta comanda? Esta ação não pode ser desfeita."}
@@ -725,14 +998,19 @@ export default function ComandaPDV({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="flex-1 rounded-lg border border-[#2A2A33] py-3 text-sm text-[#9A9AA6] hover:text-white"
+                className="flex-1 rounded-lg py-3 text-sm"
+                style={{
+                  border: "1px solid var(--border)",
+                  color: "var(--text-secondary)",
+                }}
               >
                 Voltar
               </button>
               <button
                 onClick={handleCancel}
                 disabled={isPending}
-                className="flex-1 rounded-lg bg-[#C8102E] py-3 text-sm font-semibold text-white hover:bg-[#E0263D] disabled:opacity-50"
+                className="flex-1 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
               >
                 {isPending ? "Cancelando..." : "Cancelar Comanda"}
               </button>

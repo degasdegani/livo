@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/settings/services-manager.tsx
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
@@ -9,9 +10,6 @@ import {
   updateService,
 } from "./actions";
 
-// ── Máscara de moeda brasileira ───────────────────────────────
-// Funciona como caixa registradora: começa em 0,00
-// Digitar "35" → "0,35" → "3,50" → "35,00"
 function maskCurrency(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (!digits || digits === "0") return "0,00";
@@ -22,7 +20,6 @@ function maskCurrency(value: string): string {
   });
 }
 
-// Exibe preço formatado na lista (centavos → "35,00")
 function formatPrice(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
@@ -43,14 +40,24 @@ function SubmitButton({
       type="submit"
       disabled={pending}
       className="px-4 py-2 rounded-xl font-bold text-xs text-white transition-all hover:opacity-90 disabled:opacity-50"
-      style={{ background: "#FF2D55" }}
+      style={{ backgroundColor: "var(--color-primary)" }}
     >
       {pending ? pendingLabel : label}
     </button>
   );
 }
 
-// ── Formulário de adição (componente separado para state próprio)
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 16px",
+  borderRadius: 12,
+  fontSize: 14,
+  color: "var(--text-primary)",
+  backgroundColor: "var(--bg-base)",
+  border: "1px solid var(--border)",
+  outline: "none",
+};
+
 function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
   const [state, action] = useActionState(addService, null);
   const [price, setPrice] = useState("0,00");
@@ -63,9 +70,12 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
     <form
       action={action}
       className="p-6"
-      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ borderBottom: "1px solid var(--border)" }}
     >
-      <p className="text-xs font-bold mb-4" style={{ color: "#A1A1AA" }}>
+      <p
+        className="text-xs font-bold mb-4"
+        style={{ color: "var(--text-secondary)" }}
+      >
         Novo serviço
       </p>
       <div className="flex flex-col gap-3">
@@ -74,15 +84,14 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
           type="text"
           placeholder="Nome do serviço"
           required
-          className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-          }}
+          style={inputStyle}
         />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs mb-1" style={{ color: "#52525B" }}>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Duração (min)
             </label>
             <input
@@ -92,15 +101,14 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
               min="5"
               defaultValue="30"
               required
-              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
+              style={inputStyle}
             />
           </div>
           <div>
-            <label className="block text-xs mb-1" style={{ color: "#52525B" }}>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Preço (R$)
             </label>
             <input
@@ -110,17 +118,16 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
               value={price}
               onChange={(e) => setPrice(maskCurrency(e.target.value))}
               required
-              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none text-right"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                ...inputStyle,
+                textAlign: "right",
                 fontFamily: "monospace",
               }}
             />
           </div>
         </div>
         {state?.error && (
-          <p className="text-xs" style={{ color: "#FF2D55" }}>
+          <p className="text-xs" style={{ color: "var(--color-primary)" }}>
             {state.error}
           </p>
         )}
@@ -135,7 +142,6 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-// ── Formulário de edição (componente separado para state próprio)
 function EditServiceForm({
   service,
   onSuccess,
@@ -151,7 +157,6 @@ function EditServiceForm({
   onCancel: () => void;
 }) {
   const [state, action] = useActionState(updateService, null);
-  // Inicializa já formatado corretamente (centavos → "35,00")
   const [price, setPrice] = useState(formatPrice(service.priceInCents));
 
   useEffect(() => {
@@ -167,15 +172,14 @@ function EditServiceForm({
           type="text"
           defaultValue={service.name}
           required
-          className="w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-          }}
+          style={inputStyle}
         />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs mb-1" style={{ color: "#52525B" }}>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Duração (min)
             </label>
             <input
@@ -184,15 +188,14 @@ function EditServiceForm({
               defaultValue={service.durationMin}
               min="5"
               required
-              className="w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
+              style={inputStyle}
             />
           </div>
           <div>
-            <label className="block text-xs mb-1" style={{ color: "#52525B" }}>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Preço (R$)
             </label>
             <input
@@ -202,17 +205,16 @@ function EditServiceForm({
               value={price}
               onChange={(e) => setPrice(maskCurrency(e.target.value))}
               required
-              className="w-full px-4 py-2.5 rounded-xl text-sm text-white outline-none text-right"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                ...inputStyle,
+                textAlign: "right",
                 fontFamily: "monospace",
               }}
             />
           </div>
         </div>
         {state?.error && (
-          <p className="text-xs" style={{ color: "#FF2D55" }}>
+          <p className="text-xs" style={{ color: "var(--color-primary)" }}>
             {state.error}
           </p>
         )}
@@ -221,7 +223,7 @@ function EditServiceForm({
             type="button"
             onClick={onCancel}
             className="px-4 py-2 rounded-xl text-xs font-bold hover:opacity-70"
-            style={{ color: "#52525B" }}
+            style={{ color: "var(--text-tertiary)" }}
           >
             Cancelar
           </button>
@@ -262,19 +264,27 @@ export function ServicesManager({ services }: { services: Service[] }) {
   return (
     <section
       className="rounded-2xl overflow-hidden"
-      style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ border: "1px solid var(--border)" }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-6 py-4"
         style={{
-          background: "#0A0A0A",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          backgroundColor: "var(--bg-card)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
         <div>
-          <p className="font-bold text-white text-sm">Serviços</p>
-          <p className="text-xs mt-0.5" style={{ color: "#52525B" }}>
+          <p
+            className="font-bold text-sm"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Serviços
+          </p>
+          <p
+            className="text-xs mt-0.5"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             {services.filter((s) => s.isActive).length} ativos ·{" "}
             {services.length} total
           </p>
@@ -286,31 +296,33 @@ export function ServicesManager({ services }: { services: Service[] }) {
             setEditingId(null);
           }}
           className="px-3 py-1.5 rounded-xl font-bold text-xs transition-all hover:opacity-80"
-          style={{
-            background: showAddForm
-              ? "rgba(255,255,255,0.06)"
-              : "rgba(255,45,85,0.1)",
-            color: showAddForm ? "#52525B" : "#FF2D55",
-            border: showAddForm
-              ? "1px solid rgba(255,255,255,0.08)"
-              : "1px solid rgba(255,45,85,0.2)",
-          }}
+          style={
+            showAddForm
+              ? {
+                  backgroundColor: "var(--bg-card-elevated)",
+                  color: "var(--text-tertiary)",
+                  border: "1px solid var(--border)",
+                }
+              : {
+                  backgroundColor: "var(--color-primary-10)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-primary-20)",
+                }
+          }
         >
           {showAddForm ? "Cancelar" : "+ Adicionar serviço"}
         </button>
       </div>
 
-      <div style={{ background: "#080808" }}>
-        {/* Formulário de adição */}
+      <div style={{ backgroundColor: "var(--bg-card-elevated)" }}>
         {showAddForm && (
           <AddServiceForm onSuccess={() => setShowAddForm(false)} />
         )}
 
-        {/* Lista de serviços */}
         {services.length === 0 ? (
           <p
             className="px-6 py-8 text-center text-sm"
-            style={{ color: "#52525B" }}
+            style={{ color: "var(--text-tertiary)" }}
           >
             Nenhum serviço cadastrado.
           </p>
@@ -321,7 +333,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
               style={{
                 borderBottom:
                   i < services.length - 1
-                    ? "1px solid rgba(255,255,255,0.04)"
+                    ? "1px solid var(--border)"
                     : undefined,
               }}
             >
@@ -337,10 +349,16 @@ export function ServicesManager({ services }: { services: Service[] }) {
                   style={{ opacity: service.isActive ? 1 : 0.4 }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-white">
+                    <p
+                      className="font-semibold text-sm"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {service.name}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: "#52525B" }}>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
                       {service.durationMin} min · R${" "}
                       {formatPrice(service.priceInCents)}
                     </p>
@@ -354,8 +372,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
                       }}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-70"
                       style={{
-                        color: "#A1A1AA",
-                        background: "rgba(255,255,255,0.04)",
+                        color: "var(--text-secondary)",
+                        backgroundColor: "var(--bg-card)",
                       }}
                     >
                       Editar
@@ -365,12 +383,17 @@ export function ServicesManager({ services }: { services: Service[] }) {
                       onClick={() => handleToggle(service.id)}
                       disabled={isPending}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-70 disabled:opacity-50"
-                      style={{
-                        background: service.isActive
-                          ? "rgba(0,212,160,0.08)"
-                          : "rgba(255,255,255,0.04)",
-                        color: service.isActive ? "#00D4A0" : "#52525B",
-                      }}
+                      style={
+                        service.isActive
+                          ? {
+                              backgroundColor: "rgba(0,212,160,0.08)",
+                              color: "var(--status-green)",
+                            }
+                          : {
+                              backgroundColor: "var(--bg-card)",
+                              color: "var(--text-tertiary)",
+                            }
+                      }
                     >
                       {service.isActive ? "Ativo" : "Inativo"}
                     </button>
@@ -380,8 +403,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
                       disabled={isPending}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-70 disabled:opacity-50"
                       style={{
-                        background: "rgba(255,45,85,0.08)",
-                        color: "#FF2D55",
+                        backgroundColor: "var(--color-primary-10)",
+                        color: "var(--color-primary)",
                       }}
                     >
                       Excluir

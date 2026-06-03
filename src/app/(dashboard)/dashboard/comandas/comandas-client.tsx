@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/comandas/comandas-client.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -30,18 +31,30 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelada",
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  open: "text-[#3FB950] bg-[#3FB950]/10 border-[#3FB950]/20",
-  closed: "text-[#9A9AA6] bg-[#9A9AA6]/10 border-[#9A9AA6]/20",
-  cancelled: "text-[#C8102E] bg-[#C8102E]/10 border-[#C8102E]/20",
-};
-
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "Dinheiro",
   pix: "PIX",
   credit_card: "Cartão Crédito",
   debit_card: "Cartão Débito",
   voucher: "Voucher",
+};
+
+const STATUS_STYLE: Record<string, React.CSSProperties> = {
+  open: {
+    color: "var(--status-green)",
+    backgroundColor: "rgba(0,212,160,0.1)",
+    border: "1px solid rgba(0,212,160,0.2)",
+  },
+  closed: {
+    color: "var(--text-secondary)",
+    backgroundColor: "rgba(154,154,166,0.1)",
+    border: "1px solid rgba(154,154,166,0.2)",
+  },
+  cancelled: {
+    color: "var(--status-red)",
+    backgroundColor: "var(--color-primary-10)",
+    border: "1px solid var(--color-primary-20)",
+  },
 };
 
 function formatCents(cents: number) {
@@ -83,20 +96,42 @@ export default function ComandasClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0D]">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
       {/* Header */}
-      <div className="border-b border-[#2A2A33] bg-[#0B0B0D] px-6 py-4">
+      <div
+        className="px-6 py-4"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          backgroundColor: "var(--bg-base)",
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-white">Comandas</h1>
-            <p className="mt-0.5 text-sm text-[#9A9AA6]">
+            <h1
+              className="text-xl font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Comandas
+            </h1>
+            <p
+              className="mt-0.5 text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
               PDV — registre atendimentos e vendas
             </p>
           </div>
           {(role === "owner" || role === "reception" || role === "barber") && (
             <button
               onClick={() => router.push("/dashboard/comandas/nova")}
-              className="flex items-center gap-2 rounded-lg bg-[#C8102E] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#E0263D]"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+              style={{ backgroundColor: "var(--color-primary)" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--color-primary)")
+              }
             >
               <svg
                 className="h-4 w-4"
@@ -122,11 +157,20 @@ export default function ComandasClient({
             <button
               key={f}
               onClick={() => changeFilter(f)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+              style={
                 filter === f
-                  ? "border-[#C8102E] bg-[#C8102E]/10 text-[#C8102E]"
-                  : "border-[#2A2A33] bg-[#17171C] text-[#9A9AA6] hover:text-white"
-              }`}
+                  ? {
+                      border: "1px solid var(--color-primary)",
+                      backgroundColor: "var(--color-primary-10)",
+                      color: "var(--color-primary)",
+                    }
+                  : {
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--bg-card)",
+                      color: "var(--text-secondary)",
+                    }
+              }
             >
               {f === "abertas" && "Abertas"}
               {f === "hoje" && "Hoje"}
@@ -141,15 +185,25 @@ export default function ComandasClient({
       <div className="p-6">
         {isPending && (
           <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2A2A33] border-t-[#C8102E]" />
+            <div
+              className="h-5 w-5 animate-spin rounded-full border-2"
+              style={{
+                borderColor: "var(--border)",
+                borderTopColor: "var(--color-primary)",
+              }}
+            />
           </div>
         )}
 
         {!isPending && comandas.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#17171C]">
+            <div
+              className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
+              style={{ backgroundColor: "var(--bg-card)" }}
+            >
               <svg
-                className="h-8 w-8 text-[#6E6E78]"
+                className="h-8 w-8"
+                style={{ color: "var(--text-tertiary)" }}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -162,8 +216,13 @@ export default function ComandasClient({
                 />
               </svg>
             </div>
-            <p className="text-[#9A9AA6]">Nenhuma comanda encontrada.</p>
-            <p className="mt-1 text-sm text-[#6E6E78]">
+            <p style={{ color: "var(--text-secondary)" }}>
+              Nenhuma comanda encontrada.
+            </p>
+            <p
+              className="mt-1 text-sm"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Abra uma nova comanda para começar.
             </p>
           </div>
@@ -185,31 +244,52 @@ export default function ComandasClient({
                   onClick={() =>
                     router.push(`/dashboard/comandas/${comanda.id}`)
                   }
-                  className="group rounded-xl border border-[#2A2A33] bg-[#17171C] p-4 text-left transition-all hover:border-[#C8102E]/30 hover:bg-[#1F1F27]"
+                  className="group rounded-xl p-4 text-left transition-all"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-card)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary)";
+                    e.currentTarget.style.backgroundColor =
+                      "var(--bg-card-elevated)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.backgroundColor = "var(--bg-card)";
+                  }}
                 >
-                  {/* Top row */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-white truncate">
+                      <p
+                        className="font-medium truncate"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {comanda.clientName ||
                           comanda.client?.name ||
                           "Cliente avulso"}
                       </p>
-                      <p className="mt-0.5 text-sm text-[#9A9AA6]">
+                      <p
+                        className="mt-0.5 text-sm"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         {comanda.professional.name}
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                        STATUS_COLOR[comanda.status]
-                      }`}
+                      className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      style={
+                        STATUS_STYLE[comanda.status] ?? STATUS_STYLE.closed
+                      }
                     >
                       {STATUS_LABEL[comanda.status]}
                     </span>
                   </div>
 
-                  {/* Itens resumo */}
-                  <div className="mt-3 flex gap-3 text-xs text-[#6E6E78]">
+                  <div
+                    className="mt-3 flex gap-3 text-xs"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
                     {serviceCount > 0 && (
                       <span>
                         {serviceCount} serviço{serviceCount > 1 ? "s" : ""}
@@ -223,19 +303,30 @@ export default function ComandasClient({
                     {comanda.items.length === 0 && <span>Sem itens</span>}
                   </div>
 
-                  {/* Footer */}
-                  <div className="mt-3 flex items-center justify-between border-t border-[#2A2A33] pt-3">
-                    <span className="text-sm text-[#9A9AA6]">
+                  <div
+                    className="mt-3 flex items-center justify-between pt-3"
+                    style={{ borderTop: "1px solid var(--border)" }}
+                  >
+                    <span
+                      className="text-sm"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {formatDate(comanda.openedAt)} ·{" "}
                       {formatTime(comanda.openedAt)}
                     </span>
-                    <span className="font-semibold text-white">
+                    <span
+                      className="font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {formatCents(comanda.totalInCents)}
                     </span>
                   </div>
 
                   {comanda.paymentMethod && (
-                    <p className="mt-1 text-xs text-[#9A9AA6]">
+                    <p
+                      className="mt-1 text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {PAYMENT_LABEL[comanda.paymentMethod]}
                     </p>
                   )}
