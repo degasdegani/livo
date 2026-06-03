@@ -1,22 +1,25 @@
 // src/app/(dashboard)/layout.tsx
 "use client";
 
+import { LiviaBubble } from "@/components/livia-bubble";
 import {
   BarChart2,
   CalendarDays,
   DollarSign,
   FileText,
-  LayoutDashboard,
+  Home,
   LogOut,
   Megaphone,
   Menu,
+  Moon,
   Package,
-  Scissors,
   Settings,
+  Sun,
   Users,
   X,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -40,9 +43,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: "Dashboard",
+    label: "Início",
     href: "/dashboard",
-    icon: <LayoutDashboard size={18} />,
+    icon: <Home size={18} />,
     roles: ["owner", "reception", "barber"],
   },
   {
@@ -96,6 +99,30 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 // ────────────────────────────────────────────────────────────────
+// Hook de tema dark/light
+// ────────────────────────────────────────────────────────────────
+
+function useTheme() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("livo-theme") as "dark" | "light" | null;
+    const initial = saved ?? "dark";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme", initial);
+  }, []);
+
+  function toggle() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("livo-theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  }
+
+  return { theme, toggle };
+}
+
+// ────────────────────────────────────────────────────────────────
 // Componente de item do menu
 // ────────────────────────────────────────────────────────────────
 
@@ -108,8 +135,6 @@ function NavLink({
   pathname: string;
   onClick?: () => void;
 }) {
-  // Regra de active: "/dashboard" só é ativo se for exatamente "/dashboard"
-  // "/dashboard/agenda" é ativo se pathname começa com "/dashboard/agenda"
   const isActive =
     item.href === "/dashboard"
       ? pathname === "/dashboard"
@@ -147,16 +172,62 @@ function NavLink({
 }
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar conteúdo (reutilizado em desktop e mobile)
+// Botão de tema
+// ────────────────────────────────────────────────────────────────
+
+function ThemeToggle({
+  theme,
+  toggle,
+}: {
+  theme: "dark" | "light";
+  toggle: () => void;
+}) {
+  return (
+    <button
+      onClick={toggle}
+      title={
+        theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"
+      }
+      className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium w-full
+        text-[#9A9AA6] hover:bg-[#1F1F27] hover:text-white
+        transition-all duration-150 group border border-transparent"
+    >
+      {theme === "dark" ? (
+        <>
+          <Sun
+            size={18}
+            className="text-[#6E6E78] group-hover:text-[#C8A24C] transition-colors"
+          />
+          <span>Tema claro</span>
+        </>
+      ) : (
+        <>
+          <Moon
+            size={18}
+            className="text-[#6E6E78] group-hover:text-[#9A9AA6] transition-colors"
+          />
+          <span>Tema escuro</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Sidebar conteúdo
 // ────────────────────────────────────────────────────────────────
 
 function SidebarContent({
   role,
   pathname,
+  theme,
+  toggleTheme,
   onNavClick,
 }: {
   role: MemberRole;
   pathname: string;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
   onNavClick?: () => void;
 }) {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
@@ -167,16 +238,16 @@ function SidebarContent({
       <div className="px-4 py-5 border-b border-[#2A2A33]">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5"
+          className="flex items-center"
           onClick={onNavClick}
         >
-          <div className="w-8 h-8 rounded-lg bg-[#C8102E] flex items-center justify-center flex-shrink-0">
-            <Scissors size={16} className="text-white" />
-          </div>
-          <span className="text-lg font-black tracking-wider">
-            <span className="text-white">LI</span>
-            <span className="text-[#C8102E]">VO</span>
-          </span>
+          <Image
+            src="/logo-livo.svg"
+            alt="LIVO"
+            width={120}
+            height={32}
+            priority
+          />
         </Link>
       </div>
 
@@ -192,13 +263,14 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-[#2A2A33]">
+      {/* Footer da sidebar: tema + logout */}
+      <div className="px-3 py-4 border-t border-[#2A2A33] space-y-1">
+        <ThemeToggle theme={theme} toggle={toggleTheme} />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
             text-[#9A9AA6] hover:bg-[#1F1F27] hover:text-[#C8102E]
-            transition-all duration-150 w-full group"
+            transition-all duration-150 w-full group border border-transparent"
         >
           <LogOut
             size={18}
@@ -222,13 +294,12 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
-  // Fechar menu mobile ao trocar de rota
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Fechar menu mobile ao apertar Escape
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setMobileOpen(false);
@@ -237,32 +308,28 @@ export default function DashboardLayout({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Rola body quando menu mobile abre
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
 
-  // IMPORTANTE: ajuste o role conforme sua lógica real.
-  // Se você busca o role do membership via Server Component no layout pai,
-  // passe via props ou context. Por ora, deixamos "owner" como default
-  // para não quebrar o fluxo. Veja nota abaixo do arquivo.
   const role: MemberRole = "owner";
 
   return (
-    <div className="min-h-screen bg-[#0B0B0D] flex">
-      {/* ── SIDEBAR DESKTOP ── */}
+    <div className="min-h-screen bg-[#0B0B0D] flex" data-theme={theme}>
+      {/* SIDEBAR DESKTOP */}
       <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 border-r border-[#2A2A33] bg-[#0B0B0D]">
-        <SidebarContent role={role} pathname={pathname} />
+        <SidebarContent
+          role={role}
+          pathname={pathname}
+          theme={theme}
+          toggleTheme={toggle}
+        />
       </aside>
 
-      {/* ── MOBILE OVERLAY ── */}
+      {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/70 lg:hidden backdrop-blur-sm"
@@ -270,7 +337,7 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* ── SIDEBAR MOBILE ── */}
+      {/* SIDEBAR MOBILE */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-72 border-r border-[#2A2A33] bg-[#0B0B0D]
@@ -278,7 +345,6 @@ export default function DashboardLayout({
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Botão fechar dentro da sidebar */}
         <button
           onClick={() => setMobileOpen(false)}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-[#6E6E78] hover:text-white hover:bg-[#1F1F27] transition-colors"
@@ -289,11 +355,13 @@ export default function DashboardLayout({
         <SidebarContent
           role={role}
           pathname={pathname}
+          theme={theme}
+          toggleTheme={toggle}
           onNavClick={() => setMobileOpen(false)}
         />
       </aside>
 
-      {/* ── CONTEÚDO PRINCIPAL ── */}
+      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 flex flex-col lg:ml-60">
         {/* Header mobile */}
         <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-[#2A2A33] bg-[#0B0B0D] sticky top-0 z-30">
@@ -304,16 +372,26 @@ export default function DashboardLayout({
           >
             <Menu size={20} />
           </button>
-          <span className="text-base font-black tracking-wider">
-            <span className="text-white">LI</span>
-            <span className="text-[#C8102E]">VO</span>
-          </span>
-          {/* Espaço para alinhar logo ao centro */}
-          <div className="w-8" />
+          <Image
+            src="/logo-icon.svg"
+            alt="LIVO"
+            width={32}
+            height={32}
+            priority
+          />
+          <button
+            onClick={toggle}
+            className="p-2 rounded-lg text-[#9A9AA6] hover:text-white hover:bg-[#1F1F27] transition-colors"
+            aria-label="Alternar tema"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </header>
 
-        {/* Conteúdo da página */}
         <main className="flex-1">{children}</main>
+
+        {/* ── LÍVIA — Assistente IA ── */}
+        <LiviaBubble />
       </div>
     </div>
   );

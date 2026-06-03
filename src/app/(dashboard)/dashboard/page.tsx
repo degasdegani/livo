@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/page.tsx
 // ============================================================
 // LIVO — Dashboard Real
 // Painel principal com KPIs, agenda e ações rápidas
@@ -11,6 +12,42 @@ import { redirect } from "next/navigation";
 import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
+
+// ── Mapeamento de planos ──────────────────────────────────────
+const PLAN_LABELS: Record<string, string> = {
+  start: "START",
+  pro: "PRO",
+  prime: "PRIME",
+};
+
+const PLAN_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  start: {
+    bg: "rgba(94,94,104,0.12)",
+    text: "#9A9AA6",
+    border: "rgba(94,94,104,0.3)",
+  },
+  pro: {
+    bg: "rgba(200,16,46,0.10)",
+    text: "#C8102E",
+    border: "rgba(200,16,46,0.25)",
+  },
+  prime: {
+    bg: "rgba(200,162,76,0.12)",
+    text: "#C8A24C",
+    border: "rgba(200,162,76,0.3)",
+  },
+};
+
+// ── Saudação dinâmica ─────────────────────────────────────────
+function getSaudacao(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 // ── Componente auxiliar: mini gráfico de barras CSS ──────────
 function MiniGrafico({
@@ -71,6 +108,11 @@ export default async function DashboardPage() {
   });
   if (!barbershop) redirect("/onboarding");
 
+  // Badge do plano
+  const planKey = barbershop.plan as string;
+  const planLabel = PLAN_LABELS[planKey] ?? planKey.toUpperCase();
+  const planColor = PLAN_COLORS[planKey] ?? PLAN_COLORS.start;
+
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -106,15 +148,13 @@ export default async function DashboardPage() {
       ? await getComissoesData("mes_atual", membership.professionalId)
       : null;
 
-  // Analytics — só para owner (Dia 8)
+  // Analytics — só para owner
   const analytics =
     membership?.role === MemberRole.owner
       ? await getDashboardAnalytics(barbershop.id)
       : null;
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greeting = getSaudacao();
 
   const statusColors = {
     pending: "#FFB020",
@@ -127,7 +167,7 @@ export default async function DashboardPage() {
   const statusLabels = {
     pending: "Pendente",
     confirmed: "Confirmado",
-    completed: "Concluido",
+    completed: "Concluído",
     cancelled: "Cancelado",
     no_show: "Faltou",
   } as const;
@@ -144,35 +184,38 @@ export default async function DashboardPage() {
         }}
       >
         <div className="flex items-center gap-3">
+          {/* Dot de status online */}
           <span
             style={{
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "#FF2D55",
+              background: "#3FB950",
               display: "inline-block",
-              boxShadow: "0 0 10px rgba(255,45,85,0.5)",
+              boxShadow: "0 0 8px rgba(63,185,80,0.6)",
             }}
           />
+          {/* ── AJUSTE 1: Nome da barbearia ── */}
           <span
             className="font-black text-white"
             style={{ fontSize: "16px", letterSpacing: "-0.3px" }}
           >
             {barbershop.name}
           </span>
+          {/* ── AJUSTE 2: Badge do plano dinâmico ── */}
           <span
             className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{
-              background: "rgba(255,45,85,0.08)",
-              color: "#FF2D55",
-              border: "1px solid rgba(255,45,85,0.2)",
-              fontFamily: "var(--font-mono)",
+              background: planColor.bg,
+              color: planColor.text,
+              border: `1px solid ${planColor.border}`,
               letterSpacing: "1px",
             }}
           >
-            START
+            {planLabel}
           </span>
         </div>
+
         <div className="flex items-center gap-4">
           <span
             className="text-sm hidden sm:block"
@@ -199,18 +242,18 @@ export default async function DashboardPage() {
 
       {/* ── Conteúdo ──────────────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
-        {/* Saudação */}
+        {/* ── AJUSTE 3: Saudação com nome da barbearia ── */}
         <div>
           <h1
             className="font-black text-white mb-1"
             style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
           >
-            {greeting}, {session.user.name?.split(" ")[0]} ✦
+            {greeting}, {barbershop.name} ✦
           </h1>
           <p style={{ color: "#52525B", fontSize: "14px" }}>
             {todayAppointments.length === 0
               ? "Nenhum agendamento para hoje ainda."
-              : `Hoje voce tem ${todayAppointments.length} agendamento${todayAppointments.length > 1 ? "s" : ""}.`}
+              : `Hoje você tem ${todayAppointments.length} agendamento${todayAppointments.length > 1 ? "s" : ""}.`}
           </p>
         </div>
 
@@ -236,7 +279,7 @@ export default async function DashboardPage() {
               color: "#00D4FF",
             },
             {
-              label: "MES",
+              label: "MÊS",
               value: monthAppointments.toString(),
               sub: "agendamentos",
               color: "#7C3AED",
@@ -252,7 +295,7 @@ export default async function DashboardPage() {
             >
               <p
                 className="text-xs font-bold tracking-widest mb-3"
-                style={{ color: "#3F3F46", fontFamily: "var(--font-mono)" }}
+                style={{ color: "#3F3F46" }}
               >
                 {kpi.label}
               </p>
@@ -288,144 +331,82 @@ export default async function DashboardPage() {
                   Minhas Comissões — Este Mês
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div
-                    className="rounded-2xl p-5"
-                    style={{
-                      background: "#0A0A0A",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <p
-                      className="text-xs font-bold tracking-widest mb-3"
-                      style={{
-                        color: "#3F3F46",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      COMANDAS
-                    </p>
-                    <p
-                      className="font-black"
-                      style={{
-                        fontSize: "32px",
-                        letterSpacing: "-1px",
-                        color: "#FFFFFF",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {meu.totalComandas}
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
-                      fechadas
-                    </p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-5"
-                    style={{
-                      background: "#0A0A0A",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <p
-                      className="text-xs font-bold tracking-widest mb-3"
-                      style={{
-                        color: "#3F3F46",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      FATURAMENTO
-                    </p>
-                    <p
-                      className="font-black"
-                      style={{
-                        fontSize: "26px",
-                        letterSpacing: "-1px",
-                        color: "#FFFFFF",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {(meu.totalFaturamento / 100).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
-                      no período
-                    </p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-5"
-                    style={{
-                      background: "#0A0A0A",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <p
-                      className="text-xs font-bold tracking-widest mb-3"
-                      style={{
-                        color: "#3F3F46",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      COM. SERVIÇOS
-                    </p>
-                    <p
-                      className="font-black"
-                      style={{
-                        fontSize: "26px",
-                        letterSpacing: "-1px",
-                        color: "#3FB950",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {(meu.totalComissaoServicos / 100).toLocaleString(
+                  {[
+                    {
+                      label: "COMANDAS",
+                      value: meu.totalComandas,
+                      sub: "fechadas",
+                      color: "#FFFFFF",
+                      size: "32px",
+                    },
+                    {
+                      label: "FATURAMENTO",
+                      value: (meu.totalFaturamento / 100).toLocaleString(
                         "pt-BR",
                         { style: "currency", currency: "BRL" },
-                      )}
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
-                      este mês
-                    </p>
-                  </div>
-                  <div
-                    className="rounded-2xl p-5"
-                    style={{
-                      background: "#0A0A0A",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <p
-                      className="text-xs font-bold tracking-widest mb-3"
-                      style={{
-                        color: "#3F3F46",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      TOTAL COMISSÃO
-                    </p>
-                    <p
-                      className="font-black"
-                      style={{
-                        fontSize: "26px",
-                        letterSpacing: "-1px",
-                        color: "#C8A24C",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {(meu.totalComissao / 100).toLocaleString("pt-BR", {
+                      ),
+                      sub: "no período",
+                      color: "#FFFFFF",
+                      size: "26px",
+                    },
+                    {
+                      label: "COM. SERVIÇOS",
+                      value: (meu.totalComissaoServicos / 100).toLocaleString(
+                        "pt-BR",
+                        { style: "currency", currency: "BRL" },
+                      ),
+                      sub: "este mês",
+                      color: "#3FB950",
+                      size: "26px",
+                    },
+                    {
+                      label: "TOTAL COMISSÃO",
+                      value: (meu.totalComissao / 100).toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
-                      })}
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: "#52525B" }}>
-                      <a
-                        href="/dashboard/comissoes"
-                        style={{ color: "#C8102E" }}
+                      }),
+                      sub: "ver histórico →",
+                      color: "#C8A24C",
+                      size: "26px",
+                      href: "/dashboard/comissoes",
+                    },
+                  ].map((card) => (
+                    <div
+                      key={card.label}
+                      className="rounded-2xl p-5"
+                      style={{
+                        background: "#0A0A0A",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <p
+                        className="text-xs font-bold tracking-widest mb-3"
+                        style={{ color: "#3F3F46" }}
                       >
-                        ver histórico →
-                      </a>
-                    </p>
-                  </div>
+                        {card.label}
+                      </p>
+                      <p
+                        className="font-black"
+                        style={{
+                          fontSize: card.size,
+                          letterSpacing: "-1px",
+                          color: card.color,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {card.value}
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: "#52525B" }}>
+                        {card.href ? (
+                          <a href={card.href} style={{ color: "#C8102E" }}>
+                            {card.sub}
+                          </a>
+                        ) : (
+                          card.sub
+                        )}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -458,10 +439,9 @@ export default async function DashboardPage() {
               style={{
                 background:
                   todayAppointments.length > 0
-                    ? "rgba(0,212,160,0.1)"
+                    ? "rgba(63,185,80,0.1)"
                     : "rgba(255,255,255,0.04)",
-                color: todayAppointments.length > 0 ? "#00D4A0" : "#3F3F46",
-                fontFamily: "var(--font-mono)",
+                color: todayAppointments.length > 0 ? "#3FB950" : "#3F3F46",
               }}
             >
               {todayAppointments.length} confirmado
@@ -482,20 +462,17 @@ export default async function DashboardPage() {
                 className="text-sm mb-6"
                 style={{ color: "#52525B", maxWidth: "280px" }}
               >
-                Compartilhe o link da sua pagina para seus clientes agendarem
+                Compartilhe o link da sua página para seus clientes agendarem
                 online.
               </p>
               <div
                 className="px-4 py-2 rounded-xl"
                 style={{
-                  background: "rgba(255,45,85,0.06)",
-                  border: "1px solid rgba(255,45,85,0.15)",
+                  background: "rgba(200,16,46,0.06)",
+                  border: "1px solid rgba(200,16,46,0.15)",
                 }}
               >
-                <span
-                  className="text-xs"
-                  style={{ color: "#FF2D55", fontFamily: "var(--font-mono)" }}
-                >
+                <span className="text-xs" style={{ color: "#C8102E" }}>
                   livobarber.com.br/{barbershop.slug}
                 </span>
               </div>
@@ -505,7 +482,10 @@ export default async function DashboardPage() {
               {todayAppointments.map((appointment) => {
                 const time = new Date(appointment.date).toLocaleTimeString(
                   "pt-BR",
-                  { hour: "2-digit", minute: "2-digit" },
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
                 );
                 const color = statusColors[appointment.status];
                 const isActive =
@@ -522,7 +502,6 @@ export default async function DashboardPage() {
                       className="font-bold shrink-0"
                       style={{
                         color: "#A1A1AA",
-                        fontFamily: "var(--font-mono)",
                         fontSize: "13px",
                         minWidth: "45px",
                       }}
@@ -573,7 +552,6 @@ export default async function DashboardPage() {
                         {statusLabels[appointment.status]}
                       </p>
                     </div>
-
                     {isActive ? (
                       <AppointmentActions appointmentId={appointment.id} />
                     ) : (
@@ -602,7 +580,7 @@ export default async function DashboardPage() {
           {[
             {
               icon: "📊",
-              label: "Relatorios",
+              label: "Relatórios",
               desc: "Receita e desempenho",
               href: "/dashboard/relatorios",
             },
@@ -614,8 +592,8 @@ export default async function DashboardPage() {
             },
             {
               icon: "⚙️",
-              label: "Configuracoes",
-              desc: "Servicos e horarios",
+              label: "Configurações",
+              desc: "Serviços e horários",
               href: "/dashboard/settings",
             },
           ].map((action) => (
@@ -640,7 +618,7 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Analytics do owner (Dia 8) ───────────────────── */}
+        {/* ── Analytics do owner ───────────────────────────── */}
         {analytics && (
           <div className="space-y-6">
             <div className="border-t border-[#2A2A33] pt-6">
@@ -649,7 +627,6 @@ export default async function DashboardPage() {
               </h2>
             </div>
 
-            {/* Mini KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {
@@ -698,7 +675,6 @@ export default async function DashboardPage() {
               ))}
             </div>
 
-            {/* Evolução 12 meses — gráfico CSS */}
             <div
               style={{
                 background: "#17171C",
@@ -721,7 +697,6 @@ export default async function DashboardPage() {
               <MiniGrafico dados={analytics.evolucaoMensal} />
             </div>
 
-            {/* Top 5 serviços */}
             {analytics.topServicos.length > 0 && (
               <div
                 style={{

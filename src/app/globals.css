@@ -193,3 +193,46 @@ button {
   transition-duration: 150ms;
   transition-timing-function: ease;
 }
+/* ======= DIA 10 — Tema Claro ======= */
+[data-theme="light"] {
+  /* Fundos */
+  --bg-base: #f4f4f5;
+  --bg-card: #ffffff;
+  --bg-elevated: #fafafa;
+  --border: #e4e4e7;
+
+  /* Textos */
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-tertiary: #a1a1aa;
+}
+
+/* Aplicar tema claro nas classes que usam as cores fixas */
+[data-theme="light"] .min-h-screen,
+[data-theme="light"] aside,
+[data-theme="light"] header {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+[data-theme="light"] .bg-\[\#0B0B0D\] {
+  background-color: #ffffff !important;
+}
+[data-theme="light"] .bg-\[\#17171C\] {
+  background-color: #f4f4f5 !important;
+}
+[data-theme="light"] .bg-\[\#1F1F27\] {
+  background-color: #f0f0f0 !important;
+}
+[data-theme="light"] .border-\[\#2A2A33\] {
+  border-color: #e4e4e7 !important;
+}
+[data-theme="light"] .text-white {
+  color: #09090b !important;
+}
+[data-theme="light"] .text-\[\#9A9AA6\] {
+  color: #52525b !important;
+}
+[data-theme="light"] .text-\[\#6E6E78\] {
+  color: #a1a1aa !important;
+}

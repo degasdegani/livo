@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: "LIVO — O sistema operacional da barbearia moderna",
   description:
     "Gerencie sua barbearia com agenda, PDV, comissões e muito mais. Experimente grátis por 30 dias.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
