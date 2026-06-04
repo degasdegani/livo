@@ -359,3 +359,16 @@ markdown## 9. PENDÊNCIAS & CUIDADOS
 - **Agenda query:** usar Date.UTC() para evitar problemas de timezone entre servidor e Brasília (UTC-3).
 - **Comissões:** owner nunca aparece na lista de membershipsComProf.
 - **createClient:** verifica duplicata por telefone antes de criar.
+
+**Correções OAuth Google (madrugada):**
+
+- auth.ts: fechamento `},` `});` estava comentado — build quebrava silenciosamente
+- auth.ts: adicionado `checks: ["pkce", "state"]` no Google provider — resolve bug `unexpected "iss"` do Auth.js v5
+- auth.ts: removido `events.createUser` do fluxo crítico — sendWelcomeEmail não bloqueia mais o login
+- auth.ts: import `sendWelcomeEmail` removido temporariamente
+- GOOGLE_CLIENT_SECRET: secret inválido na Vercel — gerado novo secret no Google Console e atualizado
+- Google OAuth 100% funcional em produção no livobarber.com.br
+- **auth.ts:** nunca comentar os fechamentos `},` `});` do NextAuth — quebra o build silenciosamente
+- **Google OAuth:** usa `checks: ["pkce", "state"]` — não remover, resolve bug de iss mismatch do Auth.js v5
+- **GOOGLE_CLIENT_SECRET:** se OAuth parar de funcionar, verificar se o secret foi invalidado no Google Console
+- **sendWelcomeEmail:** removido do events.createUser — reimplementar via webhook ou job separado no futuro
