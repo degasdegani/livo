@@ -1,6 +1,5 @@
 // src/auth.ts
 import { db } from "@/lib/db";
-import { sendWelcomeEmail } from "@/lib/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
@@ -67,15 +66,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 
-  events: {
-    async createUser({ user }) {
-      try {
-        if (user.email && user.name) {
-          await sendWelcomeEmail(user.email, user.name);
-        }
-      } catch (error) {
-        console.error("Erro ao enviar email de boas-vindas:", error);
-      }
-    },
-  },
+  events: {},
 });
