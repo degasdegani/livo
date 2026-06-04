@@ -1,8 +1,4 @@
-// ============================================================
-// LIVO — Auth.js Configuration
-// Define provedores de login, validação e sessão
-// ============================================================
-
+// src/auth.ts
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -15,6 +11,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
 
   session: { strategy: "jwt" },
+
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
 
   providers: [
     Google({
@@ -30,17 +31,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await db.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.password) {
-          return null;
-        }
+        if (!user || !user.password) return null;
 
         const passwordMatch = await bcrypt.compare(
           credentials.password as string,
@@ -70,12 +67,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 
-  // Disparado quando um novo usuário é criado (Google OAuth)
-  //events: {
-  // async createUser({ user }) {
-  // if (user.email && user.name) {
-  // await sendWelcomeEmail(user.email, user.name);
-  //}
-  //},
-  //},
+  events: {
+    async createUser({ user }) {
+      try {
+        if (user.email && user.name) {
+          await sendWelcomeEmail(user.email, user.name);
+        }
+      } catch (error) {
+        console.error("Erro ao enviar email de boas-vindas:", error);
+      }
+    },
+  },
 });
