@@ -71,11 +71,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   // Disparado quando um novo usuário é criado (Google OAuth)
-  events: {
-    async createUser({ user }) {
-      if (user.email && user.name) {
-        await sendWelcomeEmail(user.email, user.name);
-      }
-    },
-  },
-});
+  //events: {
+   // async createUser({ user }) {
+     // if (user.email && user.name) {
+       // await sendWelcomeEmail(user.email, user.name);
+      //}
+    //},
+  //},
+//});
