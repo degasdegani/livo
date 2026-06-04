@@ -1,5 +1,3 @@
-// src/app/api/test-env/route.ts
-
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -7,5 +5,7 @@ export async function GET() {
     googleClientId: !!process.env.GOOGLE_CLIENT_ID,
     googleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
     authSecret: !!process.env.AUTH_SECRET,
+    authUrl: process.env.AUTH_URL,
+    nextAuthUrl: process.env.NEXTAUTH_URL,
   });
 }
