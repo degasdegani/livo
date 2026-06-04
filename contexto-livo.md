@@ -279,3 +279,83 @@ Build: 27+ páginas, zero erros TypeScript.
 - CRM: cadastro manual de clientes
 - Logo SVG: versão para tema claro (LI em preto)
 - Agenda: visualização por semana e por dia além do mês (estilo Google Calendar)
+
+### 03/06/2026 — DIA 12
+
+**Badge de plano:**
+
+- PLAN_LABELS: start → "PRO" (nunca exibir START na UI)
+- PLAN_COLORS: start herda cores do PRO (vermelho)
+- Fallback planColor: PLAN_COLORS.pro
+
+**CRM — Cadastro manual de clientes:**
+
+- createClient action em clients/actions.ts
+- Modal completo: nome, telefone, email, CPF, nascimento, origem, notas
+- Validação de duplicata por telefone
+- Botão "＋ Novo cliente" no header da página
+- Link "cadastre o primeiro cliente" no estado vazio
+
+**Agenda — Bug de timezone corrigido:**
+
+- Query usa Date.UTC() — independente do fuso do servidor
+- Tipos Date|string em AppointmentForCalendar (startTime, endTime)
+- toLocalDateKey aceita Date|string
+- formatTime e formatDate aceitam Date|string
+
+**Comissões — Erro amigável:**
+
+- Owner filtrado de membershipsComProf (role !== MemberRole.owner)
+- Caixa de erro vermelha com ⚠️ no modal em vez de texto simples
+
+**Logo tema claro:**
+
+- public/logo-livo-light.svg criado (LI em #0B0B0D)
+- layout.tsx troca src dinamicamente por tema
+
+**Agenda — Visões Mês/Semana/Dia:**
+
+- src/components/weekly-calendar.tsx criado
+- src/components/day-calendar.tsx criado (slots 30min, 07h–21h)
+- monthly-calendar.tsx: toggle ViewToggle + imports + lógica de visão
+- Navegação independente por semana e por dia
+
+**Correções de produção (emergência):**
+
+- layout.tsx dashboard: encoding corrompido (UTF-8) — arquivo reescrito
+- settings/page.tsx: onMouseEnter/onMouseLeave removidos do Server Component
+- CSS puro: .settings-acessos-link:hover em globals.css
+- Banco Neon hibernado: acordado manualmente via console.neon.tech
+
+**Build:** zero erros TypeScript, 30+ páginas funcionando
+
+PENDÊNCIAS — atualizar:
+markdown## 9. PENDÊNCIAS & CUIDADOS
+
+- **@@map():** obrigatório nas tabelas, nunca nos campos individuais.
+- **WaitlistLead:** NUNCA deletar — 14 leads reais do workshop TX.
+- **endTime em Appointment:** DateTime? — sempre checar nulidade.
+- **clientPhone em Appointment:** nullable — sempre tratar como string | null.
+- **auth.ts:** importar sempre como `import { auth } from "@/auth"`
+- **priceInCents:** sempre em centavos. Dividir por 100 ao exibir.
+- **$transaction:** SEMPRE padrão async. NUNCA array de promises.
+- **RESEND_FROM:** sempre noreply@livobarber.com.br.
+- **Next.js 16 — params:** sempre `const { param } = await params`.
+- **Turbopack — JSX `<a>`:** href e target na mesma linha.
+- **PowerShell:** Select-String. Caminhos com [colchetes] usar caminho absoluto.
+- **Plano START:** mantido no enum, não vendido. Exibe "PRO" na UI.
+- **migration_lock.toml:** não editar manualmente.
+- **Nunca rodar `prisma migrate dev` sem antes rodar `prisma migrate diff`.**
+- **layout.tsx dashboard é "use client"** — não fazer queries ao banco nele.
+- **useToast():** apenas em Client Components.
+- **loading.tsx:** mesmo nível da page.tsx para Suspense automático.
+- **ANTHROPIC_API_KEY:** chave no .env.local. Nunca commitar o valor.
+- **Lívia usa claude-haiku-4-5-20251001** — não trocar sem avaliar custo.
+- **Tema claro:** implementado via data-theme. Logo troca dinamicamente.
+- **Server Components:** NUNCA usar onMouseEnter/onMouseLeave inline — usar CSS puro ou mover para Client Component.
+- **Encoding:** sempre salvar arquivos em UTF-8. Comentários com caracteres especiais (─, →, é) podem corromper em Windows.
+- **Neon:** banco hiberna em inatividade. Acordar via console.neon.tech se necessário.
+- **Date/string:** AppointmentForCalendar usa Date|string — Next.js serializa Date como string ao cruzar Server→Client.
+- **Agenda query:** usar Date.UTC() para evitar problemas de timezone entre servidor e Brasília (UTC-3).
+- **Comissões:** owner nunca aparece na lista de membershipsComProf.
+- **createClient:** verifica duplicata por telefone antes de criar.
