@@ -245,3 +245,37 @@ Menu: "Início" + ícone Home.
 Lívia: bubble chat IA no dashboard PRO.
 API Anthropic: claude-haiku-4-5-20251001, US$5 de crédito.
 Build: 27+ páginas, zero erros TypeScript.
+
+### 03/06/2026 — DIA 11
+
+**A) Agenda mensal:**
+
+- src/components/monthly-calendar.tsx — grid mensal com navegação por mês, dots de status, botão "Hoje"
+- src/components/day-panel.tsx — painel lateral com agendamentos do dia, total, status
+- agenda/page.tsx — query corrigida: campo `date` (não startTime), filtro por `professionalId` direto
+
+**B) Dark/Light mode completo:**
+
+- globals.css — bloco :root com todas as CSS variables + override [data-theme="light"]
+- layout.tsx (dashboard) — sidebar, header mobile, nav links → variáveis CSS
+- dashboard/page.tsx — KPIs, agenda do dia, analytics → variáveis CSS
+- clients-client.tsx — refatorado + useState tipagem corrigida
+- comandas-client.tsx — refatorado + useState tipagem corrigida
+- settings/page.tsx + basic-info-form + business-hours-form + services-manager → variáveis CSS
+- produtos/produtos-client.tsx → variáveis CSS
+- comissoes/comissoes-client.tsx → variáveis CSS
+- relatorios/relatorios-client.tsx — gráfico SVG usa var() nativo
+- marketing/marketing-client.tsx → variáveis CSS
+- comandas/[id]/comanda-pdv.tsx → variáveis CSS
+- comandas/nova/nova-comanda-form.tsx → variáveis CSS
+- ui/skeleton, toast, badge, empty-state → variáveis CSS
+- Build: zero erros TypeScript, 27+ páginas
+
+**Pendências identificadas pelos usuários reais (DIA 12):**
+
+- Badge START → forçar PRO para barbearias ativas
+- Comissões: owner sem membership de barbeiro → tratar erro com mensagem amigável
+- Agendamentos não aparecem na agenda → investigar timezone/query
+- CRM: cadastro manual de clientes
+- Logo SVG: versão para tema claro (LI em preto)
+- Agenda: visualização por semana e por dia além do mês (estilo Google Calendar)

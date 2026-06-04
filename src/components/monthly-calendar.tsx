@@ -3,7 +3,9 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { DayCalendar } from "./day-calendar";
 import { DayPanel, type AppointmentForCalendar } from "./day-panel";
+import { WeeklyCalendar } from "./weekly-calendar";
 
 type Props = {
   initialYear: number;
@@ -35,8 +37,7 @@ const STATUS_DOT: Record<AppointmentForCalendar["status"], string> = {
   no_show: "var(--status-red)",
 };
 
-// Retorna YYYY-MM-DD no fuso de SP para comparação
-function toLocalDateKey(date: Date): string {
+function toLocalDateKey(date: Date | string): string {
   return new Date(date)
     .toLocaleDateString("pt-BR", {
       year: "numeric",
@@ -46,8 +47,57 @@ function toLocalDateKey(date: Date): string {
     })
     .split("/")
     .reverse()
-    .join("-"); // dd/mm/yyyy → yyyy-mm-dd
+    .join("-");
 }
+
+// ── Toggle de visão ────────────────────────────────────────────────────────
+
+function ViewToggle({
+  view,
+  setView,
+}: {
+  view: "month" | "week" | "day";
+  setView: (v: "month" | "week" | "day") => void;
+}) {
+  const options: { value: "month" | "week" | "day"; label: string }[] = [
+    { value: "month", label: "Mês" },
+    { value: "week", label: "Semana" },
+    { value: "day", label: "Dia" },
+  ];
+
+  return (
+    <div
+      className="flex gap-1 rounded-xl p-1 self-start"
+      style={{
+        backgroundColor: "var(--bg-card)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setView(opt.value)}
+          className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150"
+          style={
+            view === opt.value
+              ? {
+                  backgroundColor: "var(--color-primary)",
+                  color: "#ffffff",
+                }
+              : {
+                  color: "var(--text-secondary)",
+                  backgroundColor: "transparent",
+                }
+          }
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Componente principal ───────────────────────────────────────────────────
 
 export function MonthlyCalendar({
   initialYear,
@@ -57,8 +107,9 @@ export function MonthlyCalendar({
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [view, setView] = useState<"month" | "week" | "day">("month");
 
-  // ── Navegar meses ──────────────────────────────────────────────────────────
+  // ── Navegar meses ────────────────────────────────────────────────────────
   const prevMonth = useCallback(() => {
     if (month === 0) {
       setMonth(11);
@@ -73,24 +124,20 @@ export function MonthlyCalendar({
     } else setMonth((m) => m + 1);
   }, [month]);
 
-  // ── Construir grid ─────────────────────────────────────────────────────────
+  // ── Construir grid ───────────────────────────────────────────────────────
   const { days, appointmentsByDay } = useMemo(() => {
-    // Primeiro e último dia do mês
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // Células: dias do mês anterior para preencher a primeira semana
     const cells: (Date | null)[] = [];
     for (let i = 0; i < firstDay.getDay(); i++) cells.push(null);
     for (let d = 1; d <= lastDay.getDate(); d++)
       cells.push(new Date(year, month, d));
-    // Preencher última semana
     while (cells.length % 7 !== 0) cells.push(null);
 
-    // Agrupar agendamentos por dia
     const byDay: Record<string, AppointmentForCalendar[]> = {};
     for (const appt of appointments) {
-      const key = toLocalDateKey(appt.startTime);
+      const key = toLocalDateKey(appt.startTime as Date | string);
       if (!byDay[key]) byDay[key] = [];
       byDay[key].push(appt);
     }
@@ -98,17 +145,45 @@ export function MonthlyCalendar({
     return { days: cells, appointmentsByDay: byDay };
   }, [year, month, appointments]);
 
-  // ── Hoje ───────────────────────────────────────────────────────────────────
+  // ── Hoje ─────────────────────────────────────────────────────────────────
   const todayKey = toLocalDateKey(new Date());
 
-  // ── Agendamentos do dia selecionado ────────────────────────────────────────
+  // ── Agendamentos do dia selecionado ──────────────────────────────────────
   const selectedAppts = useMemo(() => {
     if (!selectedDate) return [];
     return appointmentsByDay[toLocalDateKey(selectedDate)] ?? [];
   }, [selectedDate, appointmentsByDay]);
 
+  // ── Data de referência para semana/dia (hoje ou 1º do mês navegado) ──────
+  const referenceDate = new Date(year, month, new Date().getDate());
+
+  // ── Visão Semana ─────────────────────────────────────────────────────────
+  if (view === "week") {
+    return (
+      <div className="flex flex-col gap-4">
+        <ViewToggle view={view} setView={setView} />
+        <WeeklyCalendar
+          initialDate={referenceDate}
+          appointments={appointments}
+        />
+      </div>
+    );
+  }
+
+  // ── Visão Dia ─────────────────────────────────────────────────────────────
+  if (view === "day") {
+    return (
+      <div className="flex flex-col gap-4">
+        <ViewToggle view={view} setView={setView} />
+        <DayCalendar initialDate={referenceDate} appointments={appointments} />
+      </div>
+    );
+  }
+
+  // ── Visão Mês (padrão) ───────────────────────────────────────────────────
   return (
     <>
+      <ViewToggle view={view} setView={setView} />
       <div
         className="rounded-2xl overflow-hidden"
         style={{
@@ -297,7 +372,7 @@ export function MonthlyCalendar({
                   </div>
                 )}
 
-                {/* Contador de agendamentos (em telas maiores) */}
+                {/* Contador de agendamentos */}
                 {appts.length > 0 && (
                   <span
                     className="hidden sm:block text-[11px] leading-tight mt-auto"

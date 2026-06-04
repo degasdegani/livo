@@ -7,8 +7,8 @@ import { useEffect, useRef } from "react";
 // Tipos que espelham o que a page.tsx vai passar
 export type AppointmentForCalendar = {
   id: string;
-  startTime: Date;
-  endTime: Date | null;
+  startTime: Date | string;
+  endTime: Date | string | null;
   status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
   clientName: string | null;
   clientPhone: string | null;
@@ -31,7 +31,7 @@ const STATUS_CONFIG = {
   no_show: { label: "Não veio", color: "var(--status-red)" },
 };
 
-function formatTime(date: Date) {
+function formatTime(date: Date | string) {
   return new Date(date).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -39,7 +39,7 @@ function formatTime(date: Date) {
   });
 }
 
-function formatDate(date: Date) {
+function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",

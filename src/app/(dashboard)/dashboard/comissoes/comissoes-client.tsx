@@ -148,7 +148,10 @@ export function ComissoesClient({
     (s, r) => s + r.totalFaturamento,
     0,
   );
-  const membershipsComProf = memberships.filter((m) => m.professional !== null);
+  // Owner nunca aparece na lista de comissões — mesmo que tenha professional vinculado
+  const membershipsComProf = memberships.filter(
+    (m) => m.professional !== null && m.role !== MemberRole.owner,
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -621,12 +624,16 @@ export function ComissoesClient({
             </div>
 
             {saveError && (
-              <p
-                className="text-sm mb-4"
-                style={{ color: "var(--color-primary)" }}
+              <div
+                className="rounded-lg px-4 py-3 text-sm mb-4"
+                style={{
+                  backgroundColor: "rgba(200,16,46,0.1)",
+                  border: "1px solid rgba(200,16,46,0.3)",
+                  color: "var(--status-red)",
+                }}
               >
-                {saveError}
-              </p>
+                ⚠️ {saveError}
+              </div>
             )}
 
             <div className="flex gap-3 justify-end">

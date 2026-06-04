@@ -103,17 +103,11 @@ export default async function SettingsPage() {
         {/* Card de Acessos */}
         <a
           href="/dashboard/settings/acessos"
-          className="flex items-center justify-between rounded-xl px-5 py-4 transition-all"
+          className="flex items-center justify-between rounded-xl px-5 py-4 transition-all settings-acessos-link"
           style={{
             backgroundColor: "var(--bg-card)",
             border: "1px solid var(--border)",
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.borderColor = "var(--color-primary)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.borderColor = "var(--border)")
-          }
         >
           <div>
             <p

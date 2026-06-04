@@ -132,3 +132,41 @@ export async function getClientStats(barbershopId: string) {
 
   return { total, bloqueados, aniversariantesMes };
 }
+export async function createClient(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  cpf?: string;
+  birthDate?: string;
+  origem?: string;
+  notes?: string;
+}) {
+  const membership = await requireMembership();
+
+  // Normaliza telefone: só dígitos
+  const phone = data.phone.replace(/\D/g, "");
+  if (!phone) throw new Error("Telefone inválido.");
+
+  // Verifica duplicata por telefone dentro da barbearia
+  const existing = await db.client.findFirst({
+    where: { barbershopId: membership.barbershopId, phone },
+  });
+  if (existing) throw new Error("Já existe um cliente com esse telefone.");
+
+  await db.client.create({
+    data: {
+      barbershopId: membership.barbershopId,
+      name: data.name.trim(),
+      phone,
+      email: data.email?.trim() || null,
+      cpf: data.cpf?.replace(/\D/g, "") || null,
+      birthDate: data.birthDate ? new Date(data.birthDate) : null,
+      origem: data.origem ? (data.origem as ClientOrigem) : null,
+      notes: data.notes?.trim() || null,
+      bloqueado: false,
+      totalVisits: 0,
+    },
+  });
+
+  revalidatePath("/dashboard/clients");
+}

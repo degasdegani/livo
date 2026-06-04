@@ -24,10 +24,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// ────────────────────────────────────────────────────────────────
-// Tipos
-// ────────────────────────────────────────────────────────────────
-
 type MemberRole = "owner" | "reception" | "barber";
 
 interface NavItem {
@@ -37,13 +33,9 @@ interface NavItem {
   roles: MemberRole[];
 }
 
-// ────────────────────────────────────────────────────────────────
-// Itens de navegação
-// ────────────────────────────────────────────────────────────────
-
 const NAV_ITEMS: NavItem[] = [
   {
-    label: "Início",
+    label: "Inicio",
     href: "/dashboard",
     icon: <Home size={18} />,
     roles: ["owner", "reception", "barber"],
@@ -73,13 +65,13 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner", "reception", "barber"],
   },
   {
-    label: "Comissões",
+    label: "Comissoes",
     href: "/dashboard/comissoes",
     icon: <DollarSign size={18} />,
     roles: ["owner", "reception", "barber"],
   },
   {
-    label: "Relatórios",
+    label: "Relatorios",
     href: "/dashboard/relatorios",
     icon: <BarChart2 size={18} />,
     roles: ["owner", "reception"],
@@ -91,16 +83,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner", "reception"],
   },
   {
-    label: "Configurações",
+    label: "Configuracoes",
     href: "/dashboard/settings",
     icon: <Settings size={18} />,
     roles: ["owner"],
   },
 ];
-
-// ────────────────────────────────────────────────────────────────
-// Hook de tema dark/light
-// ────────────────────────────────────────────────────────────────
 
 function useTheme() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -121,10 +109,6 @@ function useTheme() {
 
   return { theme, toggle };
 }
-
-// ────────────────────────────────────────────────────────────────
-// Componente de item do menu
-// ────────────────────────────────────────────────────────────────
 
 function NavLink({
   item,
@@ -177,10 +161,6 @@ function NavLink({
   );
 }
 
-// ────────────────────────────────────────────────────────────────
-// Botão de tema
-// ────────────────────────────────────────────────────────────────
-
 function ThemeToggle({
   theme,
   toggle,
@@ -225,10 +205,6 @@ function ThemeToggle({
   );
 }
 
-// ────────────────────────────────────────────────────────────────
-// Sidebar conteúdo
-// ────────────────────────────────────────────────────────────────
-
 function SidebarContent({
   role,
   pathname,
@@ -246,7 +222,6 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div
         className="px-4 py-5"
         style={{ borderBottom: "1px solid var(--border)" }}
@@ -257,7 +232,7 @@ function SidebarContent({
           onClick={onNavClick}
         >
           <Image
-            src="/logo-livo.svg"
+            src={theme === "light" ? "/logo-livo-light.svg" : "/logo-livo.svg"}
             alt="LIVO"
             width={120}
             height={32}
@@ -266,7 +241,6 @@ function SidebarContent({
         </Link>
       </div>
 
-      {/* Nav items */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {visibleItems.map((item) => (
           <NavLink
@@ -278,7 +252,6 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* Footer da sidebar: tema + logout */}
       <div
         className="px-3 py-4 space-y-1"
         style={{ borderTop: "1px solid var(--border)" }}
@@ -303,10 +276,6 @@ function SidebarContent({
     </div>
   );
 }
-
-// ────────────────────────────────────────────────────────────────
-// Layout principal
-// ────────────────────────────────────────────────────────────────
 
 export default function DashboardLayout({
   children,
@@ -344,7 +313,6 @@ export default function DashboardLayout({
       style={{ backgroundColor: "var(--bg-base)" }}
       data-theme={theme}
     >
-      {/* SIDEBAR DESKTOP */}
       <aside
         className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0"
         style={{
@@ -360,7 +328,6 @@ export default function DashboardLayout({
         />
       </aside>
 
-      {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 lg:hidden backdrop-blur-sm"
@@ -369,7 +336,6 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* SIDEBAR MOBILE */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-72
@@ -398,9 +364,7 @@ export default function DashboardLayout({
         />
       </aside>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 flex flex-col lg:ml-60">
-        {/* Header mobile */}
         <header
           className="lg:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-30"
           style={{
@@ -435,7 +399,6 @@ export default function DashboardLayout({
 
         <main className="flex-1">{children}</main>
 
-        {/* ── LÍVIA — Assistente IA ── */}
         <LiviaBubble />
       </div>
     </div>

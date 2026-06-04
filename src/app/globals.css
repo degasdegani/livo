@@ -302,3 +302,6 @@ button {
   transition-duration: 150ms;
   transition-timing-function: ease;
 }
+.settings-acessos-link:hover {
+  border-color: var(--color-primary) !important;
+}

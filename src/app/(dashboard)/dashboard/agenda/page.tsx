@@ -10,8 +10,12 @@ export default async function AgendaPage() {
   const membership = await requireMembership();
 
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 4, 0);
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1, 0, 0, 0, 0),
+  );
+  const end = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 0, 23, 59, 59, 999),
+  );
 
   const rawAppointments = await db.appointment.findMany({
     where:
@@ -55,7 +59,7 @@ export default async function AgendaPage() {
           Agenda
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Visão mensal de todos os agendamentos
+          Alterne entre visão por mês, semana ou dia
         </p>
       </div>
       <MonthlyCalendar

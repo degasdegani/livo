@@ -9,7 +9,7 @@ import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
 
 const PLAN_LABELS: Record<string, string> = {
-  start: "START",
+  start: "PRO",
   pro: "PRO",
   prime: "PRIME",
 };
@@ -19,9 +19,9 @@ const PLAN_COLORS: Record<
   { bg: string; text: string; border: string }
 > = {
   start: {
-    bg: "rgba(94,94,104,0.12)",
-    text: "var(--text-secondary)",
-    border: "rgba(94,94,104,0.3)",
+    bg: "var(--color-primary-10)",
+    text: "var(--color-primary)",
+    border: "var(--color-primary-20)",
   },
   pro: {
     bg: "var(--color-primary-10)",
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
 
   const planKey = barbershop.plan as string;
   const planLabel = PLAN_LABELS[planKey] ?? planKey.toUpperCase();
-  const planColor = PLAN_COLORS[planKey] ?? PLAN_COLORS.start;
+  const planColor = PLAN_COLORS[planKey] ?? PLAN_COLORS.pro;
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
