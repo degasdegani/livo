@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/page.tsx
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
-import { getCurrentMembership } from "@/lib/permissions";
+import { checkBillingAccess, getCurrentMembership } from "@/lib/permissions";
 import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getDashboardAnalytics } from "./actions";
@@ -91,6 +91,9 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
 
   const membership = await getCurrentMembership();
+  if (membership?.role === "owner" && membership.barbershopId) {
+    await checkBillingAccess(membership.barbershopId);
+  }
 
   const barbershop = await db.barbershop.findUnique({
     where: { ownerId: session.user.id },

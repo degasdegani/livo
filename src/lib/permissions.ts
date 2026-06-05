@@ -3,13 +3,13 @@
 // Resolve o "crachá" da pessoa logada e aplica as regras de acesso
 // ============================================================
 
+// src/lib/permissions.ts
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 
-// O "contexto" da pessoa logada dentro de uma barbearia
 export type MembershipContext = {
   membershipId: string;
   userId: string;
@@ -20,23 +20,19 @@ export type MembershipContext = {
   commissionOnProducts: boolean;
 };
 
-// Quem está logado (ou null)
 export async function getCurrentUser() {
   const session = await auth();
   return session?.user ?? null;
 }
 
-// O CORAÇÃO: pega o crachá ativo da pessoa logada, fresquinho do banco
 export async function getCurrentMembership(): Promise<MembershipContext | null> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return null;
 
-  // Por enquanto cada pessoa tem 1 crachá. (Trocar de barbearia vem depois.)
   const membership = await db.membership.findFirst({
     where: { userId, isActive: true },
   });
-
   if (!membership) return null;
 
   return {
@@ -50,37 +46,68 @@ export async function getCurrentMembership(): Promise<MembershipContext | null> 
   };
 }
 
-// PORTEIRO: exige crachá. Sem crachá → manda pro login.
 export async function requireMembership(): Promise<MembershipContext> {
   const m = await getCurrentMembership();
   if (!m) redirect("/login");
   return m;
 }
 
-// PORTEIRO VIP: exige um papel específico (ex: só dono).
 export async function requireRole(
   roles: MemberRole | MemberRole[],
 ): Promise<MembershipContext> {
   const m = await requireMembership();
   const allowed = Array.isArray(roles) ? roles : [roles];
   if (!allowed.includes(m.role)) {
-    redirect("/dashboard"); // não tem permissão → volta pro painel
+    redirect("/dashboard");
   }
   return m;
 }
 
-// Atalhos de leitura
+// ── Verificação de billing ────────────────────────────────────────────────────
+
+export async function checkBillingAccess(barbershopId: string): Promise<void> {
+  const barbershop = await db.barbershop.findUnique({
+    where: { id: barbershopId },
+    select: { planStatus: true, trialEndsAt: true },
+  });
+
+  if (!barbershop) redirect("/login");
+
+  // Lifetime — nunca bloqueia
+  if (barbershop.planStatus === "lifetime") return;
+
+  // Assinatura ativa — deixa passar
+  if (barbershop.planStatus === "active") return;
+
+  // Trial — verifica se ainda está válido
+  if (barbershop.planStatus === "trial") {
+    if (!barbershop.trialEndsAt) return; // sem data = trial indefinido
+    if (new Date() < new Date(barbershop.trialEndsAt)) return; // ainda no prazo
+  }
+
+  // Trial expirado ou status desconhecido → tela de assinatura
+  redirect("/dashboard/assinar");
+}
+
+export async function requireMembershipWithBilling(): Promise<MembershipContext> {
+  const m = await requireMembership();
+  // Apenas owners são verificados — membros convidados seguem o billing da barbearia
+  if (m.role === MemberRole.owner) {
+    await checkBillingAccess(m.barbershopId);
+  }
+  return m;
+}
+
+// ── Helpers de papel ──────────────────────────────────────────────────────────
+
 export function isOwner(m: MembershipContext) {
   return m.role === "owner";
 }
 
-// Quem enxerga TODOS os clientes: dono e recepção
 export function canSeeAllClients(m: MembershipContext) {
   return m.role === "owner" || m.role === "reception";
 }
 
-// FILTRO DE CLIENTES conforme o papel:
-// dono/recepção = todos da barbearia | barbeiro = só quem agendou com ele
 export function clientScope(m: MembershipContext): Prisma.ClientWhereInput {
   if (canSeeAllClients(m)) {
     return { barbershopId: m.barbershopId };
@@ -91,7 +118,6 @@ export function clientScope(m: MembershipContext): Prisma.ClientWhereInput {
   };
 }
 
-// FILTRO DE AGENDAMENTOS conforme o papel
 export function appointmentScope(
   m: MembershipContext,
 ): Prisma.AppointmentWhereInput {

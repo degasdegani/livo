@@ -1,18 +1,11 @@
-// ============================================================
-// LIVO — Cliente Asaas
-// Wrapper para a API de pagamentos Asaas
-// Sandbox: https://sandbox.asaas.com/api/v3
-// Produção: https://api.asaas.com/v3
-// ============================================================
-
+// src/lib/asaas.ts
 const ASAAS_BASE_URL =
   process.env.NEXT_PUBLIC_ASAAS_SANDBOX === "true"
     ? "https://sandbox.asaas.com/api/v3"
     : "https://api.asaas.com/v3";
 
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY!;
+const ASAAS_KEY = process.env.ASAAS_KEY ?? "";
 
-// ── Cliente HTTP básico ───────────────────────────────────────
 async function asaasRequest<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
@@ -22,7 +15,7 @@ async function asaasRequest<T>(
     method,
     headers: {
       "Content-Type": "application/json",
-      access_token: ASAAS_API_KEY,
+      access_token: ASAAS_KEY,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -36,7 +29,6 @@ async function asaasRequest<T>(
   return response.json();
 }
 
-// ── Tipos ─────────────────────────────────────────────────────
 export interface AsaasCustomer {
   id: string;
   name: string;
@@ -65,7 +57,6 @@ export interface AsaasSubscription {
   customer: string;
 }
 
-// ── Criar cliente ─────────────────────────────────────────────
 export async function createAsaasCustomer(data: {
   name: string;
   email: string;
@@ -80,39 +71,35 @@ export async function createAsaasCustomer(data: {
   });
 }
 
-// ── Criar assinatura ──────────────────────────────────────────
-// A cobrança só começa após o trial (nextDueDate = trialEndsAt)
 export async function createAsaasSubscription(data: {
   customerId: string;
-  value: number; // em reais (97.00)
-  nextDueDate: string; // "YYYY-MM-DD" — primeiro vencimento
+  value: number;
+  nextDueDate: string;
   description: string;
+  cycle?: "MONTHLY" | "YEARLY";
 }): Promise<AsaasSubscription> {
   return asaasRequest("POST", "/subscriptions", {
     customer: data.customerId,
-    billingType: "UNDEFINED", // cliente escolhe PIX ou cartão
+    billingType: "UNDEFINED",
     value: data.value,
     nextDueDate: data.nextDueDate,
-    cycle: "MONTHLY",
+    cycle: data.cycle ?? "MONTHLY",
     description: data.description,
   });
 }
 
-// ── Buscar cobranças da assinatura ────────────────────────────
 export async function getSubscriptionPayments(
   subscriptionId: string,
 ): Promise<{ data: AsaasCharge[] }> {
   return asaasRequest("GET", `/subscriptions/${subscriptionId}/payments`);
 }
 
-// ── Buscar cobrança com PIX ────────────────────────────────────
 export async function getChargePixQrCode(
   chargeId: string,
 ): Promise<{ encodedImage: string; payload: string; expirationDate: string }> {
   return asaasRequest("GET", `/payments/${chargeId}/pixQrCode`);
 }
 
-// ── Cancelar assinatura ───────────────────────────────────────
 export async function cancelAsaasSubscription(
   subscriptionId: string,
 ): Promise<void> {
