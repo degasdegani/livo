@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { MemberRole } from "@prisma/client";
@@ -9,7 +10,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ─── LISTAR MEMBROS E CONVITES ───────────────────────────────────────────────
+// ─── LISTAR MEMBROS E CONVITES ────────────────────────────────────────────────
 
 export async function getAcessosData() {
   const membership = await requireRole("owner");
@@ -32,7 +33,7 @@ export async function getAcessosData() {
   return { members, invitations };
 }
 
-// ─── CONVIDAR MEMBRO ─────────────────────────────────────────────────────────
+// ─── CONVIDAR MEMBRO ──────────────────────────────────────────────────────────
 
 export async function convidarMembro(data: {
   email: string;
@@ -49,7 +50,6 @@ export async function convidarMembro(data: {
     where: { id: membership.barbershopId },
   });
 
-  // Verificar se já existe membro com esse email
   const existingUser = await db.user.findUnique({
     where: { email: data.email },
   });
@@ -67,7 +67,6 @@ export async function convidarMembro(data: {
     }
   }
 
-  // Invalidar convites anteriores para esse email
   await db.invitation.updateMany({
     where: {
       barbershopId: membership.barbershopId,
@@ -80,7 +79,7 @@ export async function convidarMembro(data: {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  const invitation = await db.invitation.create({
+  await db.invitation.create({
     data: {
       email: data.email,
       role: data.role,
@@ -122,7 +121,7 @@ export async function convidarMembro(data: {
   return { success: true };
 }
 
-// ─── REVOGAR CONVITE ─────────────────────────────────────────────────────────
+// ─── REVOGAR CONVITE ──────────────────────────────────────────────────────────
 
 export async function revogarConvite(invitationId: string) {
   const membership = await requireRole("owner");
@@ -214,7 +213,6 @@ export async function updateMembershipComissao(data: {
 }) {
   const membership = await requireRole("owner");
 
-  // Garantir que o membership pertence à barbearia do owner
   const target = await db.membership.findFirst({
     where: { id: data.membershipId, barbershopId: membership.barbershopId },
   });
@@ -237,9 +235,8 @@ export async function updateMembershipComissao(data: {
   revalidatePath("/dashboard/settings/acessos");
   revalidatePath("/dashboard/comissoes");
 }
-// ─────────────────────────────────────────────────────────────
-// SERVIÇOS
-// ─────────────────────────────────────────────────────────────
+
+// ─── SERVIÇOS ─────────────────────────────────────────────────────────────────
 
 function parsePriceToCents(price: string): number {
   return Math.round(Number(price.replace(/\./g, "").replace(",", ".")) * 100);
@@ -253,9 +250,7 @@ export async function addService(_: unknown, formData: FormData) {
     const duration = Number(formData.get("duration"));
     const price = String(formData.get("price") || "0");
 
-    if (!name) {
-      return { error: "Nome do serviço obrigatório." };
-    }
+    if (!name) return { error: "Nome do serviço obrigatório." };
 
     await db.service.create({
       data: {
@@ -267,7 +262,6 @@ export async function addService(_: unknown, formData: FormData) {
     });
 
     revalidatePath("/dashboard/settings");
-
     return { success: true };
   } catch {
     return { error: "Erro ao criar serviço." };
@@ -284,15 +278,10 @@ export async function updateService(_: unknown, formData: FormData) {
     const price = String(formData.get("price") || "0");
 
     const service = await db.service.findFirst({
-      where: {
-        id: serviceId,
-        barbershopId: membership.barbershopId,
-      },
+      where: { id: serviceId, barbershopId: membership.barbershopId },
     });
 
-    if (!service) {
-      return { error: "Serviço não encontrado." };
-    }
+    if (!service) return { error: "Serviço não encontrado." };
 
     await db.service.update({
       where: { id: serviceId },
@@ -304,7 +293,6 @@ export async function updateService(_: unknown, formData: FormData) {
     });
 
     revalidatePath("/dashboard/settings");
-
     return { success: true };
   } catch {
     return { error: "Erro ao atualizar serviço." };
@@ -315,19 +303,12 @@ export async function deleteService(serviceId: string) {
   const membership = await requireRole("owner");
 
   const service = await db.service.findFirst({
-    where: {
-      id: serviceId,
-      barbershopId: membership.barbershopId,
-    },
+    where: { id: serviceId, barbershopId: membership.barbershopId },
   });
 
-  if (!service) {
-    throw new Error("Serviço não encontrado.");
-  }
+  if (!service) throw new Error("Serviço não encontrado.");
 
-  await db.service.delete({
-    where: { id: serviceId },
-  });
+  await db.service.delete({ where: { id: serviceId } });
 
   revalidatePath("/dashboard/settings");
 }
@@ -336,28 +317,20 @@ export async function toggleServiceActive(serviceId: string) {
   const membership = await requireRole("owner");
 
   const service = await db.service.findFirst({
-    where: {
-      id: serviceId,
-      barbershopId: membership.barbershopId,
-    },
+    where: { id: serviceId, barbershopId: membership.barbershopId },
   });
 
-  if (!service) {
-    throw new Error("Serviço não encontrado.");
-  }
+  if (!service) throw new Error("Serviço não encontrado.");
 
   await db.service.update({
     where: { id: serviceId },
-    data: {
-      isActive: !service.isActive,
-    },
+    data: { isActive: !service.isActive },
   });
 
   revalidatePath("/dashboard/settings");
 }
-// ─────────────────────────────────────────────────────────────
-// INFORMAÇÕES BÁSICAS
-// ─────────────────────────────────────────────────────────────
+
+// ─── INFORMAÇÕES BÁSICAS ──────────────────────────────────────────────────────
 
 export async function updateBasicInfo(_: unknown, formData: FormData) {
   const membership = await requireRole("owner");
@@ -367,70 +340,87 @@ export async function updateBasicInfo(_: unknown, formData: FormData) {
     const phone = String(formData.get("phone") || "").trim();
     const city = String(formData.get("city") || "").trim();
 
-    if (!name) {
-      return { error: "Nome da barbearia é obrigatório." };
-    }
+    if (!name) return { error: "Nome da barbearia é obrigatório." };
 
     await db.barbershop.update({
-      where: {
-        id: membership.barbershopId,
-      },
-      data: {
-        name,
-        phone: phone || null,
-        city: city || null,
-      },
+      where: { id: membership.barbershopId },
+      data: { name, phone: phone || null, city: city || null },
     });
 
     revalidatePath("/dashboard/settings");
-
     return { success: true };
   } catch {
     return { error: "Erro ao salvar informações." };
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// HORÁRIOS DE FUNCIONAMENTO
-// ─────────────────────────────────────────────────────────────
+// ─── HORÁRIOS DE FUNCIONAMENTO ────────────────────────────────────────────────
 
 export async function updateBusinessHours(_: unknown, formData: FormData) {
   const membership = await requireRole("owner");
 
   try {
     const businessHours = await db.businessHour.findMany({
-      where: {
-        barbershopId: membership.barbershopId,
-      },
+      where: { barbershopId: membership.barbershopId },
     });
 
     for (const hour of businessHours) {
       const isOpen = formData.get(`isOpen_${hour.dayOfWeek}`) === "true";
-
       const openTime = String(
         formData.get(`openTime_${hour.dayOfWeek}`) || hour.openTime,
       );
-
       const closeTime = String(
         formData.get(`closeTime_${hour.dayOfWeek}`) || hour.closeTime,
       );
 
       await db.businessHour.update({
-        where: {
-          id: hour.id,
-        },
-        data: {
-          isOpen,
-          openTime,
-          closeTime,
-        },
+        where: { id: hour.id },
+        data: { isOpen, openTime, closeTime },
       });
     }
 
     revalidatePath("/dashboard/settings");
-
     return { success: true };
   } catch {
     return { error: "Erro ao salvar horários." };
+  }
+}
+
+// ─── DADOS PESSOAIS DO OWNER ──────────────────────────────────────────────────
+
+export async function updatePersonalInfo(_: unknown, formData: FormData) {
+  const membership = await requireRole("owner");
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Não autenticado." };
+
+  try {
+    const name = String(formData.get("name") || "").trim();
+    const cpf = String(formData.get("cpf") || "").replace(/\D/g, "") || null;
+    const birthDate = String(formData.get("birthDate") || "") || null;
+    const phone =
+      String(formData.get("phone") || "").replace(/\D/g, "") || null;
+
+    if (!name) return { error: "Nome é obrigatório." };
+
+    await db.user.update({
+      where: { id: session.user.id },
+      data: {
+        name,
+        cpf: cpf || null,
+        birthDate: birthDate ? new Date(birthDate) : null,
+      },
+    });
+
+    if (phone) {
+      await db.barbershop.update({
+        where: { id: membership.barbershopId },
+        data: { phone },
+      });
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch {
+    return { error: "Erro ao salvar dados pessoais." };
   }
 }

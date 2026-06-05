@@ -1,22 +1,14 @@
-// src/app/(dashboard)/dashboard/settings/page.tsx
+﻿// src/app/(dashboard)/dashboard/settings/page.tsx
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { SettingsAccordion } from "./settings-accordion";
+import { BasicInfoForm } from "./basic-info-form";
+import { BusinessHoursForm } from "./business-hours-form";
+import { ServicesManager } from "./services-manager";
 
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      name: true,
-      email: true,
-      cpf: true,
-      birthDate: true,
-    },
-  });
 
   const barbershop = await db.barbershop.findUnique({
     where: { ownerId: session.user.id },
@@ -26,7 +18,7 @@ export default async function SettingsPage() {
     },
   });
 
-  if (!barbershop || !user) redirect("/onboarding");
+  if (!barbershop) redirect("/onboarding");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
@@ -46,7 +38,7 @@ export default async function SettingsPage() {
             className="flex items-center gap-1.5 text-xs hover:opacity-70 transition-opacity mr-2"
             style={{ color: "var(--text-tertiary)" }}
           >
-            ← Dashboard
+            â† Dashboard
           </a>
           <span
             style={{
@@ -65,13 +57,14 @@ export default async function SettingsPage() {
               color: "var(--text-primary)",
             }}
           >
-            Configurações
+            ConfiguraÃ§Ãµes
           </span>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-6">
-        {/* Endereço público */}
+      {/* ConteÃºdo */}
+      <main className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-8">
+        {/* Slug da barbearia */}
         <div
           className="flex items-center justify-between p-4 rounded-xl"
           style={{
@@ -84,7 +77,7 @@ export default async function SettingsPage() {
               className="text-xs font-semibold mb-1"
               style={{ color: "var(--text-tertiary)" }}
             >
-              ENDEREÇO PÚBLICO
+              ENDEREÃ‡O PÃšBLICO
             </p>
             <p
               className="text-sm font-bold"
@@ -136,26 +129,16 @@ export default async function SettingsPage() {
               Convide recepcionistas e barbeiros para acessar o sistema
             </p>
           </div>
-          <span style={{ color: "var(--text-tertiary)" }}>→</span>
+          <span style={{ color: "var(--text-tertiary)" }}>â†’</span>
         </a>
 
-        {/* Accordion de configurações */}
-        <SettingsAccordion
-          user={{
-            name: user.name ?? "",
-            email: user.email ?? "",
-            cpf: user.cpf ?? null,
-            birthDate: user.birthDate ?? null,
-            phone: barbershop.phone ?? null,
-          }}
-          barbershop={{
-            name: barbershop.name,
-            phone: barbershop.phone,
-            city: barbershop.city,
-            services: barbershop.services,
-            businessHours: barbershop.businessHours,
-          }}
+        <BasicInfoForm
+          name={barbershop.name}
+          phone={barbershop.phone || ""}
+          city={barbershop.city || ""}
         />
+        <ServicesManager services={barbershop.services} />
+        <BusinessHoursForm businessHours={barbershop.businessHours} />
       </main>
     </div>
   );
