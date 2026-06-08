@@ -1,14 +1,15 @@
 // ============================================================
 // LIVO — Webhook Asaas
-// Recebe notificações de pagamento e atualiza o plano
+// Única autoridade que ativa/suspende/cancela o acesso pago.
 // ============================================================
 
+// src/app/api/webhooks/asaas/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    // Verifica o token de autenticação do webhook
+    // Valida o token enviado pelo Asaas no header asaas-access-token
     const token = req.headers.get("asaas-access-token");
     if (token !== process.env.ASAAS_WEBHOOK_TOKEN) {
       console.error("[webhook] Token inválido");
@@ -20,53 +21,49 @@ export async function POST(req: NextRequest) {
 
     console.log(`[webhook] Evento recebido: ${event}`, payment?.id);
 
-    // ── Pagamento confirmado → ativa o plano ───────────────
+    // ── Pagamento confirmado/recebido → ativa o PRO ────────────
     if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
-      if (!payment?.subscription) {
-        return NextResponse.json({ ok: true });
+      if (payment?.subscription) {
+        await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: "lifetime" }, // protege a TX
+          },
+          data: { planStatus: "active", plan: "pro" },
+        });
+        console.log(`[webhook] PRO ativado: ${payment.subscription}`);
       }
-
-      await db.barbershop.updateMany({
-        where: { asaasSubscriptionId: payment.subscription },
-        data: { planStatus: "active" },
-      });
-
-      console.log(
-        `[webhook] Plano ativado para subscription: ${payment.subscription}`,
-      );
     }
 
-    // ── Pagamento atrasado → suspende ─────────────────────
+    // ── Pagamento atrasado → suspende o acesso ─────────────────
     if (event === "PAYMENT_OVERDUE") {
-      if (!payment?.subscription) {
-        return NextResponse.json({ ok: true });
+      if (payment?.subscription) {
+        await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: "lifetime" },
+          },
+          data: { planStatus: "suspended" },
+        });
+        console.log(`[webhook] Plano suspenso: ${payment.subscription}`);
       }
-
-      await db.barbershop.updateMany({
-        where: { asaasSubscriptionId: payment.subscription },
-        data: { planStatus: "suspended" },
-      });
-
-      console.log(
-        `[webhook] Plano suspenso para subscription: ${payment.subscription}`,
-      );
     }
 
-    // ── Assinatura cancelada ───────────────────────────────
-    if (event === "SUBSCRIPTION_DELETED") {
-      const subscriptionId = body.subscription?.id;
-      if (!subscriptionId) {
-        return NextResponse.json({ ok: true });
+    // ── Cobrança removida (assinatura cancelada) → cancela ─────
+    if (event === "PAYMENT_DELETED") {
+      if (payment?.subscription) {
+        await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: "lifetime" },
+          },
+          data: { planStatus: "cancelled" },
+        });
+        console.log(`[webhook] Assinatura cancelada: ${payment.subscription}`);
       }
-
-      await db.barbershop.updateMany({
-        where: { asaasSubscriptionId: subscriptionId },
-        data: { planStatus: "cancelled" },
-      });
-
-      console.log(`[webhook] Assinatura cancelada: ${subscriptionId}`);
     }
 
+    // Sempre 200 para o Asaas não penalizar a fila
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[webhook] Erro:", err);

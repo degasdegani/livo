@@ -79,9 +79,22 @@ export async function createBarbershop(formData: FormData) {
     }
   }
 
-  // Trial: 30 dias a partir de agora
+  // Trial: 30 dias para todos; 60 dias para os 14 leads do workshop TX.
+  // Consulta SOMENTE LEITURA em WaitlistLead — nunca escreve nem deleta.
+  const owner = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  const isWaitlistLead = owner?.email
+    ? (await db.waitlistLead.findFirst({
+        where: { email: { equals: owner.email, mode: "insensitive" } },
+        select: { id: true },
+      })) !== null
+    : false;
+
+  const trialDays = isWaitlistLead ? 60 : 30;
   const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+  trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
   // Transação única: User atualizado + Barbershop + Professional + Membership + Services + BusinessHours
   await db.$transaction(async (tx) => {

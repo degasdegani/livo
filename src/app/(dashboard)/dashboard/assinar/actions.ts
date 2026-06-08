@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/assinar/actions.ts
 "use server";
 
 import { auth } from "@/auth";
@@ -92,12 +93,11 @@ export async function createSubscription(
       description: `LIVO PRO ${cycleLabel} — ${barbershop.name}`,
     });
 
+    // NÃO ativa aqui. O acesso só é liberado quando o webhook receber
+    // PAYMENT_CONFIRMED/PAYMENT_RECEIVED. Aqui apenas guardamos a assinatura.
     await db.barbershop.update({
       where: { id: barbershop.id },
-      data: {
-        asaasSubscriptionId: subscription.id,
-        planStatus: "active",
-      },
+      data: { asaasSubscriptionId: subscription.id },
     });
 
     const payments = await getSubscriptionPayments(subscription.id);
