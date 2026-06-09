@@ -1,7 +1,16 @@
 // src/app/api/livia/route.ts
+
+import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
+
+// Rate limiter em memória — 20 req/min por userId (1:1 com barbershopId no modelo atual).
+// Em multi-instância serverless cada instância mantém seu próprio Map — suficiente para
+// a escala atual. Migrar para Redis/Upstash quando necessário.
+type RateLimitEntry = { count: number; resetAt: number };
+const rateLimitMap = new Map<string, RateLimitEntry>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +20,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // 2. Pegar mensagens do body
+    // 2. Rate limiting — antes de qualquer query ao banco ou chamada à IA
+    const userId = session.user.id;
+    const now = Date.now();
+    const entry = rateLimitMap.get(userId);
+
+    if (entry && now < entry.resetAt) {
+      if (entry.count >= RATE_LIMIT_MAX) {
+        return NextResponse.json(
+          { error: "Limite de mensagens atingido. Tente novamente em breve." },
+          { status: 429 },
+        );
+      }
+      entry.count += 1;
+    } else {
+      rateLimitMap.set(userId, {
+        count: 1,
+        resetAt: now + RATE_LIMIT_WINDOW_MS,
+      });
+    }
+
+    // 4. Pegar mensagens do body
     const { messages, barbershopId } = await req.json();
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -20,7 +49,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Buscar contexto da barbearia para a Lívia
+    // 5. Buscar contexto da barbearia para a Lívia
     const barbershop = barbershopId
       ? await db.barbershop.findUnique({
           where: { id: barbershopId },
@@ -38,7 +67,7 @@ export async function POST(req: NextRequest) {
         })
       : null;
 
-    // 4. Buscar dados financeiros do mês atual
+    // 6. Buscar dados financeiros do mês atual
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
@@ -65,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     const faturamento = (faturamentoMes._sum.totalInCents ?? 0) / 100;
 
-    // 5. Montar o system prompt com contexto real da barbearia
+    // 7. Montar o system prompt com contexto real da barbearia
     const systemPrompt = `Você é a Lívia, assistente de inteligência artificial do sistema LIVO — a plataforma de gestão para barbearias modernas.
 
 Sua personalidade:
@@ -109,7 +138,7 @@ Sobre o sistema LIVO:
 
 Nunca invente dados financeiros. Se não tiver os dados reais, diga que não tem acesso a essa informação específica no momento.`;
 
-    // 6. Chamar a API da Anthropic
+    // 8. Chamar a API da Anthropic
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {

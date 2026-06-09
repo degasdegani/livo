@@ -54,12 +54,20 @@ P2
 
 ---
 
-## TD-004
+## TD-004 ✅ RESOLVIDO 09/06/2026
 
 Sem rate limiting
 
+Solução:
+Map em memória — 20 req/min por userId (1:1 com barbershopId)
+Arquivo: src/app/api/livia/route.ts
+
+Limitação conhecida:
+Multi-instância serverless: cada instância tem seu próprio Map.
+Evolução futura: Redis/Upstash quando necessário.
+
 Impacto:
-Custos IA
+Custos da IA protegidos
 
 Prioridade:
 P0

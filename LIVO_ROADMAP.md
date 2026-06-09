@@ -17,7 +17,7 @@ Eliminar riscos críticos.
 
 [x] Remover debug routes
 
-[ ] Rate limiting da Lívia
+[x] Rate limiting da Lívia
 
 [ ] planStatus → Enum
 
