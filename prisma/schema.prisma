@@ -178,6 +178,7 @@ model Professional {
   membership   Membership?
   comandas     Comanda[]
 
+  @@index([barbershopId])
   @@map("professionals")
 }
 
@@ -199,6 +200,7 @@ model Service {
   comandaItems        ComandaItem[]
   appointmentServices AppointmentService[]
 
+  @@index([barbershopId])
   @@map("services")
 }
 
@@ -228,6 +230,7 @@ model Client {
   comandas     Comanda[]
 
   @@unique([phone, barbershopId])
+  @@index([barbershopId])
   @@map("clients")
 }
 
@@ -257,6 +260,7 @@ model Appointment {
   comanda             Comanda?
   appointmentServices AppointmentService[]
 
+  @@index([barbershopId])
   @@map("appointments")
 }
 
@@ -289,6 +293,7 @@ model BusinessHour {
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@unique([dayOfWeek, barbershopId])
+  @@index([barbershopId])
   @@map("business_hours")
 }
 
@@ -313,6 +318,7 @@ model Membership {
   professional Professional? @relation(fields: [professionalId], references: [id])
 
   @@unique([userId, barbershopId])
+  @@index([barbershopId])
   @@map("memberships")
 }
 
@@ -336,6 +342,7 @@ model Invitation {
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   invitedBy  User?      @relation("InvitedBy", fields: [invitedById], references: [id])
 
+  @@index([barbershopId])
   @@map("invitations")
 }
 
@@ -375,6 +382,7 @@ model ProductCategory {
   products   Product[]
 
   @@unique([name, barbershopId])
+  @@index([barbershopId])
   @@map("product_categories")
 }
 
@@ -397,6 +405,7 @@ model Product {
   stockMovements StockMovement[]
   comandaItems   ComandaItem[]
 
+  @@index([barbershopId])
   @@map("products")
 }
 
@@ -412,6 +421,7 @@ model StockMovement {
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
+  @@index([barbershopId])
   @@map("stock_movements")
 }
 
@@ -464,6 +474,7 @@ model Comanda {
   items        ComandaItem[]
   payments     ComandaPayment[]
 
+  @@index([barbershopId])
   @@map("comandas")
 }
 

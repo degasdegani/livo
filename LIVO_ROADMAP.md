@@ -21,9 +21,9 @@ Eliminar riscos críticos.
 
 [x] planStatus → Enum
 
-[ ] Índices do banco
+[x] Índices do banco
 
-[ ] Atualizar documentação
+[x] Atualizar documentação
 
 ---
 

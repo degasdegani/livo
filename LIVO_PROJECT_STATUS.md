@@ -32,12 +32,12 @@ O sistema encontra-se funcional para operação real de uma barbearia.
 
 Produto ............. 7/10
 UX .................. 6/10
-Engenharia .......... 5/10
+Engenharia .......... 6/10
 Escalabilidade ...... 5/10
 IA .................. 5/10
 Segurança ........... 4/10
 
-Score Geral: 5.3/10
+Score Geral: 5.5/10
 
 ---
 
@@ -161,4 +161,4 @@ Limitações:
 ~~P0.2 Debug routes~~ ✅ RESOLVIDO 09/06/2026
 ~~P0.3 Rate limiting~~ ✅ RESOLVIDO 09/06/2026
 ~~P0.4 planStatus enum~~ ✅ RESOLVIDO 09/06/2026
-P0.5 Índices
+~~P0.5 Índices~~ ✅ RESOLVIDO 09/06/2026
