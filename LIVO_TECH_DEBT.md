@@ -22,12 +22,18 @@ P0
 
 ---
 
-## TD-002
+## TD-002 ✅ RESOLVIDO 09/06/2026
 
 Debug routes
 
+Arquivos removidos:
+- api/auth-test/route.ts
+- api/auth-test-2/route.ts
+- api/env-test/route.ts
+- api/test-env/route.ts
+
 Impacto:
-Exposição de secrets
+Risco de exposição de secrets eliminado
 
 Prioridade:
 P0

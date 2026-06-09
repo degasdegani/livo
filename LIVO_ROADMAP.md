@@ -15,7 +15,7 @@ Eliminar riscos críticos.
 
 [x] Corrigir role hardcoded
 
-[ ] Remover debug routes
+[x] Remover debug routes
 
 [ ] Rate limiting da Lívia
 
