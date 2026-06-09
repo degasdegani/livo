@@ -74,12 +74,26 @@ P0
 
 ---
 
-## TD-005
+## TD-005 ✅ RESOLVIDO 09/06/2026
 
-planStatus String
+planStatus → PlanStatus enum
+
+Solução:
+Migration manual com USING cast (sem perda de dados).
+Enum criado: trial | active | suspended | cancelled | lifetime.
+4 arquivos atualizados para usar PlanStatus do @prisma/client.
+Conta TX lifetime preservada integralmente.
+
+Arquivos alterados:
+- prisma/schema.prisma
+- prisma/migrations/20260609120000_p04_planstatus_enum/migration.sql
+- src/lib/permissions.ts
+- src/app/api/webhooks/asaas/route.ts
+- src/app/(onboarding)/onboarding/actions.ts
+- src/app/(dashboard)/dashboard/assinar/actions.ts
 
 Impacto:
-Billing
+Billing type-safe — valores inválidos bloqueados em compile time.
 
 Prioridade:
 P0

@@ -1,6 +1,7 @@
 // src/app/(dashboard)/dashboard/assinar/actions.ts
 "use server";
 
+import { PlanStatus } from "@prisma/client";
 import { auth } from "@/auth";
 import {
   createAsaasCustomer,
@@ -47,11 +48,11 @@ export async function createSubscription(
 
     if (!barbershop) return { error: "Barbearia não encontrada." };
 
-    if (barbershop.planStatus === "active") {
+    if (barbershop.planStatus === PlanStatus.active) {
       return { error: "Você já tem uma assinatura ativa." };
     }
 
-    if (barbershop.planStatus === "lifetime") {
+    if (barbershop.planStatus === PlanStatus.lifetime) {
       return { error: "Sua conta tem acesso vitalício." };
     }
 

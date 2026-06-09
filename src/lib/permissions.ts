@@ -3,12 +3,12 @@
 // Resolve o "crachá" da pessoa logada e aplica as regras de acesso
 // ============================================================
 
+import type { Prisma } from "@prisma/client";
+import { MemberRole, PlanStatus } from "@prisma/client";
+import { redirect } from "next/navigation";
 // src/lib/permissions.ts
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import type { Prisma } from "@prisma/client";
-import { MemberRole } from "@prisma/client";
-import { redirect } from "next/navigation";
 
 export type MembershipContext = {
   membershipId: string;
@@ -74,13 +74,13 @@ export async function checkBillingAccess(barbershopId: string): Promise<void> {
   if (!barbershop) redirect("/login");
 
   // Lifetime — nunca bloqueia
-  if (barbershop.planStatus === "lifetime") return;
+  if (barbershop.planStatus === PlanStatus.lifetime) return;
 
   // Assinatura ativa — deixa passar
-  if (barbershop.planStatus === "active") return;
+  if (barbershop.planStatus === PlanStatus.active) return;
 
   // Trial — verifica se ainda está válido
-  if (barbershop.planStatus === "trial") {
+  if (barbershop.planStatus === PlanStatus.trial) {
     if (!barbershop.trialEndsAt) return; // sem data = trial indefinido
     if (new Date() < new Date(barbershop.trialEndsAt)) return; // ainda no prazo
   }

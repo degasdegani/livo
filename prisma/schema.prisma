@@ -17,6 +17,14 @@ enum Plan {
   prime
 }
 
+enum PlanStatus {
+  trial
+  active
+  suspended
+  cancelled
+  lifetime
+}
+
 enum AppointmentStatus {
   pending
   confirmed
@@ -128,7 +136,7 @@ model Barbershop {
   neighborhood        String?
   cep                 String?
   plan                Plan      @default(start)
-  planStatus          String    @default("trial")
+  planStatus          PlanStatus @default(trial)
   trialEndsAt         DateTime?
   asaasCustomerId     String?
   asaasSubscriptionId String?

@@ -19,7 +19,7 @@ Eliminar riscos críticos.
 
 [x] Rate limiting da Lívia
 
-[ ] planStatus → Enum
+[x] planStatus → Enum
 
 [ ] Índices do banco
 

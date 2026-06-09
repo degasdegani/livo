@@ -1,9 +1,10 @@
 // src/app/(onboarding)/onboarding/actions.ts
 "use server";
 
+import { PlanStatus } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 import { PRESET_SERVICES } from "./data";
 
 function slugify(text: string): string {
@@ -120,7 +121,7 @@ export async function createBarbershop(formData: FormData) {
         neighborhood,
         cep,
         plan: "start", // atualizado manualmente para pro via Prisma Studio
-        planStatus: "trial",
+        planStatus: PlanStatus.trial,
         trialEndsAt,
         ownerId: userId,
       },

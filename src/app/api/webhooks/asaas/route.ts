@@ -4,8 +4,9 @@
 // ============================================================
 
 // src/app/api/webhooks/asaas/route.ts
+import { PlanStatus } from "@prisma/client";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,9 +28,9 @@ export async function POST(req: NextRequest) {
         await db.barbershop.updateMany({
           where: {
             asaasSubscriptionId: payment.subscription,
-            planStatus: { not: "lifetime" }, // protege a TX
+            planStatus: { not: PlanStatus.lifetime }, // protege a TX
           },
-          data: { planStatus: "active", plan: "pro" },
+          data: { planStatus: PlanStatus.active, plan: "pro" },
         });
         console.log(`[webhook] PRO ativado: ${payment.subscription}`);
       }
@@ -41,9 +42,9 @@ export async function POST(req: NextRequest) {
         await db.barbershop.updateMany({
           where: {
             asaasSubscriptionId: payment.subscription,
-            planStatus: { not: "lifetime" },
+            planStatus: { not: PlanStatus.lifetime },
           },
-          data: { planStatus: "suspended" },
+          data: { planStatus: PlanStatus.suspended },
         });
         console.log(`[webhook] Plano suspenso: ${payment.subscription}`);
       }
@@ -55,9 +56,9 @@ export async function POST(req: NextRequest) {
         await db.barbershop.updateMany({
           where: {
             asaasSubscriptionId: payment.subscription,
-            planStatus: { not: "lifetime" },
+            planStatus: { not: PlanStatus.lifetime },
           },
-          data: { planStatus: "cancelled" },
+          data: { planStatus: PlanStatus.cancelled },
         });
         console.log(`[webhook] Assinatura cancelada: ${payment.subscription}`);
       }

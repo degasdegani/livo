@@ -160,6 +160,5 @@ Limitações:
 ~~P0.1 Role hardcoded~~ ✅ RESOLVIDO 09/06/2026
 ~~P0.2 Debug routes~~ ✅ RESOLVIDO 09/06/2026
 ~~P0.3 Rate limiting~~ ✅ RESOLVIDO 09/06/2026
-P0.3 Rate limiting
-P0.4 planStatus enum
+~~P0.4 planStatus enum~~ ✅ RESOLVIDO 09/06/2026
 P0.5 Índices
