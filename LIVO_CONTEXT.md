@@ -1,3 +1,46 @@
+## CHANGELOG RECENTE
+
+### 09/06/2026 — SPRINT P0 + AUDITORIA + GAP-03
+
+**Sprint P0 — Estabilização de Segurança (todos resolvidos):**
+
+- P0.1: Role `owner` hardcoded → substituído por `requireRole()` em todas as actions
+- P0.2: Rotas de debug `/api/debug/*` removidas do codebase
+- P0.3: Rate limiting adicionado em `/api/livia` (20 req/min por userId, in-memory Map)
+- P0.4: `planStatus` adicionado como enum Prisma (`PlanStatus: trial, active, suspended, cancelled, lifetime`) com migration aplicada
+- P0.5: Índices `@@index([barbershopId])` adicionados em 11 models (Professional, Service, Appointment, Client, Comanda, ComandaItem, Membership, Invitation, Product, StockMovement, BusinessHour)
+
+**Auditoria Funcional Completa:**
+
+- 18 módulos auditados — score médio 7.3/10
+- `LIVO_FUNCTIONAL_AUDIT.md` criado (estado de cada módulo)
+- `LIVO_PRODUCTION_GAP.md` criado (25 gaps priorizados P1→P4)
+
+**GAP-03 — Página de Gestão de Profissionais (em andamento):**
+
+Etapa 1 — `src/app/(dashboard)/dashboard/profissionais/actions.ts`:
+- `getProfessionalsData()` — lista com membership.user + _count de appointments e comandas
+- `createProfessional(name, bio?)` — cria profissional vinculado à barbearia
+- `updateProfessional(id, name, bio?)` — edição com ownership check multi-tenant
+- `toggleProfessionalActive(id, confirmDeactivate?)` — soft delete + verificação de agendamentos futuros
+- `ToggleProfessionalResult` discriminated union: success | error | requiresConfirm
+
+Etapa 2 — Server Component + Skeleton:
+- `page.tsx`: header com ícone Scissors + metadata
+- `loading.tsx`: 4 SkeletonRows (skeleton nativo do projeto)
+
+Etapa 3 — `profissionais-client.tsx` (UI completa):
+- Lista de profissionais: avatar (OAuth image ou iniciais), badge Ativo/Inativo, bio, linked user, stats
+- Modal criar/editar: name + bio (contador 500 chars)
+- Toggle flow: direto (sem agendamentos) ou via `ConfirmDeactivateModal` (com contagem de agendamentos futuros)
+- Toast feedback 4s, `refreshData()` pós-ação, `togglingId` por linha
+
+Etapa 4 — pendente: item "Profissionais" no sidebar (`dashboard-layout-client.tsx`)
+
+**Decisão técnica registrada:**
+- Hard delete de profissional bloqueado: `Appointment.professionalId` e `Comanda.professionalId` são FK NOT NULL sem CASCADE — apenas soft delete (isActive=false) é seguro
+- TypeScript narrowing de `ToggleProfessionalResult` requer `"requiresConfirm" in result` e `"error" in result` como guardas positivas — negação após early return não propaga em closures assíncronas
+
 ---
 
 ## 4. BANCO DE DADOS — SCHEMA COMPLETO

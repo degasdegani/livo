@@ -11,7 +11,7 @@ ESTABILIZAÇÃO
 Objetivo:
 Eliminar riscos críticos.
 
-## P0
+## P0 ✅ CONCLUÍDO 09/06/2026
 
 [x] Corrigir role hardcoded
 
@@ -23,7 +23,7 @@ Eliminar riscos críticos.
 
 [x] Índices do banco
 
-[x] Atualizar documentação
+[x] Atualizar documentação (auditoria funcional + gap report)
 
 ---
 
@@ -42,11 +42,17 @@ Produto pronto para crescimento.
 
 [ ] CRUD Serviços
 
-[ ] CRUD Profissionais
+[~] CRUD Profissionais ← 75% — Etapas 1–3 concluídas, Etapa 4 (nav) pendente
 
 [ ] Horários de funcionamento
 
-[ ] Edição de agendamento
+[ ] Edição de agendamento (GAP-01)
+
+[ ] Edição completa de cliente (GAP-02)
+
+[ ] PaymentMethod enum migration (GAP-04)
+
+[ ] Recuperação de senha (GAP-05)
 
 [ ] Cancelamento de agendamento
 
