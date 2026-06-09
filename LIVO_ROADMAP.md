@@ -13,7 +13,7 @@ Eliminar riscos críticos.
 
 ## P0
 
-[ ] Corrigir role hardcoded
+[x] Corrigir role hardcoded
 
 [ ] Remover debug routes
 

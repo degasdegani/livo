@@ -6,15 +6,16 @@ Last Updated: 09/06/2026
 
 # CRÍTICA
 
-## TD-001
+## TD-001 ✅ RESOLVIDO 09/06/2026
 
 Role hardcoded
 
 Arquivo:
-layout.tsx
+layout.tsx → refatorado para Server Component
+dashboard-layout-client.tsx → novo Client Component
 
 Impacto:
-RBAC quebrado
+RBAC visual corrigido — role real buscado do banco
 
 Prioridade:
 P0
