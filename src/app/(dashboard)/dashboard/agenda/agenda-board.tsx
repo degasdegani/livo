@@ -96,8 +96,21 @@ function isTodayKey(dateKey: string): boolean {
 }
 
 function getSlotIndex(date: Date): number {
-  const h = date.getHours();
-  const m = date.getMinutes();
+  const h = parseInt(
+    date.toLocaleString("pt-BR", {
+      hour: "2-digit",
+      hour12: false,
+      timeZone: "America/Sao_Paulo",
+    }),
+    10,
+  );
+  const m = parseInt(
+    date.toLocaleString("pt-BR", {
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    }),
+    10,
+  );
   return (h - HOUR_START) * (60 / SLOT_MINUTES) + Math.floor(m / SLOT_MINUTES);
 }
 
@@ -114,13 +127,16 @@ function slotToTime(slotIndex: number): string {
 
 function slotToDateISO(dateKey: string, slotIndex: number): string {
   const timeStr = slotToTime(slotIndex);
-  return `${dateKey}T${timeStr}:00.000Z`;
+  // Sem sufixo: browser interpreta como hora local (Brazil UTC-3).
+  // toISOString() converte corretamente local → UTC antes de enviar ao servidor.
+  return new Date(`${dateKey}T${timeStr}:00`).toISOString();
 }
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
@@ -1085,12 +1101,18 @@ function EditAppointmentModal({
   onClose,
   onEdit,
 }: EditAppointmentModalProps) {
-  const initialDate = new Date(appointment.date).toISOString().slice(0, 10);
-  const initialHour = new Date(appointment.date).getUTCHours();
-  const initialMin = new Date(appointment.date).getUTCMinutes();
-  const initialSlot =
-    (initialHour - HOUR_START) * (60 / SLOT_MINUTES) +
-    Math.floor(initialMin / SLOT_MINUTES);
+  const aptDate = new Date(appointment.date);
+  const initialDate = aptDate
+    .toLocaleDateString("pt-BR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    })
+    .split("/")
+    .reverse()
+    .join("-");
+  const initialSlot = getSlotIndex(aptDate);
 
   const [serviceId, setServiceId] = useState(appointment.serviceId);
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -1113,7 +1135,7 @@ function EditAppointmentModal({
       !selectedDate
     )
       return;
-    const dateISO = `${selectedDate}T${selectedTimeStr}:00.000Z`;
+    const dateISO = slotToDateISO(selectedDate, selectedSlot);
     onEdit({ serviceId, dateISO, clientName, clientPhone, notes });
   }
 
@@ -1278,10 +1300,12 @@ function EditAppointmentModal({
               }}
             >
               {selectedTimeStr} → termina ~{(() => {
-                const end = new Date(
-                  `${selectedDate}T${selectedTimeStr}:00.000Z`,
+                const start = new Date(
+                  slotToDateISO(selectedDate, selectedSlot),
                 );
-                end.setMinutes(end.getMinutes() + selectedService.durationMin);
+                const end = new Date(
+                  start.getTime() + selectedService.durationMin * 60_000,
+                );
                 return formatTime(end);
               })()} · {selectedService.durationMin}min ·{" "}
               {formatCurrency(selectedService.priceInCents)}

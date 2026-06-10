@@ -51,8 +51,8 @@ export type AgendaService = {
 export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
   const membership = await requireMembership();
 
-  const date = new Date(dateStr + "T00:00:00.000Z");
-  const nextDay = new Date(dateStr + "T23:59:59.999Z");
+  const date = new Date(`${dateStr}T00:00:00-03:00`);
+  const nextDay = new Date(`${dateStr}T23:59:59.999-03:00`);
 
   const professionals = await db.professional.findMany({
     where: {
