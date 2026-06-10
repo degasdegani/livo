@@ -1,11 +1,12 @@
 // ============================================================
-// LIVO — Server Actions: Agendamento
+// LIVO — Server Actions: Agendamento Público
 // getAvailableSlots: retorna horários disponíveis para uma data
 // createAppointment: cria o agendamento + envia e-mail
 // ============================================================
 
 "use server";
 
+import { createAppointmentCore } from "@/lib/appointment-core";
 import { generateAvailableSlots } from "@/lib/availability";
 import { db } from "@/lib/db";
 import { sendAppointmentConfirmation } from "@/lib/email";
@@ -102,78 +103,32 @@ export async function createAppointment(
     if (!data.clientPhone?.trim()) return { error: "Informe seu telefone." };
     if (!data.date || !data.time) return { error: "Selecione data e horário." };
 
-    const service = await db.service.findUnique({
-      where: { id: data.serviceId },
-    });
+    // Busca dados para o e-mail em paralelo
+    const [service, professional, barbershop] = await Promise.all([
+      db.service.findUnique({ where: { id: data.serviceId } }),
+      db.professional.findUnique({ where: { id: data.professionalId } }),
+      db.barbershop.findUnique({ where: { id: data.barbershopId } }),
+    ]);
     if (!service) return { error: "Serviço não encontrado." };
 
-    // Busca o profissional para o e-mail
-    const professional = await db.professional.findUnique({
-      where: { id: data.professionalId },
+    // -03:00 = UTC-3 (Brasília, sem DST desde 2019)
+    const dateISO = new Date(
+      `${data.date}T${data.time}:00-03:00`,
+    ).toISOString();
+
+    const result = await createAppointmentCore({
+      barbershopId: data.barbershopId,
+      professionalId: data.professionalId,
+      serviceId: data.serviceId,
+      dateISO,
+      clientName: data.clientName,
+      clientPhone: data.clientPhone,
+      clientEmail: data.clientEmail || null,
+      status: "confirmed",
     });
 
-    // Busca a barbearia para o e-mail
-    const barbershop = await db.barbershop.findUnique({
-      where: { id: data.barbershopId },
-    });
+    if (!result.success) return { error: result.error };
 
-    // Monta data e hora do agendamento
-    const [year, month, day] = data.date.split("-").map(Number);
-    const [hour, minute] = data.time.split(":").map(Number);
-    const appointmentDate = new Date(year, month - 1, day, hour, minute, 0);
-    const endTime = new Date(
-      appointmentDate.getTime() + service.durationMin * 60 * 1000,
-    );
-
-    // ── Cria o agendamento no banco ───────────────────────────
-    const appointment = await db.appointment.create({
-      data: {
-        date: appointmentDate,
-        endTime,
-        status: "confirmed",
-        clientName: data.clientName.trim(),
-        clientPhone: data.clientPhone.trim(),
-        clientEmail: data.clientEmail?.trim() || null,
-        barbershopId: data.barbershopId,
-        professionalId: data.professionalId,
-        serviceId: data.serviceId,
-      },
-    });
-
-    // ── Atualiza CRM: cria ou atualiza cliente ────────────────
-    const existingClient = await db.client.findFirst({
-      where: {
-        phone: data.clientPhone.trim(),
-        barbershopId: data.barbershopId,
-      },
-    });
-
-    if (existingClient) {
-      await db.client.update({
-        where: { id: existingClient.id },
-        data: {
-          totalVisits: { increment: 1 },
-          lastVisitAt: appointmentDate,
-          ...(data.clientEmail && !existingClient.email
-            ? { email: data.clientEmail.trim() }
-            : {}),
-        },
-      });
-    } else {
-      await db.client.create({
-        data: {
-          name: data.clientName.trim(),
-          phone: data.clientPhone.trim(),
-          email: data.clientEmail?.trim() || null,
-          barbershopId: data.barbershopId,
-          totalVisits: 1,
-          lastVisitAt: appointmentDate,
-        },
-      });
-    }
-
-    // ── Envia e-mail de confirmação (não bloqueia o fluxo) ────
-    // Só envia se o cliente forneceu e-mail
     if (data.clientEmail && barbershop && professional) {
       await sendAppointmentConfirmation({
         clientEmail: data.clientEmail,
@@ -188,7 +143,7 @@ export async function createAppointment(
       });
     }
 
-    return { success: true, appointmentId: appointment.id };
+    return { success: true, appointmentId: result.appointmentId };
   } catch (err) {
     console.error("[createAppointment]", err);
     return { error: "Erro ao criar agendamento. Tente novamente." };

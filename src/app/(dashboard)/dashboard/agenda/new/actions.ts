@@ -6,10 +6,11 @@
 
 "use server";
 
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { createAppointmentCore } from "@/lib/appointment-core";
 import { generateAvailableSlots } from "@/lib/availability";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 
 // ── Buscar slots disponíveis ──────────────────────────────────
 // Mesma lógica do agendamento público — garante sem conflitos
@@ -88,63 +89,28 @@ export async function createManualAppointment(formData: FormData) {
   const time = formData.get("time") as string;
   const clientName = formData.get("clientName") as string;
   const clientPhone = formData.get("clientPhone") as string;
-  const notes = formData.get("notes") as string;
 
-  // Validações
   if (!serviceId || !professionalId || !date || !time) {
     throw new Error("Preencha todos os campos obrigatórios.");
   }
   if (!clientName?.trim()) throw new Error("Informe o nome do cliente.");
   if (!clientPhone?.trim()) throw new Error("Informe o telefone do cliente.");
 
-  const service = await db.service.findUnique({ where: { id: serviceId } });
-  if (!service) throw new Error("Serviço não encontrado.");
+  // -03:00 = UTC-3 (Brasília, sem DST desde 2019)
+  const dateISO = new Date(`${date}T${time}:00-03:00`).toISOString();
 
-  // Monta data e hora
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const appointmentDate = new Date(year, month - 1, day, hour, minute, 0);
-  const endTime = new Date(
-    appointmentDate.getTime() + service.durationMin * 60 * 1000,
-  );
-
-  // Cria o agendamento
-  await db.appointment.create({
-    data: {
-      date: appointmentDate,
-      endTime,
-      status: "confirmed",
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
-      clientEmail: null,
-      barbershopId: barbershop.id,
-      professionalId,
-      serviceId,
-    },
+  const result = await createAppointmentCore({
+    barbershopId: barbershop.id,
+    professionalId,
+    serviceId,
+    dateISO,
+    clientName,
+    clientPhone,
+    notes: (formData.get("notes") as string | null)?.trim() || null,
+    status: "confirmed",
   });
 
-  // Atualiza CRM
-  const existingClient = await db.client.findFirst({
-    where: { phone: clientPhone.trim(), barbershopId: barbershop.id },
-  });
+  if (!result.success) throw new Error(result.error);
 
-  if (existingClient) {
-    await db.client.update({
-      where: { id: existingClient.id },
-      data: { totalVisits: { increment: 1 }, lastVisitAt: appointmentDate },
-    });
-  } else {
-    await db.client.create({
-      data: {
-        name: clientName.trim(),
-        phone: clientPhone.trim(),
-        barbershopId: barbershop.id,
-        totalVisits: 1,
-        lastVisitAt: appointmentDate,
-      },
-    });
-  }
-
-  // Redireciona para a agenda do dia criado
   redirect(`/dashboard/agenda?date=${date}`);
 }

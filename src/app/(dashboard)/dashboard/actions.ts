@@ -1,16 +1,20 @@
 "use server";
 
-import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { updateAppointmentStatusCore } from "@/lib/appointment-core";
+import { requireMembership } from "@/lib/permissions";
 
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: "confirmed" | "completed" | "cancelled" | "no_show",
 ) {
-  await db.appointment.update({
-    where: { id: appointmentId },
-    data: { status },
-  });
+  const membership = await requireMembership();
+  const result = await updateAppointmentStatusCore(
+    appointmentId,
+    status,
+    membership,
+  );
+  if (!result.success) throw new Error(result.error);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/agenda");
 }

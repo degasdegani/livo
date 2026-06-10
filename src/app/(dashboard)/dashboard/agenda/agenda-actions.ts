@@ -2,6 +2,11 @@
 
 import type { AppointmentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import {
+  createAppointmentCore,
+  updateAppointmentCore,
+  updateAppointmentStatusCore,
+} from "@/lib/appointment-core";
 import { db } from "@/lib/db";
 import {
   appointmentScope,
@@ -141,30 +146,12 @@ export async function updateAppointmentStatus(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const membership = await requireMembership();
-
-    const appointment = await db.appointment.findFirst({
-      where: {
-        id: appointmentId,
-        barbershopId: membership.barbershopId,
-      },
-    });
-
-    if (!appointment) {
-      return { success: false, error: "Agendamento não encontrado." };
-    }
-
-    if (
-      membership.role === "barber" &&
-      appointment.professionalId !== membership.professionalId
-    ) {
-      return { success: false, error: "Sem permissão para este agendamento." };
-    }
-
-    await db.appointment.update({
-      where: { id: appointmentId },
-      data: { status },
-    });
-
+    const result = await updateAppointmentStatusCore(
+      appointmentId,
+      status,
+      membership,
+    );
+    if (!result.success) return { success: false, error: result.error };
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
@@ -230,62 +217,18 @@ export async function updateAppointment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const membership = await requireMembership();
-
-    const appointment = await db.appointment.findFirst({
-      where: { id: appointmentId, barbershopId: membership.barbershopId },
-    });
-
-    if (!appointment) {
-      return { success: false, error: "Agendamento não encontrado." };
-    }
-
-    if (
-      membership.role === "barber" &&
-      appointment.professionalId !== membership.professionalId
-    ) {
-      return { success: false, error: "Sem permissão para este agendamento." };
-    }
-
-    if (
-      appointment.status !== "pending" &&
-      appointment.status !== "confirmed"
-    ) {
-      return {
-        success: false,
-        error:
-          "Apenas agendamentos pendentes ou confirmados podem ser editados.",
-      };
-    }
-
-    const service = await db.service.findFirst({
-      where: {
-        id: data.serviceId,
-        barbershopId: membership.barbershopId,
-        isActive: true,
-      },
-    });
-
-    if (!service) {
-      return { success: false, error: "Serviço não encontrado." };
-    }
-
-    const startDate = new Date(data.dateISO);
-    const endDate = new Date(
-      startDate.getTime() + service.durationMin * 60_000,
-    );
-
-    await db.appointment.update({
-      where: { id: appointmentId },
-      data: {
+    const result = await updateAppointmentCore(
+      {
+        appointmentId,
         serviceId: data.serviceId,
-        date: startDate,
-        endTime: endDate,
-        clientName: data.clientName.trim(),
-        clientPhone: data.clientPhone.trim(),
-        notes: data.notes?.trim() || null,
+        dateISO: data.dateISO,
+        clientName: data.clientName,
+        clientPhone: data.clientPhone,
+        notes: data.notes,
       },
-    });
-
+      membership,
+    );
+    if (!result.success) return { success: false, error: result.error };
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
@@ -313,36 +256,18 @@ export async function createQuickAppointment(data: {
       return { success: false, error: "Sem permissão para este profissional." };
     }
 
-    const service = await db.service.findFirst({
-      where: {
-        id: data.serviceId,
-        barbershopId: membership.barbershopId,
-        isActive: true,
-      },
+    const result = await createAppointmentCore({
+      barbershopId: membership.barbershopId,
+      professionalId: data.professionalId,
+      serviceId: data.serviceId,
+      dateISO: data.dateISO,
+      clientName: data.clientName,
+      clientPhone: data.clientPhone,
+      notes: data.notes,
+      status: "pending",
     });
 
-    if (!service) {
-      return { success: false, error: "Serviço não encontrado." };
-    }
-
-    const startDate = new Date(data.dateISO);
-    const endDate = new Date(startDate.getTime() + service.durationMin * 60000);
-
-    await db.appointment.create({
-      data: {
-        date: startDate,
-        endTime: endDate,
-        status: "pending",
-        clientName: data.clientName.trim(),
-        clientPhone: data.clientPhone.trim(),
-        clientEmail: null,
-        notes: data.notes?.trim() || null,
-        barbershopId: membership.barbershopId,
-        professionalId: data.professionalId,
-        serviceId: data.serviceId,
-      },
-    });
-
+    if (!result.success) return { success: false, error: result.error };
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
