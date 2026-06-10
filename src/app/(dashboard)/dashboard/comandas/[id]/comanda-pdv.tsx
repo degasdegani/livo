@@ -1,17 +1,17 @@
 // src/app/(dashboard)/dashboard/comandas/[id]/comanda-pdv.tsx
 "use client";
 
-import { PaymentMethod } from "@prisma/client";
+import type { PaymentMethod } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   addProductItem,
   addServiceItem,
+  type ComandaWithItems,
   cancelarComanda,
   fecharComanda,
   getComanda,
   removeItem,
-  type ComandaWithItems,
 } from "../actions";
 
 type Service = {
@@ -37,9 +37,12 @@ type Props = {
 const PAYMENT_OPTS: { value: PaymentMethod; label: string }[] = [
   { value: "cash", label: "💵 Dinheiro" },
   { value: "pix", label: "📲 PIX" },
-  { value: "credit_card", label: "💳 Cartão de Crédito" },
-  { value: "debit_card", label: "💳 Cartão de Débito" },
+  { value: "credit_card", label: "💳 Crédito" },
+  { value: "debit_card", label: "💳 Débito" },
   { value: "voucher", label: "🎟️ Voucher" },
+  { value: "cortesia", label: "🎁 Cortesia" },
+  { value: "convenio", label: "🤝 Convênio" },
+  { value: "outros", label: "📋 Outros" },
 ];
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "Dinheiro",
@@ -47,6 +50,9 @@ const PAYMENT_LABEL: Record<string, string> = {
   credit_card: "Crédito",
   debit_card: "Débito",
   voucher: "Voucher",
+  cortesia: "Cortesia",
+  convenio: "Convênio",
+  outros: "Outros",
 };
 
 const STATUS_STYLE: Record<string, React.CSSProperties> = {
@@ -189,9 +195,9 @@ export default function ComandaPDV({
   }
 
   function parseDiscountInput(val: string): number {
-    const cleaned = val.replace(/[^\d,\.]/g, "").replace(",", ".");
+    const cleaned = val.replace(/[^\d,.]/g, "").replace(",", ".");
     const float = parseFloat(cleaned);
-    return isNaN(float) ? 0 : Math.round(float * 100);
+    return Number.isNaN(float) ? 0 : Math.round(float * 100);
   }
 
   const discountCents = parseDiscountInput(discountStr);
@@ -222,6 +228,7 @@ export default function ComandaPDV({
       >
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => router.push("/dashboard/comandas")}
             className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
             style={{
@@ -230,6 +237,7 @@ export default function ComandaPDV({
             }}
           >
             <svg
+              aria-hidden="true"
               className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
@@ -273,6 +281,7 @@ export default function ComandaPDV({
           </div>
           {canCancel && comanda.status !== "cancelled" && (
             <button
+              type="button"
               onClick={() => setShowCancelModal(true)}
               className="rounded-lg px-3 py-1.5 text-sm transition-colors"
               style={{
@@ -314,6 +323,7 @@ export default function ComandaPDV({
                 style={{ backgroundColor: "var(--bg-card)" }}
               >
                 <svg
+                  aria-hidden="true"
                   className="h-6 w-6"
                   style={{ color: "var(--text-tertiary)" }}
                   fill="none"
@@ -386,6 +396,7 @@ export default function ComandaPDV({
                     </span>
                     {!isReadOnly && (
                       <button
+                        type="button"
                         onClick={() => handleRemoveItem(item.id)}
                         disabled={isPending}
                         className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
@@ -401,6 +412,7 @@ export default function ComandaPDV({
                         }}
                       >
                         <svg
+                          aria-hidden="true"
                           className="h-4 w-4"
                           fill="none"
                           viewBox="0 0 24 24"
@@ -470,6 +482,7 @@ export default function ComandaPDV({
               {(["services", "products"] as const).map((t) => (
                 <button
                   key={t}
+                  type="button"
                   onClick={() => setTab(t)}
                   className="flex-1 rounded-md py-2 text-sm font-medium transition-colors"
                   style={
@@ -515,6 +528,7 @@ export default function ComandaPDV({
                     filteredServices.map((s) => (
                       <button
                         key={s.id}
+                        type="button"
                         onClick={() => handleAddService(s.id)}
                         disabled={isPending}
                         className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:opacity-50"
@@ -556,6 +570,7 @@ export default function ComandaPDV({
                             {formatCents(s.priceInCents)}
                           </span>
                           <svg
+                            aria-hidden="true"
                             className="h-4 w-4"
                             style={{ color: "var(--text-tertiary)" }}
                             fill="none"
@@ -679,6 +694,7 @@ export default function ComandaPDV({
                                 </button>
                               </div>
                               <button
+                                type="button"
                                 onClick={() => handleAddProduct(p.id)}
                                 disabled={isPending}
                                 className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
@@ -688,6 +704,7 @@ export default function ComandaPDV({
                                 }}
                               >
                                 <svg
+                                  aria-hidden="true"
                                   className="h-3.5 w-3.5"
                                   fill="none"
                                   viewBox="0 0 24 24"
@@ -735,6 +752,7 @@ export default function ComandaPDV({
 
             {comanda.items.length > 0 && (
               <button
+                type="button"
                 onClick={() => setShowCloseModal(true)}
                 disabled={isPending}
                 className="mt-4 w-full rounded-xl py-3.5 text-sm font-semibold text-white shadow-lg transition-all disabled:opacity-50"
@@ -878,12 +896,14 @@ export default function ComandaPDV({
 
             <div className="mb-4">
               <label
+                htmlFor="discount-input"
                 className="mb-1.5 block text-sm"
                 style={{ color: "var(--text-secondary)" }}
               >
                 Desconto (R$)
               </label>
               <input
+                id="discount-input"
                 type="text"
                 placeholder="0,00"
                 value={discountStr}
@@ -893,12 +913,12 @@ export default function ComandaPDV({
             </div>
 
             <div className="mb-6">
-              <label
+              <p
                 className="mb-2 block text-sm"
                 style={{ color: "var(--text-secondary)" }}
               >
                 Forma de pagamento
-              </label>
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {PAYMENT_OPTS.map((opt) => (
                   <button
@@ -941,6 +961,7 @@ export default function ComandaPDV({
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowCloseModal(false);
                   setError("");
@@ -954,6 +975,7 @@ export default function ComandaPDV({
                 Voltar
               </button>
               <button
+                type="button"
                 onClick={handleClose}
                 disabled={isPending}
                 className="flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50"
@@ -997,6 +1019,7 @@ export default function ComandaPDV({
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowCancelModal(false)}
                 className="flex-1 rounded-lg py-3 text-sm"
                 style={{
@@ -1007,6 +1030,7 @@ export default function ComandaPDV({
                 Voltar
               </button>
               <button
+                type="button"
                 onClick={handleCancel}
                 disabled={isPending}
                 className="flex-1 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
