@@ -1,13 +1,13 @@
 "use server";
 
+import type { AppointmentStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import {
   appointmentScope,
   requireMembership,
   requireRole,
 } from "@/lib/permissions";
-import { AppointmentStatus } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 
 // ─── Tipos exportados ────────────────────────────────────────────────────────
 
@@ -213,6 +213,83 @@ export async function moveAppointment(
     return { success: true };
   } catch {
     return { success: false, error: "Sem permissão para mover agendamento." };
+  }
+}
+
+// ─── Editar agendamento ──────────────────────────────────────────────────────
+
+export async function updateAppointment(
+  appointmentId: string,
+  data: {
+    serviceId: string;
+    dateISO: string;
+    clientName: string;
+    clientPhone: string;
+    notes?: string;
+  },
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    const appointment = await db.appointment.findFirst({
+      where: { id: appointmentId, barbershopId: membership.barbershopId },
+    });
+
+    if (!appointment) {
+      return { success: false, error: "Agendamento não encontrado." };
+    }
+
+    if (
+      membership.role === "barber" &&
+      appointment.professionalId !== membership.professionalId
+    ) {
+      return { success: false, error: "Sem permissão para este agendamento." };
+    }
+
+    if (
+      appointment.status !== "pending" &&
+      appointment.status !== "confirmed"
+    ) {
+      return {
+        success: false,
+        error:
+          "Apenas agendamentos pendentes ou confirmados podem ser editados.",
+      };
+    }
+
+    const service = await db.service.findFirst({
+      where: {
+        id: data.serviceId,
+        barbershopId: membership.barbershopId,
+        isActive: true,
+      },
+    });
+
+    if (!service) {
+      return { success: false, error: "Serviço não encontrado." };
+    }
+
+    const startDate = new Date(data.dateISO);
+    const endDate = new Date(
+      startDate.getTime() + service.durationMin * 60_000,
+    );
+
+    await db.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        serviceId: data.serviceId,
+        date: startDate,
+        endTime: endDate,
+        clientName: data.clientName.trim(),
+        clientPhone: data.clientPhone.trim(),
+        notes: data.notes?.trim() || null,
+      },
+    });
+
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao editar agendamento." };
   }
 }
 
