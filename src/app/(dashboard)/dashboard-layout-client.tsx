@@ -12,6 +12,7 @@ import {
   Menu,
   Moon,
   Package,
+  Scissors,
   Settings,
   Sun,
   Users,
@@ -81,6 +82,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/marketing",
     icon: <Megaphone size={18} />,
     roles: ["owner", "reception"],
+  },
+  {
+    label: "Profissionais",
+    href: "/dashboard/profissionais",
+    icon: <Scissors size={18} />,
+    roles: ["owner"],
   },
   {
     label: "Configuracoes",
@@ -170,6 +177,7 @@ function ThemeToggle({
 }) {
   return (
     <button
+      type="button"
       onClick={toggle}
       title={
         theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"
@@ -258,6 +266,7 @@ function SidebarContent({
       >
         <ThemeToggle theme={theme} toggle={toggleTheme} />
         <button
+          type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium nav-link transition-all duration-150 w-full group border border-transparent"
           style={{ color: "var(--text-secondary)" }}
@@ -290,6 +299,7 @@ export function DashboardLayoutClient({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggle } = useTheme();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname triggers menu close on navigation
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -331,8 +341,10 @@ export function DashboardLayoutClient({
       </aside>
 
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 lg:hidden backdrop-blur-sm"
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-40 lg:hidden backdrop-blur-sm border-none outline-none p-0 cursor-default"
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
           onClick={() => setMobileOpen(false)}
         />
@@ -350,6 +362,7 @@ export function DashboardLayoutClient({
         }}
       >
         <button
+          type="button"
           onClick={() => setMobileOpen(false)}
           className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
           style={{ color: "var(--text-tertiary)" }}
@@ -375,6 +388,7 @@ export function DashboardLayoutClient({
           }}
         >
           <button
+            type="button"
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg transition-colors"
             style={{ color: "var(--text-secondary)" }}
@@ -390,6 +404,7 @@ export function DashboardLayoutClient({
             priority
           />
           <button
+            type="button"
             onClick={toggle}
             className="p-2 rounded-lg transition-colors"
             style={{ color: "var(--text-secondary)" }}

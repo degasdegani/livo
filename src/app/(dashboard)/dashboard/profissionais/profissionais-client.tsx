@@ -1,20 +1,24 @@
 "use client";
 
 import {
+  Mail,
   Pencil,
   Plus,
   Scissors,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { createInvitationAction } from "../settings/acessos/actions";
 import type {
   ProfessionalWithDetails,
   ToggleProfessionalResult,
 } from "./actions";
 import {
   createProfessional,
+  deleteProfessional,
   getProfessionalsData,
   toggleProfessionalActive,
   updateProfessional,
@@ -309,6 +313,269 @@ function ConfirmDeactivateModal({
   );
 }
 
+// ─── Modal de confirmação de exclusão ────────────────────────────────────────
+
+function ConfirmDeleteModal({
+  professionalName,
+  onClose,
+  onConfirmed,
+}: {
+  professionalName: string;
+  onClose: () => void;
+  onConfirmed: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <div style={{ ...modalStyle, maxWidth: 448 }}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Excluir profissional?
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-tertiary)";
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div
+          className="mb-5 rounded-lg px-4 py-3"
+          style={{
+            backgroundColor: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.25)",
+          }}
+        >
+          <p className="text-sm" style={{ color: "var(--status-red)" }}>
+            <strong>{professionalName}</strong> será removido permanentemente.
+            Esta ação é irreversível. Se o profissional possuir histórico de
+            atendimentos ou comandas, a exclusão será bloqueada automaticamente.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirmed}
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
+            style={{ backgroundColor: "var(--status-red)" }}
+          >
+            Excluir permanentemente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal de convite por email ───────────────────────────────────────────────
+
+function InviteModal({
+  professional,
+  onClose,
+  onSaved,
+}: {
+  professional: { id: string; name: string };
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [commissionServices, setCommissionServices] = useState(true);
+  const [commissionProducts, setCommissionProducts] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit() {
+    if (!email.trim() || !email.includes("@")) {
+      setError("E-mail inválido.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await createInvitationAction({
+        email: email.trim(),
+        role: "barber",
+        professionalId: professional.id,
+        commissionOnServices: commissionServices,
+        commissionOnProducts: commissionProducts,
+      });
+      if (result.success) {
+        onSaved(result.message);
+        onClose();
+      } else {
+        setError(result.error);
+      }
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <div style={{ ...modalStyle, maxWidth: 448 }}>
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2
+              className="text-lg font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Convidar por e-mail
+            </h2>
+            <p
+              className="mt-0.5 text-sm"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {professional.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-tertiary)";
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="invite-email"
+              className="mb-1.5 block text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              E-mail *
+            </label>
+            <input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@exemplo.com"
+              style={inputStyle}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            />
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3 space-y-3"
+            style={{
+              backgroundColor: "var(--bg-card-elevated)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <p
+              className="text-xs font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Comissões
+            </p>
+
+            <label
+              htmlFor="invite-commission-services"
+              className="flex cursor-pointer items-center justify-between"
+            >
+              <span
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Comissão em serviços
+              </span>
+              <input
+                id="invite-commission-services"
+                type="checkbox"
+                checked={commissionServices}
+                onChange={(e) => setCommissionServices(e.target.checked)}
+                className="h-4 w-4 accent-[var(--color-primary)]"
+              />
+            </label>
+
+            <label
+              htmlFor="invite-commission-products"
+              className="flex cursor-pointer items-center justify-between"
+            >
+              <span
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Comissão em produtos
+              </span>
+              <input
+                id="invite-commission-products"
+                type="checkbox"
+                checked={commissionProducts}
+                onChange={(e) => setCommissionProducts(e.target.checked)}
+                className="h-4 w-4 accent-[var(--color-primary)]"
+              />
+            </label>
+          </div>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={pending}
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            {pending ? "Enviando..." : "Enviar convite"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 interface Props {
@@ -329,6 +596,19 @@ export function ProfissionaisClient({ initialData }: Props) {
   const [confirmToggleId, setConfirmToggleId] = useState<string | null>(null);
   const [confirmFutureCount, setConfirmFutureCount] = useState(0);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [showConfirmDeleteId, setShowConfirmDeleteId] = useState<string | null>(
+    null,
+  );
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showInviteForId, setShowInviteForId] = useState<string | null>(null);
+
+  const invitingProfessional = showInviteForId
+    ? (data.find((p) => p.id === showInviteForId) ?? null)
+    : null;
+
+  const confirmDeleteProfessional = showConfirmDeleteId
+    ? (data.find((p) => p.id === showConfirmDeleteId) ?? null)
+    : null;
 
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
@@ -381,6 +661,21 @@ export function ProfissionaisClient({ initialData }: Props) {
         );
       }
       setTogglingId(null);
+    });
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    setShowConfirmDeleteId(null);
+    startTransition(async () => {
+      const result = await deleteProfessional(id);
+      if (result.success) {
+        showToast("success", result.message);
+        await refreshData();
+      } else {
+        showToast("error", result.error);
+      }
+      setDeletingId(null);
     });
   }
 
@@ -464,6 +759,8 @@ export function ProfissionaisClient({ initialData }: Props) {
             const avatarName = linkedUser?.name ?? prof.name;
             const avatarImage = linkedUser?.image ?? null;
             const isToggling = togglingId === prof.id;
+            const isDeleting = deletingId === prof.id;
+            const isLinked = prof.membership !== null;
 
             return (
               <div
@@ -567,7 +864,7 @@ export function ProfissionaisClient({ initialData }: Props) {
                   <button
                     type="button"
                     onClick={() => handleToggle(prof)}
-                    disabled={isToggling}
+                    disabled={isToggling || isDeleting}
                     className="transition-opacity disabled:opacity-40"
                     title={prof.isActive ? "Desativar" : "Reativar"}
                     style={{
@@ -583,11 +880,37 @@ export function ProfissionaisClient({ initialData }: Props) {
                     )}
                   </button>
 
+                  {/* Convidar por email — só se sem vínculo */}
+                  {!isLinked && (
+                    <button
+                      type="button"
+                      onClick={() => setShowInviteForId(prof.id)}
+                      className="rounded-lg p-1.5 transition-all"
+                      style={{
+                        border: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "var(--color-primary)";
+                        e.currentTarget.style.color = "var(--color-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                      }}
+                      title="Convidar por e-mail"
+                    >
+                      <Mail size={14} />
+                    </button>
+                  )}
+
                   {/* Editar */}
                   <button
                     type="button"
                     onClick={() => openEdit(prof)}
-                    className="rounded-lg p-1.5 transition-all"
+                    disabled={isDeleting}
+                    className="rounded-lg p-1.5 transition-all disabled:opacity-40"
                     style={{
                       border: "1px solid var(--border)",
                       color: "var(--text-secondary)",
@@ -604,6 +927,33 @@ export function ProfissionaisClient({ initialData }: Props) {
                     title="Editar"
                   >
                     <Pencil size={14} />
+                  </button>
+
+                  {/* Excluir */}
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDeleteId(prof.id)}
+                    disabled={isDeleting || isToggling}
+                    className="rounded-lg p-1.5 transition-all disabled:opacity-40"
+                    style={{
+                      border: "1px solid var(--border)",
+                      color: "var(--text-tertiary)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)";
+                      e.currentTarget.style.color = "var(--status-red)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                      e.currentTarget.style.color = "var(--text-tertiary)";
+                    }}
+                    title="Excluir"
+                  >
+                    {isDeleting ? (
+                      <span className="text-xs">...</span>
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -632,6 +982,30 @@ export function ProfissionaisClient({ initialData }: Props) {
           futureCount={confirmFutureCount}
           onClose={() => setConfirmToggleId(null)}
           onConfirmed={handleConfirmDeactivate}
+        />
+      )}
+
+      {/* Modal confirmação de exclusão */}
+      {confirmDeleteProfessional && (
+        <ConfirmDeleteModal
+          professionalName={confirmDeleteProfessional.name}
+          onClose={() => setShowConfirmDeleteId(null)}
+          onConfirmed={() => handleDelete(confirmDeleteProfessional.id)}
+        />
+      )}
+
+      {/* Modal de convite por email */}
+      {invitingProfessional && (
+        <InviteModal
+          professional={{
+            id: invitingProfessional.id,
+            name: invitingProfessional.name,
+          }}
+          onClose={() => setShowInviteForId(null)}
+          onSaved={(message) => {
+            showToast("success", message);
+            setShowInviteForId(null);
+          }}
         />
       )}
     </div>

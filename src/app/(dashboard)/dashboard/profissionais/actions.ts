@@ -182,3 +182,43 @@ export async function toggleProfessionalActive(
   const label = professional.isActive ? "desativado" : "reativado";
   return { success: true, message: `Profissional ${label} com sucesso.` };
 }
+
+// ─── Excluir profissional ─────────────────────────────────────────────────────
+
+export async function deleteProfessional(
+  professionalId: string,
+): Promise<ActionResult> {
+  const membership = await requireRole("owner");
+
+  const professional = await db.professional.findFirst({
+    where: {
+      id: professionalId,
+      barbershopId: membership.barbershopId,
+    },
+    include: {
+      _count: { select: { appointments: true, comandas: true } },
+    },
+  });
+
+  if (!professional) {
+    return { success: false, error: "Profissional não encontrado." };
+  }
+
+  if (
+    professional._count.appointments > 0 ||
+    professional._count.comandas > 0
+  ) {
+    return {
+      success: false,
+      error:
+        "Profissional possui histórico de atendimentos ou comandas. Apenas desativação é permitida.",
+    };
+  }
+
+  await db.professional.delete({ where: { id: professionalId } });
+
+  revalidatePath("/dashboard/profissionais");
+  revalidatePath("/dashboard/settings/acessos");
+
+  return { success: true, message: "Profissional excluído com sucesso." };
+}
