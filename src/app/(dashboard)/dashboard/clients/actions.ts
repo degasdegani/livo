@@ -1,10 +1,10 @@
 // src/app/(dashboard)/dashboard/clients/actions.ts
 "use server";
 
+import type { ClientOrigem } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { clientScope, requireMembership } from "@/lib/permissions";
-import { ClientOrigem } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 
 type ClientRow = {
   id: string;
@@ -169,4 +169,63 @@ export async function createClient(data: {
   });
 
   revalidatePath("/dashboard/clients");
+}
+
+export async function updateClient(
+  clientId: string,
+  data: {
+    name: string;
+    phone: string;
+    email?: string;
+    cpf?: string;
+    birthDate?: string;
+    street?: string;
+    neighborhood?: string;
+    cep?: string;
+    origem?: string;
+    notes?: string;
+  },
+): Promise<{ success: boolean; error?: string }> {
+  const membership = await requireMembership();
+  const scope = clientScope(membership);
+
+  const client = await db.client.findFirst({
+    where: { id: clientId, ...scope },
+  });
+  if (!client) return { success: false, error: "Cliente não encontrado." };
+
+  const phone = data.phone.replace(/\D/g, "");
+  if (!phone) return { success: false, error: "Telefone inválido." };
+
+  const duplicate = await db.client.findFirst({
+    where: {
+      phone,
+      barbershopId: membership.barbershopId,
+      NOT: { id: clientId },
+    },
+  });
+  if (duplicate)
+    return {
+      success: false,
+      error: "Já existe um cliente com esse telefone.",
+    };
+
+  await db.client.update({
+    where: { id: clientId },
+    data: {
+      name: data.name.trim(),
+      phone,
+      email: data.email?.trim() || null,
+      cpf: data.cpf?.replace(/\D/g, "") || null,
+      birthDate: data.birthDate ? new Date(data.birthDate) : null,
+      street: data.street?.trim() || null,
+      neighborhood: data.neighborhood?.trim() || null,
+      cep: data.cep?.replace(/\D/g, "") || null,
+      origem: data.origem ? (data.origem as ClientOrigem) : null,
+      notes: data.notes?.trim() || null,
+    },
+  });
+
+  revalidatePath("/dashboard/clients");
+  return { success: true };
 }

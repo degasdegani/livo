@@ -1,9 +1,15 @@
 // src/app/(dashboard)/dashboard/clients/clients-client.tsx
 "use client";
 
-import { ClientOrigem } from "@prisma/client";
+import type { ClientOrigem } from "@prisma/client";
+import { Pencil } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
-import { createClient, getClientsData, toggleClientBlock } from "./actions";
+import {
+  createClient,
+  getClientsData,
+  toggleClientBlock,
+  updateClient,
+} from "./actions";
 
 type Client = {
   id: string;
@@ -17,6 +23,10 @@ type Client = {
   totalVisits: number;
   lastVisitAt: Date | null;
   createdAt: Date;
+  notes: string | null;
+  street: string | null;
+  neighborhood: string | null;
+  cep: string | null;
 };
 
 type Stats = {
@@ -71,6 +81,19 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const EMPTY_EDIT_FORM = {
+  name: "",
+  phone: "",
+  email: "",
+  cpf: "",
+  birthDate: "",
+  street: "",
+  neighborhood: "",
+  cep: "",
+  origem: "",
+  notes: "",
+};
+
 export function ClientsClient({
   initialClients,
   stats: initialStats,
@@ -89,11 +112,17 @@ export function ClientsClient({
   const [isPending, startTransition] = useTransition();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  // Modal state
+  // Modal criar
   const [showModal, setShowModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // Modal editar
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const applyFilters = useCallback(() => {
     startTransition(async () => {
@@ -170,6 +199,85 @@ export function ClientsClient({
     }
   }
 
+  function openEditModal(client: Client) {
+    setEditForm({
+      name: client.name,
+      phone: formatPhone(client.phone),
+      email: client.email ?? "",
+      cpf: client.cpf ?? "",
+      birthDate: client.birthDate
+        ? new Date(client.birthDate).toISOString().slice(0, 10)
+        : "",
+      street: client.street ?? "",
+      neighborhood: client.neighborhood ?? "",
+      cep: client.cep ?? "",
+      origem: client.origem ?? "",
+      notes: client.notes ?? "",
+    });
+    setEditError(null);
+    setEditingClient(client);
+  }
+
+  function closeEditModal() {
+    setEditingClient(null);
+    setEditError(null);
+  }
+
+  async function handleUpdateClient() {
+    if (!editForm.name.trim()) {
+      setEditError("Nome é obrigatório.");
+      return;
+    }
+    if (!editForm.phone.trim()) {
+      setEditError("Telefone é obrigatório.");
+      return;
+    }
+    if (!editingClient) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const result = await updateClient(editingClient.id, {
+        name: editForm.name,
+        phone: editForm.phone,
+        email: editForm.email || undefined,
+        cpf: editForm.cpf || undefined,
+        birthDate: editForm.birthDate || undefined,
+        street: editForm.street || undefined,
+        neighborhood: editForm.neighborhood || undefined,
+        cep: editForm.cep || undefined,
+        origem: editForm.origem || undefined,
+        notes: editForm.notes || undefined,
+      });
+      if (!result.success) {
+        setEditError(result.error ?? "Erro ao atualizar.");
+        return;
+      }
+      const phone = editForm.phone.replace(/\D/g, "");
+      const updated: Client = {
+        ...editingClient,
+        name: editForm.name.trim(),
+        phone,
+        email: editForm.email?.trim() || null,
+        cpf: editForm.cpf?.replace(/\D/g, "") || null,
+        birthDate: editForm.birthDate ? new Date(editForm.birthDate) : null,
+        street: editForm.street?.trim() || null,
+        neighborhood: editForm.neighborhood?.trim() || null,
+        cep: editForm.cep?.replace(/\D/g, "") || null,
+        origem: editForm.origem || null,
+        notes: editForm.notes?.trim() || null,
+      };
+      setClients((prev) =>
+        prev.map((c) => (c.id === editingClient.id ? updated : c)),
+      );
+      setSelectedClient(updated);
+      closeEditModal();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Erro ao atualizar.");
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     backgroundColor: "var(--bg-base)",
     border: "1px solid var(--border)",
@@ -196,250 +304,634 @@ export function ClientsClient({
     <>
       {/* ───── MODAL CRIAR CLIENTE ───── */}
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeModal();
-          }}
-        >
+        <>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop fecha modal ao clicar fora */}
           <div
-            className="w-full max-w-lg rounded-2xl p-6 space-y-5"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              maxHeight: "90vh",
-              overflowY: "auto",
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeModal();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") closeModal();
             }}
           >
-            {/* Header modal */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2
-                  className="text-lg font-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Novo cliente
-                </h2>
-                <p
-                  className="text-sm"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Cadastro manual na sua base
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                style={{ color: "var(--text-tertiary)", fontSize: 20 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = "var(--text-primary)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "var(--text-tertiary)")
-                }
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Campos */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Nome — obrigatório, ocupa linha inteira */}
-              <div className="col-span-2">
-                <label style={labelStyle}>
-                  Nome <span style={{ color: "var(--color-primary)" }}>*</span>
-                </label>
-                <input
-                  style={inputStyle}
-                  placeholder="Nome completo"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
-              </div>
-
-              {/* Telefone — obrigatório */}
-              <div>
-                <label style={labelStyle}>
-                  Telefone{" "}
-                  <span style={{ color: "var(--color-primary)" }}>*</span>
-                </label>
-                <input
-                  style={inputStyle}
-                  placeholder="(11) 99999-9999"
-                  value={form.phone}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label style={labelStyle}>E-mail</label>
-                <input
-                  style={inputStyle}
-                  placeholder="email@exemplo.com"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
-              </div>
-
-              {/* CPF */}
-              <div>
-                <label style={labelStyle}>CPF</label>
-                <input
-                  style={inputStyle}
-                  placeholder="000.000.000-00"
-                  value={form.cpf}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, cpf: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
-              </div>
-
-              {/* Data de nascimento */}
-              <div>
-                <label style={labelStyle}>Data de nascimento</label>
-                <input
-                  style={inputStyle}
-                  type="date"
-                  value={form.birthDate}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, birthDate: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
-              </div>
-
-              {/* Origem */}
-              <div className="col-span-2">
-                <label style={labelStyle}>Como nos conheceu?</label>
-                <select
-                  style={inputStyle}
-                  value={form.origem}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, origem: e.target.value }))
-                  }
-                >
-                  <option value="">Selecionar origem</option>
-                  {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Notas */}
-              <div className="col-span-2">
-                <label style={labelStyle}>Notas internas</label>
-                <textarea
-                  style={{
-                    ...inputStyle,
-                    resize: "vertical",
-                    minHeight: 72,
-                    padding: "10px 16px",
+            <div
+              className="w-full max-w-lg rounded-2xl p-6 space-y-5"
+              style={{
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                maxHeight: "90vh",
+                overflowY: "auto",
+              }}
+            >
+              {/* Header modal */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2
+                    className="text-lg font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Novo cliente
+                  </h2>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Cadastro manual na sua base
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  style={{ color: "var(--text-tertiary)", fontSize: 20 }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
                   }}
-                  placeholder="Observações sobre o cliente..."
-                  value={form.notes}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, notes: e.target.value }))
-                  }
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--color-primary)")
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = "var(--border)")
-                  }
-                />
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-tertiary)";
+                  }}
+                >
+                  ✕
+                </button>
               </div>
-            </div>
 
-            {/* Erro */}
-            {modalError && (
-              <div
-                className="rounded-lg px-4 py-3 text-sm"
-                style={{
-                  backgroundColor: "rgba(200,16,46,0.1)",
-                  border: "1px solid rgba(200,16,46,0.3)",
-                  color: "var(--status-red)",
-                }}
-              >
-                {modalError}
+              {/* Campos */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Nome — obrigatório, ocupa linha inteira */}
+                <div className="col-span-2">
+                  <label htmlFor="create-name" style={labelStyle}>
+                    Nome{" "}
+                    <span style={{ color: "var(--color-primary)" }}>*</span>
+                  </label>
+                  <input
+                    id="create-name"
+                    style={inputStyle}
+                    placeholder="Nome completo"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Telefone — obrigatório */}
+                <div>
+                  <label htmlFor="create-phone" style={labelStyle}>
+                    Telefone{" "}
+                    <span style={{ color: "var(--color-primary)" }}>*</span>
+                  </label>
+                  <input
+                    id="create-phone"
+                    style={inputStyle}
+                    placeholder="(11) 99999-9999"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="create-email" style={labelStyle}>
+                    E-mail
+                  </label>
+                  <input
+                    id="create-email"
+                    style={inputStyle}
+                    placeholder="email@exemplo.com"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* CPF */}
+                <div>
+                  <label htmlFor="create-cpf" style={labelStyle}>
+                    CPF
+                  </label>
+                  <input
+                    id="create-cpf"
+                    style={inputStyle}
+                    placeholder="000.000.000-00"
+                    value={form.cpf}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, cpf: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Data de nascimento */}
+                <div>
+                  <label htmlFor="create-birthdate" style={labelStyle}>
+                    Data de nascimento
+                  </label>
+                  <input
+                    id="create-birthdate"
+                    style={inputStyle}
+                    type="date"
+                    value={form.birthDate}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, birthDate: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Origem */}
+                <div className="col-span-2">
+                  <label htmlFor="create-origem" style={labelStyle}>
+                    Como nos conheceu?
+                  </label>
+                  <select
+                    id="create-origem"
+                    style={inputStyle}
+                    value={form.origem}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, origem: e.target.value }))
+                    }
+                  >
+                    <option value="">Selecionar origem</option>
+                    {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Notas */}
+                <div className="col-span-2">
+                  <label htmlFor="create-notes" style={labelStyle}>
+                    Notas internas
+                  </label>
+                  <textarea
+                    id="create-notes"
+                    style={{
+                      ...inputStyle,
+                      resize: "vertical",
+                      minHeight: 72,
+                      padding: "10px 16px",
+                    }}
+                    placeholder="Observações sobre o cliente..."
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
               </div>
-            )}
 
-            {/* Botões */}
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={closeModal}
-                disabled={modalLoading}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
-                style={{
-                  backgroundColor: "var(--bg-base)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleCreateClient}
-                disabled={modalLoading}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                style={{
-                  backgroundColor: "var(--color-primary)",
-                  color: "#ffffff",
-                }}
-                onMouseEnter={(e) => {
-                  if (!modalLoading)
+              {/* Erro */}
+              {modalError && (
+                <div
+                  className="rounded-lg px-4 py-3 text-sm"
+                  style={{
+                    backgroundColor: "rgba(200,16,46,0.1)",
+                    border: "1px solid rgba(200,16,46,0.3)",
+                    color: "var(--status-red)",
+                  }}
+                >
+                  {modalError}
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={modalLoading}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: "var(--bg-base)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateClient}
+                  disabled={modalLoading}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: "var(--color-primary)",
+                    color: "#ffffff",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!modalLoading)
+                      e.currentTarget.style.backgroundColor =
+                        "var(--color-primary-hover)";
+                  }}
+                  onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor =
-                      "var(--color-primary-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--color-primary)";
-                }}
-              >
-                {modalLoading ? "Cadastrando..." : "Cadastrar cliente"}
-              </button>
+                      "var(--color-primary)";
+                  }}
+                >
+                  {modalLoading ? "Cadastrando..." : "Cadastrar cliente"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
+      )}
+
+      {/* ───── MODAL EDITAR CLIENTE ───── */}
+      {editingClient && (
+        <>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop fecha modal ao clicar fora */}
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeEditModal();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") closeEditModal();
+            }}
+          >
+            <div
+              className="w-full max-w-lg rounded-2xl p-6 space-y-5"
+              style={{
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                maxHeight: "90vh",
+                overflowY: "auto",
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2
+                    className="text-lg font-bold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Editar cliente
+                  </h2>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Atualiza os dados do cadastro
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  style={{ color: "var(--text-tertiary)", fontSize: 20 }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-tertiary)";
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Campos */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Nome */}
+                <div className="col-span-2">
+                  <label htmlFor="edit-name" style={labelStyle}>
+                    Nome{" "}
+                    <span style={{ color: "var(--color-primary)" }}>*</span>
+                  </label>
+                  <input
+                    id="edit-name"
+                    style={inputStyle}
+                    placeholder="Nome completo"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Telefone */}
+                <div>
+                  <label htmlFor="edit-phone" style={labelStyle}>
+                    Telefone{" "}
+                    <span style={{ color: "var(--color-primary)" }}>*</span>
+                  </label>
+                  <input
+                    id="edit-phone"
+                    style={inputStyle}
+                    placeholder="(11) 99999-9999"
+                    value={editForm.phone}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="edit-email" style={labelStyle}>
+                    E-mail
+                  </label>
+                  <input
+                    id="edit-email"
+                    style={inputStyle}
+                    placeholder="email@exemplo.com"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* CPF */}
+                <div>
+                  <label htmlFor="edit-cpf" style={labelStyle}>
+                    CPF
+                  </label>
+                  <input
+                    id="edit-cpf"
+                    style={inputStyle}
+                    placeholder="000.000.000-00"
+                    value={editForm.cpf}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, cpf: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Data de nascimento */}
+                <div>
+                  <label htmlFor="edit-birthdate" style={labelStyle}>
+                    Data de nascimento
+                  </label>
+                  <input
+                    id="edit-birthdate"
+                    style={inputStyle}
+                    type="date"
+                    value={editForm.birthDate}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, birthDate: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Origem */}
+                <div className="col-span-2">
+                  <label htmlFor="edit-origem" style={labelStyle}>
+                    Como nos conheceu?
+                  </label>
+                  <select
+                    id="edit-origem"
+                    style={inputStyle}
+                    value={editForm.origem}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, origem: e.target.value }))
+                    }
+                  >
+                    <option value="">Selecionar origem</option>
+                    {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Endereço */}
+                <div className="col-span-2">
+                  <label htmlFor="edit-street" style={labelStyle}>
+                    Rua
+                  </label>
+                  <input
+                    id="edit-street"
+                    style={inputStyle}
+                    placeholder="Rua das Flores, 123"
+                    value={editForm.street}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, street: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-neighborhood" style={labelStyle}>
+                    Bairro
+                  </label>
+                  <input
+                    id="edit-neighborhood"
+                    style={inputStyle}
+                    placeholder="Centro"
+                    value={editForm.neighborhood}
+                    onChange={(e) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        neighborhood: e.target.value,
+                      }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-cep" style={labelStyle}>
+                    CEP
+                  </label>
+                  <input
+                    id="edit-cep"
+                    style={inputStyle}
+                    placeholder="00000-000"
+                    value={editForm.cep}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, cep: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+
+                {/* Notas */}
+                <div className="col-span-2">
+                  <label htmlFor="edit-notes" style={labelStyle}>
+                    Notas internas
+                  </label>
+                  <textarea
+                    id="edit-notes"
+                    style={{
+                      ...inputStyle,
+                      resize: "vertical",
+                      minHeight: 72,
+                      padding: "10px 16px",
+                    }}
+                    placeholder="Observações sobre o cliente..."
+                    value={editForm.notes}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "var(--color-primary)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Erro */}
+              {editError && (
+                <div
+                  className="rounded-lg px-4 py-3 text-sm"
+                  style={{
+                    backgroundColor: "rgba(200,16,46,0.1)",
+                    border: "1px solid rgba(200,16,46,0.3)",
+                    color: "var(--status-red)",
+                  }}
+                >
+                  {editError}
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={editLoading}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: "var(--bg-base)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateClient}
+                  disabled={editLoading}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: "var(--color-primary)",
+                    color: "#ffffff",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!editLoading)
+                      e.currentTarget.style.backgroundColor =
+                        "var(--color-primary-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "var(--color-primary)";
+                  }}
+                >
+                  {editLoading ? "Salvando..." : "Salvar alterações"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="flex h-full gap-6">
@@ -462,19 +954,20 @@ export function ClientsClient({
               </p>
             </div>
             <button
+              type="button"
               onClick={openModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
               style={{
                 backgroundColor: "var(--color-primary)",
                 color: "#ffffff",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "var(--color-primary)")
-              }
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-primary)";
+              }}
             >
               <span style={{ fontSize: 16, lineHeight: 1 }}>＋</span>
               Novo cliente
@@ -539,12 +1032,12 @@ export function ClientsClient({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
-                onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--color-primary)")
-                }
-                onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--border)")
-                }
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }}
               />
               <select
                 style={{ ...inputStyle, width: "auto" }}
@@ -559,6 +1052,7 @@ export function ClientsClient({
                 ))}
               </select>
               <button
+                type="button"
                 onClick={applyFilters}
                 disabled={isPending}
                 className="font-medium px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50"
@@ -566,14 +1060,14 @@ export function ClientsClient({
                   backgroundColor: "var(--color-primary)",
                   color: "#ffffff",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--color-primary-hover)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--color-primary)")
-                }
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "var(--color-primary-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "var(--color-primary)";
+                }}
               >
                 {isPending ? "..." : "Buscar"}
               </button>
@@ -588,6 +1082,7 @@ export function ClientsClient({
                 { key: "bloqueados", label: "🚫 Bloqueados" },
               ].map((f) => (
                 <button
+                  type="button"
                   key={f.key}
                   onClick={() => {
                     setFiltroAtivo(f.key as typeof filtroAtivo);
@@ -676,6 +1171,7 @@ export function ClientsClient({
                 <p className="text-sm mt-1">
                   Tente outros filtros ou{" "}
                   <button
+                    type="button"
                     onClick={openModal}
                     style={{ color: "var(--color-primary)" }}
                   >
@@ -913,15 +1409,16 @@ export function ClientsClient({
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={() => setSelectedClient(null)}
                   className="transition-colors"
                   style={{ color: "var(--text-tertiary)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--text-primary)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--text-tertiary)")
-                  }
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-tertiary)";
+                  }}
                 >
                   ✕
                 </button>
@@ -1056,6 +1553,19 @@ export function ClientsClient({
                 className="pt-2 space-y-2"
                 style={{ borderTop: "1px solid var(--border)" }}
               >
+                <button
+                  type="button"
+                  onClick={() => openEditModal(selectedClient)}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-medium py-2.5 rounded-lg transition-colors"
+                  style={{
+                    backgroundColor: "var(--bg-card-elevated)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <Pencil size={14} />
+                  Editar dados
+                </button>
                 <a
                   href={`https://wa.me/55${selectedClient.phone.replace(/\D/g, "")}`}
                   target="_blank"
@@ -1065,6 +1575,7 @@ export function ClientsClient({
                   💬 WhatsApp
                 </a>
                 <button
+                  type="button"
                   onClick={() => handleToggleBlock(selectedClient)}
                   className="w-full text-sm font-medium py-2.5 rounded-lg transition-colors"
                   style={
