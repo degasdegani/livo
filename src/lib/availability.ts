@@ -6,6 +6,7 @@
 //   - Agendamentos já existentes
 //   - Hora atual (bloqueia slots no passado)
 // ============================================================
+import { SLOT_CONFIG } from "@/lib/slot-config";
 
 // Converte "09:30" em 570 (minutos desde meia-noite)
 export function timeToMinutes(time: string): number {
@@ -47,9 +48,7 @@ export function generateAvailableSlots({
   const openMin = timeToMinutes(openTime);
   const closeMin = timeToMinutes(closeTime);
 
-  // Intervalo base entre slots: 30 minutos
-  // Ex: 09:00, 09:30, 10:00, ...
-  const SLOT_INTERVAL = 30;
+  const SLOT_INTERVAL = SLOT_CONFIG.SLOT_MINUTES;
 
   const availableSlots: string[] = [];
 

@@ -3,6 +3,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { SLOT_CONFIG } from "@/lib/slot-config";
 import type { AppointmentForCalendar } from "./day-panel";
 
 type Props = {
@@ -10,11 +11,15 @@ type Props = {
   appointments: AppointmentForCalendar[];
 };
 
-// Slots de 30 em 30 minutos, das 07h às 21h
+const { SLOT_MINUTES } = SLOT_CONFIG;
+
+// Slots dinâmicos de SLOT_MINUTES em SLOT_MINUTES, das 07h às 21h
 const SLOTS: string[] = [];
 for (let h = 7; h <= 21; h++) {
-  SLOTS.push(`${String(h).padStart(2, "0")}:00`);
-  if (h < 21) SLOTS.push(`${String(h).padStart(2, "0")}:30`);
+  for (let m = 0; m < 60; m += SLOT_MINUTES) {
+    if (h === 21 && m > 0) break;
+    SLOTS.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  }
 }
 
 const STATUS_COLOR: Record<AppointmentForCalendar["status"], string> = {
@@ -57,8 +62,8 @@ function getTimeSlot(date: Date | string): string {
     minute: "2-digit",
     timeZone: "America/Sao_Paulo",
   });
-  const min = parseInt(m) < 30 ? "00" : "30";
-  return `${h.padStart(2, "0")}:${min}`;
+  const snapped = Math.floor(parseInt(m, 10) / SLOT_MINUTES) * SLOT_MINUTES;
+  return `${h.padStart(2, "0")}:${String(snapped).padStart(2, "0")}`;
 }
 
 function formatTime(date: Date | string): string {
@@ -155,54 +160,54 @@ export function DayCalendar({ initialDate, appointments }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={prevDay}
             className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
             style={{
               color: "var(--text-secondary)",
               border: "1px solid var(--border)",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor =
-                "var(--bg-card-elevated)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "transparent")
-            }
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
             aria-label="Dia anterior"
           >
             <ChevronLeft size={15} />
           </button>
           <button
+            type="button"
             onClick={goToToday}
             className="px-3 h-8 rounded-lg text-xs font-medium transition-colors"
             style={{
               color: "var(--text-secondary)",
               border: "1px solid var(--border)",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor =
-                "var(--bg-card-elevated)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "transparent")
-            }
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
             Hoje
           </button>
           <button
+            type="button"
             onClick={nextDay}
             className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
             style={{
               color: "var(--text-secondary)",
               border: "1px solid var(--border)",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor =
-                "var(--bg-card-elevated)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "transparent")
-            }
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
             aria-label="Próximo dia"
           >
             <ChevronRight size={15} />
@@ -241,14 +246,14 @@ export function DayCalendar({ initialDate, appointments }: Props) {
       <div className="overflow-y-auto" style={{ maxHeight: 520 }}>
         {SLOTS.map((slot) => {
           const appts = appointmentsBySlot[slot] ?? [];
-          const isHalfHour = slot.endsWith(":30");
+          const isFullHour = slot.endsWith(":00");
 
           return (
             <div
               key={slot}
               className="flex"
               style={{
-                borderBottom: `1px solid ${isHalfHour ? "transparent" : "var(--border)"}`,
+                borderBottom: `1px solid ${isFullHour ? "var(--border)" : "transparent"}`,
                 minHeight: 52,
               }}
             >
@@ -261,7 +266,7 @@ export function DayCalendar({ initialDate, appointments }: Props) {
                   paddingLeft: 16,
                 }}
               >
-                {!isHalfHour && (
+                {isFullHour && (
                   <span
                     className="text-xs font-medium"
                     style={{ color: "var(--text-tertiary)" }}

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
 import type {
   AgendaAppointment,
   AgendaDayData,
@@ -31,11 +32,7 @@ import {
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const HOUR_START = 8;
-const HOUR_END = 20;
-const SLOT_MINUTES = 30;
-const SLOT_HEIGHT = 56;
-const TOTAL_SLOTS = ((HOUR_END - HOUR_START) * 60) / SLOT_MINUTES;
+const { HOUR_START, SLOT_MINUTES, SLOT_HEIGHT } = SLOT_CONFIG;
 
 // STATUS_CONFIG usa classes Tailwind semânticas — mantidas pois não são hardcodes de tema
 const STATUS_CONFIG = {
@@ -524,7 +521,7 @@ function TimeColumn() {
             opacity: 0.5,
           }}
         >
-          {i % 2 === 0 && (
+          {i % 6 === 0 && (
             <span
               className="text-[10px] font-mono leading-none"
               style={{ color: "var(--text-tertiary)" }}
