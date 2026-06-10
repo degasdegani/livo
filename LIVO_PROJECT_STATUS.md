@@ -1,8 +1,8 @@
 # LIVO PROJECT STATUS
 
-Version: 1.3
-Last Updated: 09/06/2026
-Status: MVP Operacional — Sprint GAP-03 em execução
+Version: 1.5
+Last Updated: 10/06/2026
+Status: MVP Operacional — Sprint GAP-05 em execução (Integração Total da Agenda)
 Source of Truth: LIVO_FUNCTIONAL_AUDIT.md + LIVO_PRODUCTION_GAP.md
 
 ---
@@ -32,15 +32,15 @@ O sistema encontra-se funcional para operação real de uma barbearia.
 # MATURIDADE ATUAL
 
 Produto ............. 7/10
-UX .................. 6/10
-Engenharia .......... 7/10  ← P0 Sprint concluído
+UX .................. 7/10  ← GAP-01/02/03 concluídos
+Engenharia .......... 7/10  ← P0 Sprint + P1 Sprint concluídos
 Escalabilidade ...... 6/10  ← Índices adicionados
 IA .................. 5/10
 Segurança ........... 6/10  ← Rate limiting, roles, debug routes
 
-Score Geral: 6.2/10
+Score Geral: 6.5/10
 
-Score Funcional (18 módulos): 7.5/10  ← GAP-03 75% completo
+Score Funcional (18 módulos): 8.0/10  ← GAP-01 a GAP-04 concluídos
 
 ---
 
@@ -59,20 +59,35 @@ Status: Produção
 
 ## Agenda
 
-Status: Produção ⚠️ sem edição
+Status: Produção ⚠️ Integração GAP-05 em andamento
 
 - Visualização mensal
 - Visualização semanal
 - Visualização diária
 - Criação de agendamentos
+- ✅ Edição de agendamentos (GAP-01)
+- ✅ AgendaBoard (board operacional) — componente completo, aguarda ativação em page.tsx (GAP-05-C1)
+- ✅ Slots de 10 minutos — arquitetura migrada (GAP-05-A0+A1, 10/06/2026)
+  - src/lib/slot-config.ts: fonte única (SLOT_MINUTES=10, SLOT_HEIGHT=20)
+  - 72 slots/dia (8h–20h), TimeColumn com labels a cada 60min
+  - availability.ts e day-calendar.tsx sincronizados
+
+**Pendente GAP-05:**
+- ⏳ B1: Fix timezone em slotToDateISO (sufixo Z hardcoded = UTC)
+- ⏳ B2: Fix clientEmail: "" → null em createQuickAppointment
+- ⏳ B3: @@index([professionalId, date, endTime]) migration
+- ⏳ B4: Conflict validation em createQuickAppointment/updateAppointment
+- ⏳ C1: Ativar AgendaBoard em page.tsx via ?view=operacional
+- ⏳ D1-D3: Integração Agenda ↔ Clientes (upsert + totalVisits/lastVisitAt)
+- ⏳ E1-E2: Integração Agenda ↔ Comandas (Comanda.appointmentId)
 
 ---
 
 ## Clientes
 
-Status: Produção ⚠️ edição incompleta
+Status: Produção
 
-- CRUD (criar + notas + bloquear)
+- CRUD completo (criar + editar + notas + bloquear) ← GAP-02 concluído
 - Histórico
 - Origem
 - Escopo por role
@@ -169,26 +184,39 @@ Limitações:
 
 ## Profissionais
 
-Status: ⚠️ Em Finalização — 75% completo
+Status: Produção ← GAP-03 concluído
 
-**Etapas concluídas:**
-- ✅ Etapa 1: `actions.ts` — 4 Server Actions (criar, editar, toggle, listar)
-- ✅ Etapa 2: `page.tsx` + `loading.tsx` — Server Component + skeleton
-- ✅ Etapa 3: `profissionais-client.tsx` — UI completa (lista, modais, toggle com confirmação)
-
-**Pendente:**
-- ⏳ Etapa 4: item de navegação no sidebar (`dashboard-layout-client.tsx`)
+- ✅ `actions.ts` — 4 Server Actions (criar, editar, toggle, listar)
+- ✅ `page.tsx` + `loading.tsx` — Server Component + skeleton
+- ✅ `profissionais-client.tsx` — UI completa (lista, modais, toggle com confirmação)
+- ✅ Navegação no sidebar integrada
 
 ---
 
 # EM CONSTRUÇÃO
 
+## GAP-05 — Integração Total da Agenda (em andamento)
+
+**Próxima etapa imediata: GAP-05-B1 (timezone fix)**
+
+- ⏳ B1: Fix timezone `slotToDateISO` — sufixo `Z` hardcoded gera UTC em vez de UTC-3
+- ⏳ B2: Fix `clientEmail: ""` → `null` em `createQuickAppointment`
+- ⏳ B3: Migration `@@index([professionalId, date, endTime])`
+- ⏳ B4: Conflict validation nos server actions de agendamento
+- ⏳ C1: Ativar `AgendaBoard` em `page.tsx` via `?view=operacional`
+- ⏳ D1: Client upsert em `createQuickAppointment` (via `$transaction`)
+- ⏳ D2: `totalVisits`/`lastVisitAt` ao marcar `completed`
+- ⏳ D3: Autocomplete de clientes no `NewAppointmentModal`
+- ⏳ E1: Botão "Abrir Comanda" via `Comanda.appointmentId @unique`
+- ⏳ E2: Navegação direta Agenda → Comanda
+- ⏳ F1: Deprecar `/agenda/new`
+
+## Outros módulos pendentes
+
 - CRUD Serviços (página dedicada)
 - Horários individuais por profissional
 - Uploads (logo, avatar, fotos)
 - Booking Público — melhorias
-- Edição de agendamento (GAP-01)
-- Edição completa de cliente (GAP-02)
 
 ---
 
@@ -218,13 +246,23 @@ Status: ⚠️ Em Finalização — 75% completo
 
 # GAPS PRIORITÁRIOS (ver LIVO_PRODUCTION_GAP.md)
 
-## P1 — Bloqueadores funcionais
+## P1 — Sprint concluído ✅
 
-- GAP-01: Edição de agendamento — pendente
-- GAP-02: Edição completa de cliente — pendente
-- GAP-03: Gestão de profissionais — **⚠️ EM ANDAMENTO (75%)**
-- GAP-04: PaymentMethod enum drift — pendente
-- GAP-05: Recuperação de senha — pendente
+- ✅ GAP-01: Edição de agendamento — commit `115d359`
+- ✅ GAP-02: Edição completa de cliente — commit `feat(clientes)`
+- ✅ GAP-03: Gestão de profissionais — commit `a2ea1fc`
+- ✅ GAP-04: PaymentMethod enum drift — commit `9fd8d66`
+
+## GAP-05 — Integração Total da Agenda ⚠️ EM ANDAMENTO
+
+- ✅ A0: `src/lib/slot-config.ts` — fonte única criada — commit `52be849`
+- ✅ A1: Migração para 10 minutos — `SLOT_MINUTES=10`, `SLOT_HEIGHT=20` — commit `52be849`
+- ⏳ B1: Timezone fix (`slotToDateISO` — sufixo Z hardcoded)
+- ⏳ B2–B4: Data integrity (clientEmail null, @@index, conflict validation)
+- ⏳ C1: Ativar AgendaBoard em page.tsx
+- ⏳ D1–D3: Integração Agenda ↔ Clientes
+- ⏳ E1–E2: Integração Agenda ↔ Comandas
+- ⏳ F1: Deprecar /agenda/new
 
 ## P2 — Produto completo
 
@@ -245,6 +283,20 @@ Auditoria funcional completa de 18 módulos.
 5 blockers críticos identificados e resolvidos.
 Documentação de produção criada (LIVO_FUNCTIONAL_AUDIT.md + LIVO_PRODUCTION_GAP.md).
 
-## Sprint GAP-03 — Gestão de Profissionais (09/06/2026 — em andamento)
+## Sprint P1 — GAP-01 a GAP-04 (09/06/2026 — concluído)
 
-Etapas 1, 2 e 3 concluídas. Pendente apenas navegação (Etapa 4).
+GAP-01: Edição de agendamentos — commit 115d359
+GAP-02: Edição completa de clientes — modal completo + updateClient server action
+GAP-03: Gestão de profissionais — CRUD completo + navegação sidebar
+GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
+
+## Sprint GAP-05 — Integração Total da Agenda (10/06/2026 — em andamento)
+
+**Fases A concluídas (10/06/2026) — commit 52be849:**
+- A0: src/lib/slot-config.ts criado como fonte única de configuração de slots
+- A1: Migração para 10 minutos (SLOT_MINUTES=10, SLOT_HEIGHT=20, TOTAL_SLOTS=72)
+  - agenda-board.tsx: constantes migradas, TimeColumn labels a cada 60min (i%6)
+  - availability.ts: SLOT_INTERVAL agora deriva de SLOT_CONFIG
+  - day-calendar.tsx: SLOTS dinâmico, getTimeSlot snapping 10min, borders em horas cheias
+
+**Próxima fase: B1 — Timezone fix (slotToDateISO)**
