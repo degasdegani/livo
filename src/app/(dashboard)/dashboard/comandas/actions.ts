@@ -370,8 +370,20 @@ export async function fecharComanda(
         closedAt: new Date(),
       },
     });
+
+    // 4. Sync: comanda fechada → appointment concluído (apenas se não finalizado)
+    if (comanda.appointmentId) {
+      await tx.appointment.updateMany({
+        where: {
+          id: comanda.appointmentId,
+          status: { notIn: ["completed", "cancelled"] },
+        },
+        data: { status: "completed" },
+      });
+    }
   });
 
+  revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);
   revalidatePath(`/dashboard/comandas/${comandaId}`);
   redirect(`/dashboard/comandas`);
@@ -418,8 +430,20 @@ export async function cancelarComanda(comandaId: string) {
       where: { id: comandaId },
       data: { status: ComandaStatus.cancelled },
     });
+
+    // Sync: comanda cancelada → appointment cancelado (apenas se não finalizado)
+    if (comanda.appointmentId) {
+      await tx.appointment.updateMany({
+        where: {
+          id: comanda.appointmentId,
+          status: { notIn: ["cancelled", "completed"] },
+        },
+        data: { status: "cancelled" },
+      });
+    }
   });
 
+  revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);
   redirect(`/dashboard/comandas`);
 }

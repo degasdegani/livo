@@ -3,7 +3,7 @@
 // Todos os writers (book, AgendaBoard) devem usar estas funções.
 // Nenhum outro arquivo deve conter lógica de criação direta de Appointment.
 
-import type { AppointmentStatus } from "@prisma/client";
+import { type AppointmentStatus, ComandaStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
@@ -240,9 +240,22 @@ export async function updateAppointmentStatusCore(
     return { success: false, error: "Sem permissão para este agendamento." };
   }
 
-  await db.appointment.update({
-    where: { id: appointmentId },
-    data: { status },
+  await db.$transaction(async (tx) => {
+    await tx.appointment.update({
+      where: { id: appointmentId },
+      data: { status },
+    });
+
+    // Sync: appointment cancelado → cancela comanda aberta vinculada (idempotente)
+    if (status === "cancelled") {
+      await tx.comanda.updateMany({
+        where: {
+          appointmentId,
+          status: ComandaStatus.open,
+        },
+        data: { status: ComandaStatus.cancelled },
+      });
+    }
   });
 
   return { success: true };
