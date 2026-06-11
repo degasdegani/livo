@@ -4,6 +4,7 @@
 import type { PaymentMethod } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/modal";
 import {
   addProductItem,
   addServiceItem,
@@ -837,211 +838,175 @@ export default function ComandaPDV({
         )}
       </div>
 
-      {/* Modal Fechar */}
-      {showCloseModal && (
+      <Modal
+        open={showCloseModal}
+        onClose={() => {
+          setShowCloseModal(false);
+          setError("");
+        }}
+        title="Fechar Comanda"
+        description="Confirme a forma de pagamento e desconto (se houver)."
+        size="md"
+      >
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          className="rounded-lg p-3 text-sm"
+          style={{ backgroundColor: "var(--bg-base)" }}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-            }}
+            className="flex justify-between"
+            style={{ color: "var(--text-secondary)" }}
           >
-            <h2
-              className="mb-1 text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Fechar Comanda
-            </h2>
-            <p
-              className="mb-6 text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Confirme a forma de pagamento e desconto (se houver).
-            </p>
-
+            <span>Subtotal</span>
+            <span>{formatCents(totalBruto)}</span>
+          </div>
+          {discountCents > 0 && (
             <div
-              className="mb-4 rounded-lg p-3 text-sm"
-              style={{ backgroundColor: "var(--bg-base)" }}
+              className="mt-1 flex justify-between"
+              style={{ color: "var(--status-yellow)" }}
             >
-              <div
-                className="flex justify-between"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                <span>Subtotal</span>
-                <span>{formatCents(totalBruto)}</span>
-              </div>
-              {discountCents > 0 && (
-                <div
-                  className="mt-1 flex justify-between"
-                  style={{ color: "var(--status-yellow)" }}
-                >
-                  <span>Desconto</span>
-                  <span>− {formatCents(discountCents)}</span>
-                </div>
-              )}
-              <div
-                className="mt-2 flex justify-between pt-2 font-semibold"
-                style={{ borderTop: "1px solid var(--border)" }}
-              >
-                <span style={{ color: "var(--text-primary)" }}>Total</span>
-                <span style={{ color: "var(--status-green)" }}>
-                  {formatCents(totalLiquido)}
-                </span>
-              </div>
+              <span>Desconto</span>
+              <span>− {formatCents(discountCents)}</span>
             </div>
-
-            <div className="mb-4">
-              <label
-                htmlFor="discount-input"
-                className="mb-1.5 block text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Desconto (R$)
-              </label>
-              <input
-                id="discount-input"
-                type="text"
-                placeholder="0,00"
-                value={discountStr}
-                onChange={(e) => setDiscountStr(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-
-            <div className="mb-6">
-              <p
-                className="mb-2 block text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Forma de pagamento
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {PAYMENT_OPTS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(opt.value)}
-                    className="rounded-lg py-2.5 text-sm font-medium transition-all"
-                    style={
-                      paymentMethod === opt.value
-                        ? {
-                            border: "1px solid var(--color-primary)",
-                            backgroundColor: "var(--color-primary-10)",
-                            color: "var(--text-primary)",
-                          }
-                        : {
-                            border: "1px solid var(--border)",
-                            backgroundColor: "var(--bg-base)",
-                            color: "var(--text-secondary)",
-                          }
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {error && (
-              <div
-                className="mb-4 rounded-lg px-3 py-2 text-sm"
-                style={{
-                  border: "1px solid var(--color-primary-20)",
-                  backgroundColor: "var(--color-primary-10)",
-                  color: "var(--color-primary)",
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCloseModal(false);
-                  setError("");
-                }}
-                className="flex-1 rounded-lg py-3 text-sm transition-colors"
-                style={{
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isPending}
-                className="flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ backgroundColor: "var(--status-green)" }}
-              >
-                {isPending
-                  ? "Fechando..."
-                  : `Confirmar · ${formatCents(totalLiquido)}`}
-              </button>
-            </div>
+          )}
+          <div
+            className="mt-2 flex justify-between pt-2 font-semibold"
+            style={{ borderTop: "1px solid var(--border)" }}
+          >
+            <span style={{ color: "var(--text-primary)" }}>Total</span>
+            <span style={{ color: "var(--status-green)" }}>
+              {formatCents(totalLiquido)}
+            </span>
           </div>
         </div>
-      )}
 
-      {/* Modal Cancelar */}
-      {showCancelModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-        >
+        <div className="mb-4">
+          <label
+            htmlFor="discount-input"
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Desconto (R$)
+          </label>
+          <input
+            id="discount-input"
+            type="text"
+            placeholder="0,00"
+            value={discountStr}
+            onChange={(e) => setDiscountStr(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div className="mb-6">
+          <p
+            className="mb-2 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Forma de pagamento
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {PAYMENT_OPTS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPaymentMethod(opt.value)}
+                className="rounded-lg py-2.5 text-sm font-medium transition-all"
+                style={
+                  paymentMethod === opt.value
+                    ? {
+                        border: "1px solid var(--color-primary)",
+                        backgroundColor: "var(--color-primary-10)",
+                        color: "var(--text-primary)",
+                      }
+                    : {
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--bg-base)",
+                        color: "var(--text-secondary)",
+                      }
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error && (
           <div
-            className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            className="mb-4 rounded-lg px-3 py-2 text-sm"
             style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--color-primary-20)",
+              backgroundColor: "var(--color-primary-10)",
+              color: "var(--color-primary)",
             }}
           >
-            <h2
-              className="mb-2 text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Cancelar Comanda
-            </h2>
-            <p
-              className="mb-6 text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {comanda.status === "closed"
-                ? "Esta comanda já foi fechada. Cancelar vai estornar o estoque dos produtos. Tem certeza?"
-                : "Tem certeza que deseja cancelar esta comanda? Esta ação não pode ser desfeita."}
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 rounded-lg py-3 text-sm"
-                style={{
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={isPending}
-                className="flex-1 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: "var(--color-primary)" }}
-              >
-                {isPending ? "Cancelando..." : "Cancelar Comanda"}
-              </button>
-            </div>
+            {error}
           </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setShowCloseModal(false);
+              setError("");
+            }}
+            className="flex-1 rounded-lg py-3 text-sm transition-colors"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isPending}
+            className="flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+            style={{ backgroundColor: "var(--status-green)" }}
+          >
+            {isPending
+              ? "Fechando..."
+              : `Confirmar · ${formatCents(totalLiquido)}`}
+          </button>
         </div>
-      )}
+      </Modal>
+
+      <Modal
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancelar Comanda"
+        description={
+          comanda.status === "closed"
+            ? "Esta comanda já foi fechada. Cancelar vai estornar o estoque dos produtos. Tem certeza?"
+            : "Tem certeza que deseja cancelar esta comanda? Esta ação não pode ser desfeita."
+        }
+        size="sm"
+      >
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCancelModal(false)}
+            className="flex-1 rounded-lg py-3 text-sm"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isPending}
+            className="flex-1 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            {isPending ? "Cancelando..." : "Cancelar Comanda"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

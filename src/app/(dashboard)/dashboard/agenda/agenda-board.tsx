@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { Modal } from "@/components/ui/modal";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
 import { updateAppointmentStatus } from "../actions";
 import { abrirComanda } from "../comandas/actions";
@@ -795,250 +796,218 @@ function AppointmentModal({
     appointment.professionalId === userProfessionalId;
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div
-        className="rounded-xl w-full max-w-md shadow-2xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-            <span className={`text-xs font-medium ${cfg.text}`}>
-              {cfg.label}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-colors"
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ backgroundColor: "var(--bg-card-elevated)" }}
-            >
-              <User size={14} style={{ color: "var(--text-secondary)" }} />
-            </div>
-            <div>
-              <p
-                className="font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {appointment.clientName}
-              </p>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                {appointment.clientPhone ?? "Sem telefone"}
-              </p>
-            </div>
-          </div>
-
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={appointment.clientName}
+      description={cfg.label}
+      size="md"
+    >
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
           <div
-            className="rounded-lg p-3 space-y-2"
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
             style={{ backgroundColor: "var(--bg-card-elevated)" }}
           >
-            <InfoRow
-              label="Serviço"
-              value={`${appointment.serviceName} — ${formatCurrency(appointment.servicePriceInCents)}`}
-            />
-            <InfoRow
-              label="Horário"
-              value={`${formatTime(new Date(appointment.date))}${
-                appointment.endTime
-                  ? ` → ${formatTime(new Date(appointment.endTime))}`
-                  : ` (${appointment.serviceDurationMin}min)`
-              }`}
-            />
-            {prof && <InfoRow label="Barbeiro" value={prof.name} />}
-            {appointment.notes && (
-              <InfoRow label="Observações" value={appointment.notes} />
-            )}
+            <User size={14} style={{ color: "var(--text-secondary)" }} />
           </div>
-
-          {/* Ver Comanda: quando já existe (qualquer status não-cancelado) */}
-          {appointment.comandaId && appointment.status !== "cancelled" && (
-            <button
-              type="button"
-              onClick={() => {
-                const id = appointment.comandaId;
-                if (id) router.push(`/dashboard/comandas/${id}`);
-              }}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-              style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-primary)";
-              }}
+          <div>
+            <p
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
             >
-              <Receipt size={14} />
-              Ver Comanda
-            </button>
-          )}
+              {appointment.clientName}
+            </p>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              {appointment.clientPhone ?? "Sem telefone"}
+            </p>
+          </div>
+        </div>
 
-          {canManage &&
-            appointment.status !== "completed" &&
-            appointment.status !== "cancelled" && (
-              <div className="space-y-2">
-                {/* Abrir Comanda: apenas quando ainda não existe comanda */}
-                {!appointment.comandaId &&
-                  (appointment.status === "pending" ||
-                    appointment.status === "confirmed") && (
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={onAbrirComanda}
-                      className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      style={{
-                        backgroundColor: "var(--color-primary)",
-                        color: "#fff",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isPending)
-                          e.currentTarget.style.backgroundColor =
-                            "var(--color-primary-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--color-primary)";
-                      }}
-                    >
-                      <Receipt size={14} />
-                      {isPending ? "Abrindo comanda..." : "Abrir Comanda"}
-                    </button>
-                  )}
-                {appointment.status === "pending" && (
+        <div
+          className="rounded-lg p-3 space-y-2"
+          style={{ backgroundColor: "var(--bg-card-elevated)" }}
+        >
+          <InfoRow
+            label="Serviço"
+            value={`${appointment.serviceName} — ${formatCurrency(appointment.servicePriceInCents)}`}
+          />
+          <InfoRow
+            label="Horário"
+            value={`${formatTime(new Date(appointment.date))}${
+              appointment.endTime
+                ? ` → ${formatTime(new Date(appointment.endTime))}`
+                : ` (${appointment.serviceDurationMin}min)`
+            }`}
+          />
+          {prof && <InfoRow label="Barbeiro" value={prof.name} />}
+          {appointment.notes && (
+            <InfoRow label="Observações" value={appointment.notes} />
+          )}
+        </div>
+
+        {/* Ver Comanda: quando já existe (qualquer status não-cancelado) */}
+        {appointment.comandaId && appointment.status !== "cancelled" && (
+          <button
+            type="button"
+            onClick={() => {
+              const id = appointment.comandaId;
+              if (id) router.push(`/dashboard/comandas/${id}`);
+            }}
+            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+            style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor =
+                "var(--color-primary-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+            }}
+          >
+            <Receipt size={14} />
+            Ver Comanda
+          </button>
+        )}
+
+        {canManage &&
+          appointment.status !== "completed" &&
+          appointment.status !== "cancelled" && (
+            <div className="space-y-2">
+              {/* Abrir Comanda: apenas quando ainda não existe comanda */}
+              {!appointment.comandaId &&
+                (appointment.status === "pending" ||
+                  appointment.status === "confirmed") && (
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => onStatusChange(appointment.id, "confirmed")}
-                    className="w-full py-2.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50"
+                    onClick={onAbrirComanda}
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{
+                      backgroundColor: "var(--color-primary)",
+                      color: "#fff",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isPending)
+                        e.currentTarget.style.backgroundColor =
+                          "var(--color-primary-hover)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "var(--color-primary)";
+                    }}
                   >
-                    ✓ Confirmar agendamento
+                    <Receipt size={14} />
+                    {isPending ? "Abrindo comanda..." : "Abrir Comanda"}
                   </button>
                 )}
-                {(appointment.status === "pending" ||
-                  appointment.status === "confirmed") && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() =>
-                        onStatusChange(appointment.id, "completed")
-                      }
-                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                      style={{
-                        backgroundColor: "var(--bg-card-elevated)",
-                        border: "1px solid var(--border)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      Marcar como concluído
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => onStatusChange(appointment.id, "no_show")}
-                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                      style={{
-                        backgroundColor: "var(--bg-card-elevated)",
-                        border: "1px solid var(--border)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      Não compareceu
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() =>
-                        onStatusChange(appointment.id, "cancelled")
-                      }
-                      className="w-full py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                    >
-                      Cancelar
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+              {appointment.status === "pending" && (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => onStatusChange(appointment.id, "confirmed")}
+                  className="w-full py-2.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50"
+                >
+                  ✓ Confirmar agendamento
+                </button>
+              )}
+              {(appointment.status === "pending" ||
+                appointment.status === "confirmed") && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onStatusChange(appointment.id, "completed")}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    style={{
+                      backgroundColor: "var(--bg-card-elevated)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    Marcar como concluído
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onStatusChange(appointment.id, "no_show")}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    style={{
+                      backgroundColor: "var(--bg-card-elevated)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Não compareceu
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onStatusChange(appointment.id, "cancelled")}
+                    className="w-full py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
-          {canManage &&
-            appointment.status !== "completed" &&
-            appointment.status !== "cancelled" &&
-            appointment.status !== "no_show" && (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                style={{
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--bg-card-elevated)";
-                  e.currentTarget.style.borderColor = "var(--color-primary)";
-                  e.currentTarget.style.color = "var(--color-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.color = "var(--text-secondary)";
-                }}
-              >
-                <Pencil size={14} />
-                Editar agendamento
-              </button>
-            )}
+        {canManage &&
+          appointment.status !== "completed" &&
+          appointment.status !== "cancelled" &&
+          appointment.status !== "no_show" && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "var(--bg-card-elevated)";
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
+            >
+              <Pencil size={14} />
+              Editar agendamento
+            </button>
+          )}
 
-          {(userRole === "owner" || userRole === "reception") &&
-            appointment.status !== "completed" &&
-            appointment.status !== "cancelled" && (
-              <button
-                type="button"
-                onClick={onMove}
-                className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                style={{
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--bg-card-elevated)";
-                  e.currentTarget.style.color = "var(--text-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "var(--text-secondary)";
-                }}
-              >
-                <ArrowRight size={14} />
-                Mover para outro barbeiro
-              </button>
-            )}
-        </div>
+        {(userRole === "owner" || userRole === "reception") &&
+          appointment.status !== "completed" &&
+          appointment.status !== "cancelled" && (
+            <button
+              type="button"
+              onClick={onMove}
+              className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "var(--bg-card-elevated)";
+                e.currentTarget.style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
+            >
+              <ArrowRight size={14} />
+              Mover para outro barbeiro
+            </button>
+          )}
       </div>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
@@ -1064,101 +1033,65 @@ function MoveModal({
   );
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div
-        className="rounded-xl w-full max-w-sm shadow-2xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+    <Modal open={true} onClose={onClose} title="Mover agendamento" size="sm">
+      <div>
+        <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
+          Selecione o novo barbeiro para{" "}
+          <span style={{ color: "var(--text-primary)" }}>
+            {appointment.clientName}
+          </span>
+          :
+        </p>
+        {others.length === 0 ? (
           <p
-            className="font-semibold text-sm"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Mover agendamento
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-colors"
+            className="text-sm text-center py-4"
             style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
           >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-5 py-4">
-          <p
-            className="text-xs mb-3"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Selecione o novo barbeiro para{" "}
-            <span style={{ color: "var(--text-primary)" }}>
-              {appointment.clientName}
-            </span>
-            :
+            Não há outros profissionais disponíveis.
           </p>
-          {others.length === 0 ? (
-            <p
-              className="text-sm text-center py-4"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Não há outros profissionais disponíveis.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {others.map((prof) => (
-                <button
-                  type="button"
-                  key={prof.id}
-                  disabled={isPending}
-                  onClick={() => onMove(prof.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors disabled:opacity-50"
-                  style={{ border: "1px solid var(--border)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-primary)";
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-primary-10)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
+        ) : (
+          <div className="space-y-2">
+            {others.map((prof) => (
+              <button
+                type="button"
+                key={prof.id}
+                disabled={isPending}
+                onClick={() => onMove(prof.id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                style={{ border: "1px solid var(--border)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary)";
+                  e.currentTarget.style.backgroundColor =
+                    "var(--color-primary-10)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: "var(--color-primary-10)" }}
                 >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: "var(--color-primary-10)" }}
-                  >
-                    <span
-                      className="text-[10px] font-bold"
-                      style={{ color: "var(--color-primary)" }}
-                    >
-                      {prof.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  </div>
                   <span
-                    className="text-sm"
-                    style={{ color: "var(--text-primary)" }}
+                    className="text-[10px] font-bold"
+                    style={{ color: "var(--color-primary)" }}
                   >
-                    {prof.name}
+                    {prof.name.slice(0, 2).toUpperCase()}
                   </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                </div>
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {prof.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
@@ -1242,186 +1175,151 @@ function EditAppointmentModal({
   };
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div
-        className="rounded-xl w-full max-w-md shadow-2xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <div>
-            <p
-              className="font-semibold text-sm"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Editar agendamento
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              {appointment.clientName}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-colors"
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Editar agendamento"
+      description={appointment.clientName}
+      size="md"
+    >
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="edit-service" style={labelStyle}>
+            Serviço
+          </label>
+          <select
+            id="edit-service"
+            value={serviceId}
+            onChange={(e) => setServiceId(e.target.value)}
+            style={inputStyle}
           >
-            <X size={16} />
-          </button>
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} — {formatCurrency(s.priceInCents)} ({s.durationMin}
+                min)
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="px-5 py-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="edit-service" style={labelStyle}>
-              Serviço
+            <label htmlFor="edit-date" style={labelStyle}>
+              Data
+            </label>
+            <input
+              id="edit-date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label htmlFor="edit-slot" style={labelStyle}>
+              Horário
             </label>
             <select
-              id="edit-service"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
+              id="edit-slot"
+              value={selectedSlot}
+              onChange={(e) => setSelectedSlot(Number(e.target.value))}
               style={inputStyle}
             >
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {formatCurrency(s.priceInCents)} ({s.durationMin}
-                  min)
+              {slots.map((i) => (
+                <option key={i} value={i}>
+                  {slotToTime(i)}
                 </option>
               ))}
             </select>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="edit-date" style={labelStyle}>
-                Data
-              </label>
-              <input
-                id="edit-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-slot" style={labelStyle}>
-                Horário
-              </label>
-              <select
-                id="edit-slot"
-                value={selectedSlot}
-                onChange={(e) => setSelectedSlot(Number(e.target.value))}
-                style={inputStyle}
-              >
-                {slots.map((i) => (
-                  <option key={i} value={i}>
-                    {slotToTime(i)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+        <div>
+          <label htmlFor="edit-client-name" style={labelStyle}>
+            Nome do cliente
+          </label>
+          <input
+            id="edit-client-name"
+            type="text"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="Ex: João Silva"
+            style={inputStyle}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="edit-client-name" style={labelStyle}>
-              Nome do cliente
-            </label>
-            <input
-              id="edit-client-name"
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Ex: João Silva"
-              style={inputStyle}
-            />
-          </div>
+        <div>
+          <label htmlFor="edit-phone" style={labelStyle}>
+            Telefone / WhatsApp
+          </label>
+          <input
+            id="edit-phone"
+            type="tel"
+            value={clientPhone}
+            onChange={(e) => setClientPhone(e.target.value)}
+            placeholder="(11) 99999-9999"
+            style={inputStyle}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="edit-phone" style={labelStyle}>
-              Telefone / WhatsApp
-            </label>
-            <input
-              id="edit-phone"
-              type="tel"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="(11) 99999-9999"
-              style={inputStyle}
-            />
-          </div>
+        <div>
+          <label htmlFor="edit-notes" style={labelStyle}>
+            Observações (opcional)
+          </label>
+          <textarea
+            id="edit-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Ex: cliente prefere tesoura"
+            style={{ ...inputStyle, resize: "none" }}
+          />
+        </div>
 
-          <div>
-            <label htmlFor="edit-notes" style={labelStyle}>
-              Observações (opcional)
-            </label>
-            <textarea
-              id="edit-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Ex: cliente prefere tesoura"
-              style={{ ...inputStyle, resize: "none" }}
-            />
-          </div>
-
-          {selectedService && (
-            <div
-              className="rounded-lg px-3 py-2 text-xs"
-              style={{
-                backgroundColor: "var(--bg-card-elevated)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              {selectedTimeStr} → termina ~{(() => {
-                const start = new Date(
-                  slotToDateISO(selectedDate, selectedSlot),
-                );
-                const end = new Date(
-                  start.getTime() + selectedService.durationMin * 60_000,
-                );
-                return formatTime(end);
-              })()} · {selectedService.durationMin}min ·{" "}
-              {formatCurrency(selectedService.priceInCents)}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={
-              isPending ||
-              !clientName.trim() ||
-              !clientPhone.trim() ||
-              !serviceId ||
-              !selectedDate
-            }
-            className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: "var(--color-primary)" }}
-            onMouseEnter={(e) => {
-              if (!isPending)
-                e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+        {selectedService && (
+          <div
+            className="rounded-lg px-3 py-2 text-xs"
+            style={{
+              backgroundColor: "var(--bg-card-elevated)",
+              color: "var(--text-secondary)",
             }}
           >
-            {isPending ? "Salvando..." : "Salvar alterações"}
-          </button>
-        </div>
+            {selectedTimeStr} → termina ~{(() => {
+              const start = new Date(slotToDateISO(selectedDate, selectedSlot));
+              const end = new Date(
+                start.getTime() + selectedService.durationMin * 60_000,
+              );
+              return formatTime(end);
+            })()} · {selectedService.durationMin}min ·{" "}
+            {formatCurrency(selectedService.priceInCents)}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={
+            isPending ||
+            !clientName.trim() ||
+            !clientPhone.trim() ||
+            !serviceId ||
+            !selectedDate
+          }
+          className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: "var(--color-primary)" }}
+          onMouseEnter={(e) => {
+            if (!isPending)
+              e.currentTarget.style.backgroundColor =
+                "var(--color-primary-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--color-primary)";
+          }}
+        >
+          {isPending ? "Salvando..." : "Salvar alterações"}
+        </button>
       </div>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
@@ -1555,391 +1453,325 @@ function NewAppointmentModal({
   };
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div
-        className="rounded-xl w-full max-w-md shadow-2xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Novo agendamento"
+      description={`${timeStr} — ${professionals.find((p) => p.id === selectedProfId)?.name ?? ""}`}
+      size="md"
+    >
+      <div className="space-y-3">
+        {/* Barbeiro */}
+        {professionals.length > 1 && (
           <div>
-            <p
-              className="font-semibold text-sm"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Novo agendamento
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              {timeStr} —{" "}
-              {professionals.find((p) => p.id === selectedProfId)?.name}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-colors"
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-3">
-          {/* Barbeiro */}
-          {professionals.length > 1 && (
-            <div>
-              <label htmlFor="create-professional" style={labelStyle}>
-                Barbeiro
-              </label>
-              <select
-                id="create-professional"
-                value={selectedProfId}
-                onChange={(e) => setSelectedProfId(e.target.value)}
-                style={inputStyle}
-              >
-                {professionals.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Serviço */}
-          <div>
-            <label htmlFor="create-service" style={labelStyle}>
-              Serviço
+            <label htmlFor="create-professional" style={labelStyle}>
+              Barbeiro
             </label>
             <select
-              id="create-service"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
+              id="create-professional"
+              value={selectedProfId}
+              onChange={(e) => setSelectedProfId(e.target.value)}
               style={inputStyle}
             >
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {formatCurrency(s.priceInCents)} ({s.durationMin}
-                  min)
+              {professionals.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
                 </option>
               ))}
             </select>
           </div>
+        )}
 
-          {/* Cliente */}
-          <div>
-            <label htmlFor="client-search" style={labelStyle}>
-              Cliente
-            </label>
+        {/* Serviço */}
+        <div>
+          <label htmlFor="create-service" style={labelStyle}>
+            Serviço
+          </label>
+          <select
+            id="create-service"
+            value={serviceId}
+            onChange={(e) => setServiceId(e.target.value)}
+            style={inputStyle}
+          >
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} — {formatCurrency(s.priceInCents)} ({s.durationMin}
+                min)
+              </option>
+            ))}
+          </select>
+        </div>
 
-            {selectedClient ? (
-              /* Chip: cliente selecionado */
-              <div
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
-                style={{
-                  border: "1px solid var(--color-primary-20)",
-                  backgroundColor: "var(--color-primary-10)",
-                }}
-              >
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "var(--color-primary-20)" }}
-                >
-                  <span
-                    className="text-[10px] font-bold"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    {selectedClient.name.slice(0, 2).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-sm font-medium truncate"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {selectedClient.name}
-                  </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {selectedClient.phone}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={clearClient}
-                  className="transition-colors shrink-0"
-                  style={{ color: "var(--text-tertiary)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-tertiary)";
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : isManualMode ? (
-              /* Modo manual: nome + telefone livres */
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={manualName}
-                  onChange={(e) => setManualName(e.target.value)}
-                  placeholder="Nome do cliente"
-                  style={inputStyle}
-                  // biome-ignore lint/a11y/noAutofocus: campo principal do modo manual
-                  autoFocus
-                />
-                <input
-                  type="tel"
-                  value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  style={inputStyle}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsManualMode(false);
-                    setManualName("");
-                    setManualPhone("");
-                  }}
-                  className="text-xs transition-colors"
-                  style={{ color: "var(--text-secondary)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-secondary)";
-                  }}
-                >
-                  ← Buscar cliente existente
-                </button>
-              </div>
-            ) : (
-              /* Busca com autocomplete */
-              <div className="relative">
-                <div className="relative">
-                  <Search
-                    size={13}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style={{ color: "var(--text-tertiary)" }}
-                  />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => handleSearchInput(e.target.value)}
-                    onFocus={() => {
-                      if (searchTerm.trim().length >= 2) setShowDropdown(true);
-                    }}
-                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                    id="client-search"
-                    placeholder="Buscar por nome ou telefone..."
-                    style={{ ...inputStyle, paddingLeft: 32 }}
-                  />
-                  {isSearching && (
-                    <div
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-t-transparent rounded-full animate-spin"
-                      style={{
-                        borderColor: "var(--color-primary)",
-                        borderTopColor: "transparent",
-                      }}
-                    />
-                  )}
-                </div>
+        {/* Cliente */}
+        <div>
+          <label htmlFor="client-search" style={labelStyle}>
+            Cliente
+          </label>
 
-                {/* Dropdown */}
-                {showDropdown && searchTerm.trim().length >= 2 && (
-                  <div
-                    className="absolute top-full left-0 right-0 z-10 mt-1 rounded-lg shadow-xl overflow-hidden"
-                    style={{
-                      backgroundColor: "var(--bg-card)",
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    {searchResults.length > 0 ? (
-                      searchResults.map((client) => (
-                        <button
-                          key={client.id}
-                          type="button"
-                          onMouseDown={() => selectClient(client)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors text-left"
-                          style={{
-                            borderBottom: "1px solid var(--border)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor =
-                              "var(--bg-card-elevated)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor =
-                              "transparent";
-                          }}
-                        >
-                          <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                            style={{
-                              backgroundColor: "var(--color-primary-10)",
-                            }}
-                          >
-                            <span
-                              className="text-[10px] font-bold"
-                              style={{ color: "var(--color-primary)" }}
-                            >
-                              {client.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className="text-sm font-medium truncate"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {client.name}
-                            </p>
-                            <p
-                              className="text-xs"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {client.phone}
-                            </p>
-                          </div>
-                        </button>
-                      ))
-                    ) : !isSearching ? (
-                      <div className="p-3">
-                        <p
-                          className="text-xs text-center mb-2.5"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          Nenhum cliente encontrado
-                        </p>
-                        <button
-                          type="button"
-                          onMouseDown={enterManualMode}
-                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors"
-                          style={{
-                            border: "1px dashed var(--border)",
-                            color: "var(--text-secondary)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor =
-                              "var(--color-primary)";
-                            e.currentTarget.style.color =
-                              "var(--color-primary)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = "var(--border)";
-                            e.currentTarget.style.color =
-                              "var(--text-secondary)";
-                          }}
-                        >
-                          <Plus size={12} />
-                          Criar novo cliente
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Observações */}
-          <div>
-            <label htmlFor="create-notes" style={labelStyle}>
-              Observações (opcional)
-            </label>
-            <textarea
-              id="create-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Ex: cliente prefere tesoura"
-              style={{ ...inputStyle, resize: "none" }}
-            />
-          </div>
-
-          {/* Preview de horário */}
-          {selectedService && (
+          {selectedClient ? (
+            /* Chip: cliente selecionado */
             <div
-              className="rounded-lg px-3 py-2 text-xs"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
               style={{
-                backgroundColor: "var(--bg-card-elevated)",
-                color: "var(--text-secondary)",
+                border: "1px solid var(--color-primary-20)",
+                backgroundColor: "var(--color-primary-10)",
               }}
             >
-              {timeStr} → termina ~{(() => {
-                const end = new Date(dateISO);
-                end.setMinutes(end.getMinutes() + selectedService.durationMin);
-                return formatTime(end);
-              })()} · {selectedService.durationMin}min ·{" "}
-              {formatCurrency(selectedService.priceInCents)}
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "var(--color-primary-20)" }}
+              >
+                <span
+                  className="text-[10px] font-bold"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  {selectedClient.name.slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-sm font-medium truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {selectedClient.name}
+                </p>
+                <p
+                  className="text-xs"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {selectedClient.phone}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearClient}
+                className="transition-colors shrink-0"
+                style={{ color: "var(--text-tertiary)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-tertiary)";
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : isManualMode ? (
+            /* Modo manual: nome + telefone livres */
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                placeholder="Nome do cliente"
+                style={inputStyle}
+                // biome-ignore lint/a11y/noAutofocus: campo principal do modo manual
+                autoFocus
+              />
+              <input
+                type="tel"
+                value={manualPhone}
+                onChange={(e) => setManualPhone(e.target.value)}
+                placeholder="(11) 99999-9999"
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsManualMode(false);
+                  setManualName("");
+                  setManualPhone("");
+                }}
+                className="text-xs transition-colors"
+                style={{ color: "var(--text-secondary)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                }}
+              >
+                ← Buscar cliente existente
+              </button>
+            </div>
+          ) : (
+            /* Busca com autocomplete */
+            <div className="relative">
+              <div className="relative">
+                <Search
+                  size={13}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onFocus={() => {
+                    if (searchTerm.trim().length >= 2) setShowDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  id="client-search"
+                  placeholder="Buscar por nome ou telefone..."
+                  style={{ ...inputStyle, paddingLeft: 32 }}
+                />
+                {isSearching && (
+                  <div
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-t-transparent rounded-full animate-spin"
+                    style={{
+                      borderColor: "var(--color-primary)",
+                      borderTopColor: "transparent",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Dropdown */}
+              {showDropdown && searchTerm.trim().length >= 2 && (
+                <div
+                  className="absolute top-full left-0 right-0 z-10 mt-1 rounded-lg shadow-xl overflow-hidden"
+                  style={{
+                    backgroundColor: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {searchResults.length > 0 ? (
+                    searchResults.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onMouseDown={() => selectClient(client)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors text-left"
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--bg-card-elevated)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: "var(--color-primary-10)",
+                          }}
+                        >
+                          <span
+                            className="text-[10px] font-bold"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            {client.name.slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-sm font-medium truncate"
+                            style={{ color: "var(--text-primary)" }}
+                          >
+                            {client.name}
+                          </p>
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {client.phone}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  ) : !isSearching ? (
+                    <div className="p-3">
+                      <p
+                        className="text-xs text-center mb-2.5"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        Nenhum cliente encontrado
+                      </p>
+                      <button
+                        type="button"
+                        onMouseDown={enterManualMode}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{
+                          border: "1px dashed var(--border)",
+                          color: "var(--text-secondary)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor =
+                            "var(--color-primary)";
+                          e.currentTarget.style.color = "var(--color-primary)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)";
+                          e.currentTarget.style.color = "var(--text-secondary)";
+                        }}
+                      >
+                        <Plus size={12} />
+                        Criar novo cliente
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
           )}
+        </div>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: "var(--color-primary)" }}
-            onMouseEnter={(e) => {
-              if (canSubmit)
-                e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+        {/* Observações */}
+        <div>
+          <label htmlFor="create-notes" style={labelStyle}>
+            Observações (opcional)
+          </label>
+          <textarea
+            id="create-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Ex: cliente prefere tesoura"
+            style={{ ...inputStyle, resize: "none" }}
+          />
+        </div>
+
+        {/* Preview de horário */}
+        {selectedService && (
+          <div
+            className="rounded-lg px-3 py-2 text-xs"
+            style={{
+              backgroundColor: "var(--bg-card-elevated)",
+              color: "var(--text-secondary)",
             }}
           >
-            {isPending ? "Criando..." : "Criar agendamento"}
-          </button>
-        </div>
-      </div>
-    </ModalOverlay>
-  );
-}
+            {timeStr} → termina ~{(() => {
+              const end = new Date(dateISO);
+              end.setMinutes(end.getMinutes() + selectedService.durationMin);
+              return formatTime(end);
+            })()} · {selectedService.durationMin}min ·{" "}
+            {formatCurrency(selectedService.priceInCents)}
+          </div>
+        )}
 
-// ─── ModalOverlay ─────────────────────────────────────────────────────────────
-
-function ModalOverlay({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop fecha modal ao clicar fora */}
-      <div
-        className="fixed inset-0 z-40 flex items-center justify-center p-4"
-        style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
-        }}
-      >
-        {children}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: "var(--color-primary)" }}
+          onMouseEnter={(e) => {
+            if (canSubmit)
+              e.currentTarget.style.backgroundColor =
+                "var(--color-primary-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--color-primary)";
+          }}
+        >
+          {isPending ? "Criando..." : "Criar agendamento"}
+        </button>
       </div>
-    </>
+    </Modal>
   );
 }
 

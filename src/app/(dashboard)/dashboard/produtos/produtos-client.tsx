@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/produtos/produtos-client.tsx
 "use client";
 
-import { MemberRole, StockMovementReason } from "@prisma/client";
+import type { MemberRole, StockMovementReason } from "@prisma/client";
 import {
   AlertTriangle,
   Check,
@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/modal";
 import type {
   CategoryWithCount,
   ProductWithCategory,
@@ -72,15 +73,6 @@ type Props = {
 type Tab = "produtos" | "categorias";
 type FilterStock = "all" | "low" | "out";
 
-const modalStyle: React.CSSProperties = {
-  backgroundColor: "var(--bg-card)",
-  border: "1px solid var(--border)",
-  borderRadius: 16,
-  padding: 24,
-  width: "100%",
-  boxShadow: "var(--shadow-modal)",
-};
-
 const inputStyle: React.CSSProperties = {
   width: "100%",
   borderRadius: 8,
@@ -120,74 +112,51 @@ function CategoryModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={category ? "Editar Categoria" : "Nova Categoria"}
+      size="sm"
     >
-      <div style={{ ...modalStyle, maxWidth: 448 }}>
-        <div className="mb-5 flex items-center justify-between">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {category ? "Editar Categoria" : "Nova Categoria"}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--text-primary)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "var(--text-tertiary)")
-            }
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Nome
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Pomadas, Shampoos..."
-            style={inputStyle}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            autoFocus
-          />
-          {error && <p className="mt-1.5 text-sm text-red-400">{error}</p>}
-        </div>
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {pending ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
+      <div>
+        <label
+          className="mb-1.5 block text-sm"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Nome
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Pomadas, Shampoos..."
+          style={inputStyle}
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          autoFocus
+        />
+        {error && <p className="mt-1.5 text-sm text-red-400">{error}</p>}
       </div>
-    </div>
+      <div className="flex gap-3">
+        <button
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={pending}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          {pending ? "Salvando..." : "Salvar"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -261,47 +230,78 @@ function ProductModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={product ? "Editar Produto" : "Novo Produto"}
+      size="md"
     >
-      <div
-        style={{
-          ...modalStyle,
-          maxWidth: 512,
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
+      <div className="space-y-4">
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
           >
-            {product ? "Editar Produto" : "Novo Produto"}
-          </h2>
-          <button onClick={onClose} style={{ color: "var(--text-tertiary)" }}>
-            <X size={20} />
-          </button>
+            Nome *
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex: Pomada Matte Black"
+            style={inputStyle}
+            autoFocus
+          />
         </div>
-        <div className="space-y-4">
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Descrição
+          </label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Opcional"
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Categoria
+          </label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Sem categoria</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label
               className="mb-1.5 block text-sm"
               style={{ color: "var(--text-secondary)" }}
             >
-              Nome *
+              Custo (R$)
             </label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Pomada Matte Black"
+              inputMode="numeric"
+              value={costStr}
+              onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
               style={inputStyle}
-              autoFocus
             />
           </div>
           <div>
@@ -309,49 +309,31 @@ function ProductModal({
               className="mb-1.5 block text-sm"
               style={{ color: "var(--text-secondary)" }}
             >
-              Descrição
+              Venda (R$) *
             </label>
             <input
               type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Opcional"
+              inputMode="numeric"
+              value={priceStr}
+              onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
               style={inputStyle}
             />
           </div>
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Categoria
-            </label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Sem categoria</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        </div>
+        {!product && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label
                 className="mb-1.5 block text-sm"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Custo (R$)
+                Estoque inicial
               </label>
               <input
-                type="text"
-                inputMode="numeric"
-                value={costStr}
-                onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
+                type="number"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
                 style={inputStyle}
               />
             </div>
@@ -360,58 +342,7 @@ function ProductModal({
                 className="mb-1.5 block text-sm"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Venda (R$) *
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={priceStr}
-                onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-          {!product && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  className="mb-1.5 block text-sm"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Estoque inicial
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label
-                  className="mb-1.5 block text-sm"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Alerta mínimo
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={minAlert}
-                  onChange={(e) => setMinAlert(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-          )}
-          {product && (
-            <div>
-              <label
-                className="mb-1.5 block text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Alerta mínimo de estoque
+                Alerta mínimo
               </label>
               <input
                 type="number"
@@ -420,69 +351,82 @@ function ProductModal({
                 onChange={(e) => setMinAlert(e.target.value)}
                 style={inputStyle}
               />
-              <p
-                className="mt-1 text-xs"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                Você recebe alerta quando o estoque cair abaixo deste número.
-              </p>
             </div>
-          )}
-          {product && (
-            <div
-              className="flex items-center justify-between rounded-lg px-4 py-3"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--bg-base)",
-              }}
+          </div>
+        )}
+        {product && (
+          <div>
+            <label
+              className="mb-1.5 block text-sm"
+              style={{ color: "var(--text-secondary)" }}
             >
-              <span
-                className="text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Produto ativo
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsActive(!isActive)}
-                style={{
-                  color: isActive
-                    ? "var(--status-green)"
-                    : "var(--text-tertiary)",
-                }}
-              >
-                {isActive ? (
-                  <ToggleRight size={28} />
-                ) : (
-                  <ToggleLeft size={28} />
-                )}
-              </button>
-            </div>
-          )}
-          {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+              Alerta mínimo de estoque
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={minAlert}
+              onChange={(e) => setMinAlert(e.target.value)}
+              style={inputStyle}
+            />
+            <p
+              className="mt-1 text-xs"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Você recebe alerta quando o estoque cair abaixo deste número.
+            </p>
+          </div>
+        )}
+        {product && (
+          <div
+            className="flex items-center justify-between rounded-lg px-4 py-3"
             style={{
               border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
+              backgroundColor: "var(--bg-base)",
             }}
           >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {pending ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
+            <span
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Produto ativo
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsActive(!isActive)}
+              style={{
+                color: isActive
+                  ? "var(--status-green)"
+                  : "var(--text-tertiary)",
+              }}
+            >
+              {isActive ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+            </button>
+          </div>
+        )}
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
-    </div>
+      <div className="flex gap-3">
+        <button
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={pending}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          {pending ? "Salvando..." : "Salvar"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -542,244 +486,215 @@ function StockModal({
   ];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Movimentar Estoque"
+      description={product.name}
+      size="md"
     >
       <div
+        className="mb-5 rounded-xl p-4"
         style={{
-          ...modalStyle,
-          maxWidth: 512,
-          maxHeight: "90vh",
-          overflowY: "auto",
+          border: "1px solid var(--border)",
+          backgroundColor: "var(--bg-base)",
         }}
       >
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Movimentar Estoque
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-              {product.name}
-            </p>
-          </div>
-          <button onClick={onClose} style={{ color: "var(--text-tertiary)" }}>
-            <X size={20} />
-          </button>
+        <div className="flex items-center justify-between">
+          <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Estoque atual
+          </span>
+          <span
+            className={`text-2xl font-bold ${product.stockQuantity <= 0 ? "text-red-400" : product.stockQuantity <= product.minStockAlert ? "text-yellow-400" : ""}`}
+            style={
+              product.stockQuantity > product.minStockAlert
+                ? { color: "var(--text-primary)" }
+                : {}
+            }
+          >
+            {product.stockQuantity} un.
+          </span>
         </div>
+      </div>
 
-        <div
-          className="mb-5 rounded-xl p-4"
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => {
+            setIsEntry(true);
+            setReason("purchase");
+          }}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${isEntry ? "bg-green-500/20 border border-green-500/50 text-green-400" : "text-[#6E6E78] hover:text-white"}`}
+          style={!isEntry ? { border: "1px solid var(--border)" } : {}}
+        >
+          <TrendingUp size={16} /> Entrada
+        </button>
+        <button
+          onClick={() => {
+            setIsEntry(false);
+            setReason("manual_adjustment");
+          }}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${!isEntry ? "bg-red-500/20 border border-red-500/50 text-red-400" : "text-[#6E6E78] hover:text-white"}`}
+          style={isEntry ? { border: "1px solid var(--border)" } : {}}
+        >
+          <TrendingDown size={16} /> Saída
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Quantidade
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="0"
+            style={inputStyle}
+            autoFocus
+          />
+        </div>
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Motivo
+          </label>
+          <select
+            value={reason}
+            onChange={(e) => setReason(e.target.value as StockMovementReason)}
+            style={inputStyle}
+          >
+            {(isEntry ? entryReasons : exitReasons).map((r) => (
+              <option key={r} value={r}>
+                {REASON_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Observação (opcional)
+          </label>
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ex: NF 1234, lote B..."
+            style={inputStyle}
+          />
+        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+      </div>
+
+      <div className="mt-6 flex gap-3">
+        <button
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
           style={{
             border: "1px solid var(--border)",
-            backgroundColor: "var(--bg-base)",
+            color: "var(--text-secondary)",
           }}
         >
-          <div className="flex items-center justify-between">
-            <span
-              className="text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Estoque atual
-            </span>
-            <span
-              className={`text-2xl font-bold ${product.stockQuantity <= 0 ? "text-red-400" : product.stockQuantity <= product.minStockAlert ? "text-yellow-400" : ""}`}
-              style={
-                product.stockQuantity > product.minStockAlert
-                  ? { color: "var(--text-primary)" }
-                  : {}
-              }
-            >
-              {product.stockQuantity} un.
-            </span>
-          </div>
-        </div>
-
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => {
-              setIsEntry(true);
-              setReason("purchase");
-            }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${isEntry ? "bg-green-500/20 border border-green-500/50 text-green-400" : "text-[#6E6E78] hover:text-white"}`}
-            style={!isEntry ? { border: "1px solid var(--border)" } : {}}
-          >
-            <TrendingUp size={16} /> Entrada
-          </button>
-          <button
-            onClick={() => {
-              setIsEntry(false);
-              setReason("manual_adjustment");
-            }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${!isEntry ? "bg-red-500/20 border border-red-500/50 text-red-400" : "text-[#6E6E78] hover:text-white"}`}
-            style={isEntry ? { border: "1px solid var(--border)" } : {}}
-          >
-            <TrendingDown size={16} /> Saída
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Quantidade
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="0"
-              style={inputStyle}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Motivo
-            </label>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value as StockMovementReason)}
-              style={inputStyle}
-            >
-              {(isEntry ? entryReasons : exitReasons).map((r) => (
-                <option key={r} value={r}>
-                  {REASON_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Observação (opcional)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: NF 1234, lote B..."
-              style={inputStyle}
-            />
-          </div>
-          {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {pending ? "Salvando..." : "Registrar"}
-          </button>
-        </div>
-
-        <div
-          className="mt-6 pt-4"
-          style={{ borderTop: "1px solid var(--border)" }}
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={pending}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
         >
-          {history === null ? (
-            <button
-              onClick={loadHistory}
-              disabled={loadingHistory}
-              className="flex w-full items-center justify-center gap-2 text-sm transition-colors"
+          {pending ? "Salvando..." : "Registrar"}
+        </button>
+      </div>
+
+      <div
+        className="mt-6 pt-4"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
+        {history === null ? (
+          <button
+            onClick={loadHistory}
+            disabled={loadingHistory}
+            className="flex w-full items-center justify-center gap-2 text-sm transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <History size={14} />
+            {loadingHistory
+              ? "Carregando..."
+              : "Ver histórico de movimentações"}
+          </button>
+        ) : (
+          <div>
+            <p
+              className="mb-3 text-sm font-semibold"
               style={{ color: "var(--text-secondary)" }}
             >
-              <History size={14} />
-              {loadingHistory
-                ? "Carregando..."
-                : "Ver histórico de movimentações"}
-            </button>
-          ) : (
-            <div>
-              <p
-                className="mb-3 text-sm font-semibold"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Histórico recente
-              </p>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {history.length === 0 && (
-                  <p
-                    className="text-center text-sm"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Nenhuma movimentação ainda.
-                  </p>
-                )}
-                {history.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between rounded-lg px-3 py-2"
-                    style={{ backgroundColor: "var(--bg-base)" }}
-                  >
-                    <div>
-                      <span
-                        className={`text-xs font-semibold ${REASON_COLORS[m.reason]}`}
-                      >
-                        {REASON_LABELS[m.reason]}
-                      </span>
-                      {m.notes && (
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {m.notes}
-                        </p>
-                      )}
+              Histórico recente
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {history.length === 0 && (
+                <p
+                  className="text-center text-sm"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  Nenhuma movimentação ainda.
+                </p>
+              )}
+              {history.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-lg px-3 py-2"
+                  style={{ backgroundColor: "var(--bg-base)" }}
+                >
+                  <div>
+                    <span
+                      className={`text-xs font-semibold ${REASON_COLORS[m.reason]}`}
+                    >
+                      {REASON_LABELS[m.reason]}
+                    </span>
+                    {m.notes && (
                       <p
                         className="text-xs"
                         style={{ color: "var(--text-tertiary)" }}
                       >
-                        {new Date(m.createdAt).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {m.notes}
                       </p>
-                    </div>
-                    <span
-                      className={`text-sm font-bold ${m.quantity > 0 ? "text-green-400" : "text-red-400"}`}
+                    )}
+                    <p
+                      className="text-xs"
+                      style={{ color: "var(--text-tertiary)" }}
                     >
-                      {m.quantity > 0 ? "+" : ""}
-                      {m.quantity}
-                    </span>
+                      {new Date(m.createdAt).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <span
+                    className={`text-sm font-bold ${m.quantity > 0 ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {m.quantity > 0 ? "+" : ""}
+                    {m.quantity}
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -3,6 +3,7 @@
 
 import { MemberRole } from "@prisma/client";
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/modal";
 import { getComissoesData, type ResumoProf } from "../comandas/actions";
 import { updateMembershipComissao } from "../settings/actions";
 
@@ -523,32 +524,15 @@ export function ComissoesClient({
         </div>
       )}
 
-      {/* Modal */}
-      {editingMembership && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-        >
-          <div
-            className="rounded-2xl p-6 w-full max-w-md"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <h3
-              className="text-lg font-bold mb-1"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Comissão — {editingMembership.professional?.name}
-            </h3>
-            <p
-              className="text-sm mb-6"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Configure o percentual de comissão para cada tipo de item.
-            </p>
-
+      <Modal
+        open={!!editingMembership}
+        onClose={fecharEdit}
+        title={`Comissão — ${editingMembership?.professional?.name ?? ""}`}
+        description="Configure o percentual de comissão para cada tipo de item."
+        size="sm"
+      >
+        {editingMembership && (
+          <>
             <div className="mb-5">
               <label className="flex items-center gap-3 mb-3 cursor-pointer">
                 <input
@@ -657,9 +641,9 @@ export function ComissoesClient({
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

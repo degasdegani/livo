@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/modal";
 import { updateAppointmentStatus } from "./actions";
 
 interface ConfirmModal {
@@ -135,22 +136,15 @@ export function AppointmentActions({ appointmentId }: Props) {
         </button>
       </div>
 
-      {/* Modal de confirmação */}
-      {modal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
-          onClick={closeModal}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5"
-            style={{
-              background: "var(--bg-card-elevated)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open={!!modal}
+        onClose={closeModal}
+        title={modal?.message ?? ""}
+        description={modal?.subtext}
+        size="sm"
+      >
+        {modal && (
+          <>
             {/* Ícone */}
             <div
               className="flex items-center justify-center rounded-2xl mx-auto"
@@ -168,19 +162,6 @@ export function AppointmentActions({ appointmentId }: Props) {
                     ? "✕"
                     : "!"}
               </span>
-            </div>
-
-            {/* Texto */}
-            <div className="text-center">
-              <p
-                className="font-black text-white mb-1.5"
-                style={{ fontSize: "17px", letterSpacing: "-0.3px" }}
-              >
-                {modal.message}
-              </p>
-              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-                {modal.subtext}
-              </p>
             </div>
 
             {/* Botões */}
@@ -209,9 +190,9 @@ export function AppointmentActions({ appointmentId }: Props) {
                 {modal.btnLabel}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </>
   );
 }
