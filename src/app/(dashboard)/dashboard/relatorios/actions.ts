@@ -110,7 +110,7 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
       totalInCents: true,
       closedAt: true,
       paymentMethod: true,
-      clientName: true,
+      clientId: true,
       professional: { select: { id: true, name: true } },
       items: {
         select: {
@@ -132,9 +132,10 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
   const ticketMedio =
     totalComandas > 0 ? Math.round(faturamentoTotal / totalComandas) : 0;
 
-  // Clientes únicos atendidos (pelo clientName — não temos clientId obrigatório)
+  // Clientes únicos atendidos: contagem por clientId (FK relacional).
+  // Comandas sem clientId (atendimentos anônimos) não possuem identidade distinta — não contabilizados.
   const clientesUnicos = new Set(
-    comandas.map((c) => c.clientName.toLowerCase().trim()),
+    comandas.map((c) => c.clientId).filter((id): id is string => id !== null),
   ).size;
 
   // Faturamento por método de pagamento
