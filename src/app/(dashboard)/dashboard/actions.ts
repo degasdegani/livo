@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { updateAppointmentStatusCore } from "@/lib/appointment-core";
+import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
+import { revalidatePath } from "next/cache";
 
 export async function updateAppointmentStatus(
   appointmentId: string,
