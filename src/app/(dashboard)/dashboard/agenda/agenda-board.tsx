@@ -11,14 +11,16 @@ import {
   Pencil,
   Plus,
   Scissors,
+  Search,
   User,
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
 import type {
   AgendaAppointment,
+  AgendaClientResult,
   AgendaDayData,
   AgendaProfessional,
   AgendaService,
@@ -26,6 +28,7 @@ import type {
 import {
   createQuickAppointment,
   moveAppointment,
+  searchClientsForAgenda,
   updateAppointment,
   updateAppointmentStatus,
 } from "./agenda-actions";
@@ -1380,20 +1383,79 @@ function NewAppointmentModal({
 }: NewAppointmentModalProps) {
   const [selectedProfId, setSelectedProfId] = useState(professionalId);
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
   const [notes, setNotes] = useState("");
+
+  // ── Autocomplete de cliente ────────────────────────────────
+  const [selectedClient, setSelectedClient] =
+    useState<AgendaClientResult | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<AgendaClientResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const timeStr = slotToTime(slotIndex);
   const dateISO = slotToDateISO(dateKey, slotIndex);
   const selectedService = services.find((s) => s.id === serviceId);
 
+  const finalClientName =
+    selectedClient?.name ?? (isManualMode ? manualName : "");
+  const finalClientPhone =
+    selectedClient?.phone ?? (isManualMode ? manualPhone : "");
+  const canSubmit =
+    !isPending &&
+    !!serviceId &&
+    !!finalClientName.trim() &&
+    !!finalClientPhone.trim();
+
+  function handleSearchInput(term: string) {
+    setSearchTerm(term);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (term.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+    setShowDropdown(true);
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchClientsForAgenda(term.trim());
+      setSearchResults(results);
+      setIsSearching(false);
+    }, 300);
+  }
+
+  function selectClient(client: AgendaClientResult) {
+    setSelectedClient(client);
+    setSearchTerm("");
+    setSearchResults([]);
+    setShowDropdown(false);
+    setIsManualMode(false);
+  }
+
+  function clearClient() {
+    setSelectedClient(null);
+    setSearchTerm("");
+    setSearchResults([]);
+    setIsManualMode(false);
+  }
+
+  function enterManualMode() {
+    setIsManualMode(true);
+    setSelectedClient(null);
+    setShowDropdown(false);
+  }
+
   function handleSubmit() {
-    if (!clientName.trim() || !clientPhone.trim() || !serviceId) return;
+    if (!canSubmit) return;
     onCreate({
       serviceId,
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
+      clientName: finalClientName.trim(),
+      clientPhone: finalClientPhone.trim(),
       notes,
       professionalId: selectedProfId,
       dateISO,
@@ -1427,6 +1489,7 @@ function NewAppointmentModal({
           border: "1px solid var(--border)",
         }}
       >
+        {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: "1px solid var(--border)" }}
@@ -1460,6 +1523,7 @@ function NewAppointmentModal({
         </div>
 
         <div className="px-5 py-4 space-y-3">
+          {/* Barbeiro */}
           {professionals.length > 1 && (
             <div>
               <label htmlFor="create-professional" style={labelStyle}>
@@ -1480,6 +1544,7 @@ function NewAppointmentModal({
             </div>
           )}
 
+          {/* Serviço */}
           <div>
             <label htmlFor="create-service" style={labelStyle}>
               Serviço
@@ -1499,34 +1564,228 @@ function NewAppointmentModal({
             </select>
           </div>
 
+          {/* Cliente */}
           <div>
-            <label htmlFor="create-client-name" style={labelStyle}>
-              Nome do cliente
+            <label htmlFor="client-search" style={labelStyle}>
+              Cliente
             </label>
-            <input
-              id="create-client-name"
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Ex: João Silva"
-              style={inputStyle}
-            />
+
+            {selectedClient ? (
+              /* Chip: cliente selecionado */
+              <div
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                style={{
+                  border: "1px solid var(--color-primary-20)",
+                  backgroundColor: "var(--color-primary-10)",
+                }}
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "var(--color-primary-20)" }}
+                >
+                  <span
+                    className="text-[10px] font-bold"
+                    style={{ color: "var(--color-primary)" }}
+                  >
+                    {selectedClient.name.slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-sm font-medium truncate"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {selectedClient.name}
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {selectedClient.phone}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearClient}
+                  className="transition-colors shrink-0"
+                  style={{ color: "var(--text-tertiary)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-tertiary)";
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : isManualMode ? (
+              /* Modo manual: nome + telefone livres */
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  placeholder="Nome do cliente"
+                  style={inputStyle}
+                  // biome-ignore lint/a11y/noAutofocus: campo principal do modo manual
+                  autoFocus
+                />
+                <input
+                  type="tel"
+                  value={manualPhone}
+                  onChange={(e) => setManualPhone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  style={inputStyle}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManualMode(false);
+                    setManualName("");
+                    setManualPhone("");
+                  }}
+                  className="text-xs transition-colors"
+                  style={{ color: "var(--text-secondary)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-secondary)";
+                  }}
+                >
+                  ← Buscar cliente existente
+                </button>
+              </div>
+            ) : (
+              /* Busca com autocomplete */
+              <div className="relative">
+                <div className="relative">
+                  <Search
+                    size={13}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: "var(--text-tertiary)" }}
+                  />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchInput(e.target.value)}
+                    onFocus={() => {
+                      if (searchTerm.trim().length >= 2) setShowDropdown(true);
+                    }}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    id="client-search"
+                    placeholder="Buscar por nome ou telefone..."
+                    style={{ ...inputStyle, paddingLeft: 32 }}
+                  />
+                  {isSearching && (
+                    <div
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-t-transparent rounded-full animate-spin"
+                      style={{
+                        borderColor: "var(--color-primary)",
+                        borderTopColor: "transparent",
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* Dropdown */}
+                {showDropdown && searchTerm.trim().length >= 2 && (
+                  <div
+                    className="absolute top-full left-0 right-0 z-10 mt-1 rounded-lg shadow-xl overflow-hidden"
+                    style={{
+                      backgroundColor: "var(--bg-card)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    {searchResults.length > 0 ? (
+                      searchResults.map((client) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onMouseDown={() => selectClient(client)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors text-left"
+                          style={{
+                            borderBottom: "1px solid var(--border)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "var(--bg-card-elevated)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
+                          }}
+                        >
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                            style={{
+                              backgroundColor: "var(--color-primary-10)",
+                            }}
+                          >
+                            <span
+                              className="text-[10px] font-bold"
+                              style={{ color: "var(--color-primary)" }}
+                            >
+                              {client.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="text-sm font-medium truncate"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {client.name}
+                            </p>
+                            <p
+                              className="text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {client.phone}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    ) : !isSearching ? (
+                      <div className="p-3">
+                        <p
+                          className="text-xs text-center mb-2.5"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Nenhum cliente encontrado
+                        </p>
+                        <button
+                          type="button"
+                          onMouseDown={enterManualMode}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors"
+                          style={{
+                            border: "1px dashed var(--border)",
+                            color: "var(--text-secondary)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor =
+                              "var(--color-primary)";
+                            e.currentTarget.style.color =
+                              "var(--color-primary)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = "var(--border)";
+                            e.currentTarget.style.color =
+                              "var(--text-secondary)";
+                          }}
+                        >
+                          <Plus size={12} />
+                          Criar novo cliente
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="create-phone" style={labelStyle}>
-              Telefone / WhatsApp
-            </label>
-            <input
-              id="create-phone"
-              type="tel"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="(11) 99999-9999"
-              style={inputStyle}
-            />
-          </div>
-
+          {/* Observações */}
           <div>
             <label htmlFor="create-notes" style={labelStyle}>
               Observações (opcional)
@@ -1541,6 +1800,7 @@ function NewAppointmentModal({
             />
           </div>
 
+          {/* Preview de horário */}
           {selectedService && (
             <div
               className="rounded-lg px-3 py-2 text-xs"
@@ -1561,16 +1821,11 @@ function NewAppointmentModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={
-              isPending ||
-              !clientName.trim() ||
-              !clientPhone.trim() ||
-              !serviceId
-            }
+            disabled={!canSubmit}
             className="w-full py-2.5 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: "var(--color-primary)" }}
             onMouseEnter={(e) => {
-              if (!isPending)
+              if (canSubmit)
                 e.currentTarget.style.backgroundColor =
                   "var(--color-primary-hover)";
             }}

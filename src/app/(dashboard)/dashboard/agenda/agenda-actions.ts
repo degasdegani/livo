@@ -10,6 +10,7 @@ import {
 import { db } from "@/lib/db";
 import {
   appointmentScope,
+  clientScope,
   requireMembership,
   requireRole,
 } from "@/lib/permissions";
@@ -273,4 +274,32 @@ export async function createQuickAppointment(data: {
   } catch {
     return { success: false, error: "Erro ao criar agendamento." };
   }
+}
+
+// ─── Busca de clientes para autocomplete ─────────────────────────────────────
+
+export type AgendaClientResult = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
+export async function searchClientsForAgenda(
+  search: string,
+): Promise<AgendaClientResult[]> {
+  if (!search || search.trim().length < 2) return [];
+  const membership = await requireMembership();
+  const scope = clientScope(membership);
+  return db.client.findMany({
+    where: {
+      ...scope,
+      OR: [
+        { name: { contains: search.trim(), mode: "insensitive" } },
+        { phone: { contains: search.trim() } },
+      ],
+    },
+    select: { id: true, name: true, phone: true },
+    take: 8,
+    orderBy: { name: "asc" },
+  });
 }
