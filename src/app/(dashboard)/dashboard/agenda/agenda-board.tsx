@@ -10,6 +10,7 @@ import {
   Clock,
   Pencil,
   Plus,
+  Receipt,
   Scissors,
   Search,
   User,
@@ -18,6 +19,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
+import { abrirComanda } from "../comandas/actions";
 import type {
   AgendaAppointment,
   AgendaClientResult,
@@ -254,6 +256,24 @@ export default function AgendaBoard({
     });
   }
 
+  async function handleAbrirComanda(appointment: AgendaAppointment) {
+    startTransition(async () => {
+      try {
+        await abrirComanda({
+          professionalId: appointment.professionalId,
+          clientId: appointment.clientId ?? undefined,
+          clientName: appointment.clientName,
+          notes: appointment.notes ?? undefined,
+          appointmentId: appointment.id,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("NEXT_REDIRECT")) return;
+        showToast("Erro ao abrir comanda.", "error");
+      }
+    });
+  }
+
   async function handleEdit(formData: {
     serviceId: string;
     dateISO: string;
@@ -480,6 +500,7 @@ export default function AgendaBoard({
           onMove={() =>
             setModal({ type: "move", appointment: modal.appointment })
           }
+          onAbrirComanda={() => handleAbrirComanda(modal.appointment)}
         />
       )}
 
@@ -750,6 +771,7 @@ type AppointmentModalProps = {
   ) => void;
   onEdit: () => void;
   onMove: () => void;
+  onAbrirComanda: () => void;
 };
 
 function AppointmentModal({
@@ -762,6 +784,7 @@ function AppointmentModal({
   onStatusChange,
   onEdit,
   onMove,
+  onAbrirComanda,
 }: AppointmentModalProps) {
   const cfg = STATUS_CONFIG[appointment.status] ?? STATUS_CONFIG.pending;
   const prof = professionals.find((p) => p.id === appointment.professionalId);
@@ -852,6 +875,32 @@ function AppointmentModal({
             appointment.status !== "completed" &&
             appointment.status !== "cancelled" && (
               <div className="space-y-2">
+                {/* CTA primário: abrir PDV direto do agendamento */}
+                {(appointment.status === "pending" ||
+                  appointment.status === "confirmed") && (
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={onAbrirComanda}
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{
+                      backgroundColor: "var(--color-primary)",
+                      color: "#fff",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isPending)
+                        e.currentTarget.style.backgroundColor =
+                          "var(--color-primary-hover)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "var(--color-primary)";
+                    }}
+                  >
+                    <Receipt size={14} />
+                    {isPending ? "Abrindo comanda..." : "Abrir Comanda"}
+                  </button>
+                )}
                 {appointment.status === "pending" && (
                   <button
                     type="button"

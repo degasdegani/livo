@@ -28,6 +28,7 @@ export type AgendaAppointment = {
   date: string;
   endTime: string | null;
   status: AppointmentStatus;
+  clientId: string | null;
   clientName: string;
   clientPhone: string | null;
   notes: string | null;
@@ -104,6 +105,7 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       date: a.date.toISOString(),
       endTime: a.endTime ? a.endTime.toISOString() : null,
       status: a.status,
+      clientId: a.clientId,
       clientName: a.clientName,
       clientPhone: a.clientPhone,
       notes: a.notes,
