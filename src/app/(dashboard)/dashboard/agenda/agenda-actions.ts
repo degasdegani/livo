@@ -29,6 +29,7 @@ export type AgendaAppointment = {
   endTime: string | null;
   status: AppointmentStatus;
   clientId: string | null;
+  comandaId: string | null;
   clientName: string;
   clientPhone: string | null;
   notes: string | null;
@@ -90,6 +91,9 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
           priceInCents: true,
         },
       },
+      comanda: {
+        select: { id: true },
+      },
     },
     orderBy: { date: "asc" },
   });
@@ -106,6 +110,7 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       endTime: a.endTime ? a.endTime.toISOString() : null,
       status: a.status,
       clientId: a.clientId,
+      comandaId: a.comanda?.id ?? null,
       clientName: a.clientName,
       clientPhone: a.clientPhone,
       notes: a.notes,

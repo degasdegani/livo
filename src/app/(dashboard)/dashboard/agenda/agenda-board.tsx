@@ -786,6 +786,7 @@ function AppointmentModal({
   onMove,
   onAbrirComanda,
 }: AppointmentModalProps) {
+  const router = useRouter();
   const cfg = STATUS_CONFIG[appointment.status] ?? STATUS_CONFIG.pending;
   const prof = professionals.find((p) => p.id === appointment.professionalId);
   const canManage =
@@ -871,36 +872,60 @@ function AppointmentModal({
             )}
           </div>
 
+          {/* Ver Comanda: quando já existe (qualquer status não-cancelado) */}
+          {appointment.comandaId && appointment.status !== "cancelled" && (
+            <button
+              type="button"
+              onClick={() => {
+                const id = appointment.comandaId;
+                if (id) router.push(`/dashboard/comandas/${id}`);
+              }}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-primary)";
+              }}
+            >
+              <Receipt size={14} />
+              Ver Comanda
+            </button>
+          )}
+
           {canManage &&
             appointment.status !== "completed" &&
             appointment.status !== "cancelled" && (
               <div className="space-y-2">
-                {/* CTA primário: abrir PDV direto do agendamento */}
-                {(appointment.status === "pending" ||
-                  appointment.status === "confirmed") && (
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={onAbrirComanda}
-                    className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{
-                      backgroundColor: "var(--color-primary)",
-                      color: "#fff",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isPending)
+                {/* Abrir Comanda: apenas quando ainda não existe comanda */}
+                {!appointment.comandaId &&
+                  (appointment.status === "pending" ||
+                    appointment.status === "confirmed") && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={onAbrirComanda}
+                      className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{
+                        backgroundColor: "var(--color-primary)",
+                        color: "#fff",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isPending)
+                          e.currentTarget.style.backgroundColor =
+                            "var(--color-primary-hover)";
+                      }}
+                      onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor =
-                          "var(--color-primary-hover)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        "var(--color-primary)";
-                    }}
-                  >
-                    <Receipt size={14} />
-                    {isPending ? "Abrindo comanda..." : "Abrir Comanda"}
-                  </button>
-                )}
+                          "var(--color-primary)";
+                      }}
+                    >
+                      <Receipt size={14} />
+                      {isPending ? "Abrindo comanda..." : "Abrir Comanda"}
+                    </button>
+                  )}
                 {appointment.status === "pending" && (
                   <button
                     type="button"

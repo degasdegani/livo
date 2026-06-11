@@ -1,16 +1,16 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { requireMembership, requireRole } from "@/lib/permissions";
 import {
   ComandaStatus,
   MemberRole,
-  PaymentMethod,
-  Prisma,
+  type PaymentMethod,
+  type Prisma,
   StockMovementReason,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { requireMembership, requireRole } from "@/lib/permissions";
 
 export type ComandaWithItems = Prisma.ComandaGetPayload<{
   include: {
@@ -117,6 +117,17 @@ export async function abrirComanda(data: {
     membership.professionalId !== data.professionalId
   ) {
     throw new Error("Barbeiro só pode abrir comanda para si mesmo.");
+  }
+
+  if (data.appointmentId) {
+    const existing = await db.comanda.findFirst({
+      where: {
+        appointmentId: data.appointmentId,
+        barbershopId: membership.barbershopId,
+      },
+      select: { id: true },
+    });
+    if (existing) redirect(`/dashboard/comandas/${existing.id}`);
   }
 
   const comanda = await db.comanda.create({
