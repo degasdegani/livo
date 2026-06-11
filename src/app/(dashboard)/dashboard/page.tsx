@@ -1,9 +1,10 @@
 // src/app/(dashboard)/dashboard/page.tsx
+
+import { MemberRole } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { checkBillingAccess, getCurrentMembership } from "@/lib/permissions";
-import { MemberRole } from "@prisma/client";
-import { redirect } from "next/navigation";
 import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
@@ -123,9 +124,17 @@ export default async function DashboardPage() {
     orderBy: { date: "asc" },
   });
 
-  const todayRevenue = todayAppointments
-    .filter((a) => a.status === "confirmed" || a.status === "completed")
-    .reduce((sum, a) => sum + a.service.priceInCents, 0);
+  // Fonte oficial de receita: Comandas fechadas (comanda.totalInCents).
+  // Appointments não representam receita realizada.
+  const { _sum: todaySum } = await db.comanda.aggregate({
+    where: {
+      barbershopId: barbershop.id,
+      status: "closed",
+      closedAt: { gte: todayStart, lte: todayEnd },
+    },
+    _sum: { totalInCents: true },
+  });
+  const todayRevenue = todaySum.totalInCents ?? 0;
 
   const monthStart = new Date();
   monthStart.setDate(1);
