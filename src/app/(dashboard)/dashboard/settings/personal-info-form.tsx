@@ -38,17 +38,6 @@ function SaveButton() {
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px 16px",
-  borderRadius: 12,
-  fontSize: 14,
-  color: "var(--text-primary)",
-  backgroundColor: "var(--bg-card-elevated)",
-  border: "1px solid var(--border)",
-  outline: "none",
-  transition: "border-color 150ms ease",
-};
 
 interface Props {
   name: string;
@@ -95,7 +84,7 @@ export function PersonalInfoForm({
             type="text"
             defaultValue={name}
             required
-            style={inputStyle}
+            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }
@@ -117,7 +106,7 @@ export function PersonalInfoForm({
             value={email}
             disabled
             readOnly
-            style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }}
+            className="livo-input"
           />
           <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
             E-mail não pode ser alterado
@@ -138,7 +127,7 @@ export function PersonalInfoForm({
             value={cpfValue}
             onChange={(e) => setCpfValue(maskCPF(e.target.value))}
             placeholder="000.000.000-00"
-            style={inputStyle}
+            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }
@@ -159,7 +148,7 @@ export function PersonalInfoForm({
             name="birthDate"
             type="date"
             defaultValue={birthDateFormatted}
-            style={inputStyle}
+            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }
@@ -182,7 +171,7 @@ export function PersonalInfoForm({
             value={phoneValue}
             onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
             placeholder="(16) 99999-9999"
-            style={inputStyle}
+            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }

@@ -14,24 +14,6 @@ function maskPhone(v: string) {
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#1F1F27",
-  border: "1px solid #2A2A33",
-  borderRadius: 10,
-  padding: "13px 14px",
-  color: "#fff",
-  fontSize: 15,
-  outline: "none",
-  boxSizing: "border-box",
-};
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  color: "#9A9AA6",
-  fontSize: 12.5,
-  fontWeight: 600,
-  margin: "0 0 6px 2px",
-};
 
 export function VipForm() {
   const [name, setName] = useState("");
@@ -122,18 +104,18 @@ export function VipForm() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Nome completo</label>
+        <label style={{ display: "block", color: "#9A9AA6", fontSize: 12.5, fontWeight: 600, margin: "0 0 6px 2px" }}>Nome completo</label>
         <input
-          style={inputStyle}
+          style={{ width: "100%", background: "#1F1F27", border: "1px solid #2A2A33", borderRadius: 10, padding: "13px 14px", color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="João da Silva"
         />
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>WhatsApp</label>
+        <label style={{ display: "block", color: "#9A9AA6", fontSize: 12.5, fontWeight: 600, margin: "0 0 6px 2px" }}>WhatsApp</label>
         <input
-          style={inputStyle}
+          style={{ width: "100%", background: "#1F1F27", border: "1px solid #2A2A33", borderRadius: 10, padding: "13px 14px", color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
           value={whatsapp}
           inputMode="numeric"
           onChange={(e) => setWhatsapp(maskPhone(e.target.value))}
@@ -141,9 +123,9 @@ export function VipForm() {
         />
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>E-mail</label>
+        <label style={{ display: "block", color: "#9A9AA6", fontSize: 12.5, fontWeight: 600, margin: "0 0 6px 2px" }}>E-mail</label>
         <input
-          style={inputStyle}
+          style={{ width: "100%", background: "#1F1F27", border: "1px solid #2A2A33", borderRadius: 10, padding: "13px 14px", color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
           value={email}
           type="email"
           onChange={(e) => setEmail(e.target.value)}
@@ -151,9 +133,9 @@ export function VipForm() {
         />
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Nome da barbearia (opcional)</label>
+        <label style={{ display: "block", color: "#9A9AA6", fontSize: 12.5, fontWeight: 600, margin: "0 0 6px 2px" }}>Nome da barbearia (opcional)</label>
         <input
-          style={inputStyle}
+          style={{ width: "100%", background: "#1F1F27", border: "1px solid #2A2A33", borderRadius: 10, padding: "13px 14px", color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
           value={shop}
           onChange={(e) => setShop(e.target.value)}
           placeholder="Barbearia do João"

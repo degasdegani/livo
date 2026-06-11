@@ -1156,24 +1156,6 @@ function EditAppointmentModal({
     onEdit({ serviceId, dateISO, clientName, clientPhone, notes });
   }
 
-  const inputStyle = {
-    backgroundColor: "var(--bg-card-elevated)",
-    border: "1px solid var(--border)",
-    color: "var(--text-primary)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 14,
-    width: "100%",
-    outline: "none",
-  };
-
-  const labelStyle = {
-    display: "block",
-    fontSize: 12,
-    color: "var(--text-secondary)",
-    marginBottom: 6,
-  };
-
   return (
     <Modal
       open={true}
@@ -1184,14 +1166,14 @@ function EditAppointmentModal({
     >
       <div className="space-y-3">
         <div>
-          <label htmlFor="edit-service" style={labelStyle}>
+          <label htmlFor="edit-service" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Serviço
           </label>
           <select
             id="edit-service"
             value={serviceId}
             onChange={(e) => setServiceId(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           >
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1204,7 +1186,7 @@ function EditAppointmentModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="edit-date" style={labelStyle}>
+            <label htmlFor="edit-date" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Data
             </label>
             <input
@@ -1212,18 +1194,18 @@ function EditAppointmentModal({
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              style={inputStyle}
+              className="livo-input"
             />
           </div>
           <div>
-            <label htmlFor="edit-slot" style={labelStyle}>
+            <label htmlFor="edit-slot" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Horário
             </label>
             <select
               id="edit-slot"
               value={selectedSlot}
               onChange={(e) => setSelectedSlot(Number(e.target.value))}
-              style={inputStyle}
+              className="livo-input"
             >
               {slots.map((i) => (
                 <option key={i} value={i}>
@@ -1235,7 +1217,7 @@ function EditAppointmentModal({
         </div>
 
         <div>
-          <label htmlFor="edit-client-name" style={labelStyle}>
+          <label htmlFor="edit-client-name" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Nome do cliente
           </label>
           <input
@@ -1244,12 +1226,12 @@ function EditAppointmentModal({
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
             placeholder="Ex: João Silva"
-            style={inputStyle}
+            className="livo-input"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-phone" style={labelStyle}>
+          <label htmlFor="edit-phone" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Telefone / WhatsApp
           </label>
           <input
@@ -1258,12 +1240,12 @@ function EditAppointmentModal({
             value={clientPhone}
             onChange={(e) => setClientPhone(e.target.value)}
             placeholder="(11) 99999-9999"
-            style={inputStyle}
+            className="livo-input"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-notes" style={labelStyle}>
+          <label htmlFor="edit-notes" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Observações (opcional)
           </label>
           <textarea
@@ -1272,7 +1254,7 @@ function EditAppointmentModal({
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="Ex: cliente prefere tesoura"
-            style={{ ...inputStyle, resize: "none" }}
+            className="livo-input" style={{ resize: "none" }}
           />
         </div>
 
@@ -1434,24 +1416,6 @@ function NewAppointmentModal({
     });
   }
 
-  const inputStyle = {
-    backgroundColor: "var(--bg-card-elevated)",
-    border: "1px solid var(--border)",
-    color: "var(--text-primary)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 14,
-    width: "100%",
-    outline: "none",
-  };
-
-  const labelStyle = {
-    display: "block",
-    fontSize: 12,
-    color: "var(--text-secondary)",
-    marginBottom: 6,
-  };
-
   return (
     <Modal
       open={true}
@@ -1464,14 +1428,14 @@ function NewAppointmentModal({
         {/* Barbeiro */}
         {professionals.length > 1 && (
           <div>
-            <label htmlFor="create-professional" style={labelStyle}>
+            <label htmlFor="create-professional" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Barbeiro
             </label>
             <select
               id="create-professional"
               value={selectedProfId}
               onChange={(e) => setSelectedProfId(e.target.value)}
-              style={inputStyle}
+              className="livo-input"
             >
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -1484,14 +1448,14 @@ function NewAppointmentModal({
 
         {/* Serviço */}
         <div>
-          <label htmlFor="create-service" style={labelStyle}>
+          <label htmlFor="create-service" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Serviço
           </label>
           <select
             id="create-service"
             value={serviceId}
             onChange={(e) => setServiceId(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           >
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1504,7 +1468,7 @@ function NewAppointmentModal({
 
         {/* Cliente */}
         <div>
-          <label htmlFor="client-search" style={labelStyle}>
+          <label htmlFor="client-search" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Cliente
           </label>
 
@@ -1565,7 +1529,7 @@ function NewAppointmentModal({
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
                 placeholder="Nome do cliente"
-                style={inputStyle}
+                className="livo-input"
                 // biome-ignore lint/a11y/noAutofocus: campo principal do modo manual
                 autoFocus
               />
@@ -1574,7 +1538,7 @@ function NewAppointmentModal({
                 value={manualPhone}
                 onChange={(e) => setManualPhone(e.target.value)}
                 placeholder="(11) 99999-9999"
-                style={inputStyle}
+                className="livo-input"
               />
               <button
                 type="button"
@@ -1614,7 +1578,7 @@ function NewAppointmentModal({
                   onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
                   id="client-search"
                   placeholder="Buscar por nome ou telefone..."
-                  style={{ ...inputStyle, paddingLeft: 32 }}
+                  className="livo-input" style={{ paddingLeft: 32 }}
                 />
                 {isSearching && (
                   <div
@@ -1722,7 +1686,7 @@ function NewAppointmentModal({
 
         {/* Observações */}
         <div>
-          <label htmlFor="create-notes" style={labelStyle}>
+          <label htmlFor="create-notes" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Observações (opcional)
           </label>
           <textarea
@@ -1731,7 +1695,7 @@ function NewAppointmentModal({
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="Ex: cliente prefere tesoura"
-            style={{ ...inputStyle, resize: "none" }}
+            className="livo-input" style={{ resize: "none" }}
           />
         </div>
 

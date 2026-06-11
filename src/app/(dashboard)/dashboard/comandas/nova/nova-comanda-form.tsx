@@ -13,16 +13,6 @@ type Props = {
   role: string;
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)",
-  padding: "12px 16px",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
-};
 
 export default function NovaComandaForm({
   professionals,
@@ -110,7 +100,7 @@ export default function NovaComandaForm({
           <select
             value={professionalId}
             onChange={(e) => setProfessionalId(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           >
             <option value="">Selecione...</option>
             {professionals.map((p) => (
@@ -169,7 +159,7 @@ export default function NovaComandaForm({
             placeholder="Nome do cliente (opcional)"
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           />
         )}
 
@@ -228,7 +218,7 @@ export default function NovaComandaForm({
                   placeholder="Buscar por nome ou telefone..."
                   value={clientSearch}
                   onChange={(e) => searchClients(e.target.value)}
-                  style={inputStyle}
+                  className="livo-input"
                 />
                 {searchPending && (
                   <div className="absolute right-3 top-3.5">
@@ -314,7 +304,8 @@ export default function NovaComandaForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          style={{ ...inputStyle, resize: "none" }}
+          className="livo-input"
+          style={{ resize: "none" }}
         />
       </div>
 

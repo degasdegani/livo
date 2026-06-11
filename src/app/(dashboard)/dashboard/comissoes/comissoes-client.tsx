@@ -46,16 +46,6 @@ function toNumber(val: unknown): number {
   return Number(val);
 }
 
-const inputStyle: React.CSSProperties = {
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-base)",
-  padding: "8px 12px",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
-  width: 128,
-};
 
 export function ComissoesClient({
   resumoInicial,
@@ -564,7 +554,8 @@ export function ComissoesClient({
                     value={editServicePct}
                     onChange={(e) => setEditServicePct(e.target.value)}
                     placeholder="ex: 40"
-                    style={inputStyle}
+                    className="livo-input"
+                    style={{ width: 128 }}
                   />
                 </div>
               )}
@@ -601,7 +592,8 @@ export function ComissoesClient({
                     value={editProductPct}
                     onChange={(e) => setEditProductPct(e.target.value)}
                     placeholder="ex: 10"
-                    style={inputStyle}
+                    className="livo-input"
+                    style={{ width: 128 }}
                   />
                 </div>
               )}

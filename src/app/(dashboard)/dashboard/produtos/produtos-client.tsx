@@ -73,16 +73,6 @@ type Props = {
 type Tab = "produtos" | "categorias";
 type FilterStock = "all" | "low" | "out";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-base)",
-  padding: "10px 16px",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
-};
 
 function CategoryModal({
   category,
@@ -130,7 +120,7 @@ function CategoryModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ex: Pomadas, Shampoos..."
-          style={inputStyle}
+          className="livo-input"
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           autoFocus
         />
@@ -249,7 +239,7 @@ function ProductModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex: Pomada Matte Black"
-            style={inputStyle}
+            className="livo-input"
             autoFocus
           />
         </div>
@@ -265,7 +255,7 @@ function ProductModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Opcional"
-            style={inputStyle}
+            className="livo-input"
           />
         </div>
         <div>
@@ -278,7 +268,7 @@ function ProductModal({
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           >
             <option value="">Sem categoria</option>
             {categories.map((c) => (
@@ -301,7 +291,7 @@ function ProductModal({
               inputMode="numeric"
               value={costStr}
               onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
-              style={inputStyle}
+              className="livo-input"
             />
           </div>
           <div>
@@ -316,7 +306,7 @@ function ProductModal({
               inputMode="numeric"
               value={priceStr}
               onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
-              style={inputStyle}
+              className="livo-input"
             />
           </div>
         </div>
@@ -334,7 +324,7 @@ function ProductModal({
                 min="0"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
-                style={inputStyle}
+                className="livo-input"
               />
             </div>
             <div>
@@ -349,7 +339,7 @@ function ProductModal({
                 min="0"
                 value={minAlert}
                 onChange={(e) => setMinAlert(e.target.value)}
-                style={inputStyle}
+                className="livo-input"
               />
             </div>
           </div>
@@ -367,7 +357,7 @@ function ProductModal({
               min="0"
               value={minAlert}
               onChange={(e) => setMinAlert(e.target.value)}
-              style={inputStyle}
+              className="livo-input"
             />
             <p
               className="mt-1 text-xs"
@@ -554,7 +544,7 @@ function StockModal({
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             placeholder="0"
-            style={inputStyle}
+            className="livo-input"
             autoFocus
           />
         </div>
@@ -568,7 +558,7 @@ function StockModal({
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as StockMovementReason)}
-            style={inputStyle}
+            className="livo-input"
           >
             {(isEntry ? entryReasons : exitReasons).map((r) => (
               <option key={r} value={r}>
@@ -589,7 +579,7 @@ function StockModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ex: NF 1234, lote B..."
-            style={inputStyle}
+            className="livo-input"
           />
         </div>
         {error && <p className="text-sm text-red-400">{error}</p>}

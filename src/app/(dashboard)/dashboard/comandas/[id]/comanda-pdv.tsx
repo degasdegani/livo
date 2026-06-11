@@ -86,16 +86,6 @@ function formatCents(cents: number) {
   });
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-base)",
-  padding: "10px 16px",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
-};
 
 export default function ComandaPDV({
   comanda: initial,
@@ -893,7 +883,7 @@ export default function ComandaPDV({
             placeholder="0,00"
             value={discountStr}
             onChange={(e) => setDiscountStr(e.target.value)}
-            style={inputStyle}
+            className="livo-input"
           />
         </div>
 
