@@ -359,7 +359,28 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
   - Grid `sm:grid-cols-4` (owner) / `sm:grid-cols-3` (outros roles)
   - Corrigidos 3 erros pré-existentes `noArrayIndexKey` no mesmo arquivo
 
+### Concluído (continuação):
+
+**GAP-12 — Integridade completa do CRM (11/06/2026) ✅:**
+- `updateAppointmentStatusCore`: guard `shouldUpdateCRM = appointment.status !== "completed" && status === "completed"`
+- Antes de incrementar `totalVisits`/`lastVisitAt`, verifica comanda vinculada (`open` ou `closed`): se existe, `fecharComanda` já foi responsável → nenhum incremento
+- Zero double-count quando appointment é concluído manualmente após comanda fechada
+
+**GAP-06-E — Conflict check em moveAppointment (11/06/2026) ✅:**
+- Criado `moveAppointmentCore` em `src/lib/appointment-core.ts` (linhas 283–353)
+  - Guard de status: `completed | cancelled | no_show` → erro imediato
+  - Guard idempotente: mesmo `professionalId` → `{ success: true }` sem write
+  - Guard de profissional: valida `isActive = true` e `barbershopId` antes de mover
+  - Guard legado: `endTime === null` → pula conflict check (appointments sem duração)
+  - Conflict check: chama `checkConflict(newProfessionalId, date, endTime, excludeId)` antes do update
+- `moveAppointment` em `agenda-actions.ts` refatorado como thin wrapper (–22 linhas)
+
 ### Pendente:
 
-- GAP-06-E: `moveAppointment` sem `checkConflict` — adicionar verificação antes do `db.appointment.update`
-- GAP-06-F/G (baixa prioridade): wrappers duplicados `updateAppointmentStatus`; desconto não proporcional em `ComandaItem`
+**GAP-06-F — Consolidação do wrapper updateAppointmentStatus (11/06/2026) ✅:**
+- `dashboard/actions.ts`: wrapper atualizado — `AppointmentStatus` (full enum), `Promise<{ success, error }>`, `revalidatePath` em `/dashboard` + `/dashboard/agenda`
+- `agenda-actions.ts`: `updateAppointmentStatus` e `updateAppointmentStatusCore` removidos
+- `agenda-board.tsx`: import migrado de `./agenda-actions` para `../actions`
+- Callers: `appointment-actions.tsx` (sem alteração), `agenda-board.tsx` (import atualizado)
+
+- GAP-06-G (baixa prioridade): desconto não proporcional em `ComandaItem`

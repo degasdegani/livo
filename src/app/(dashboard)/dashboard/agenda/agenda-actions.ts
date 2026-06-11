@@ -4,8 +4,8 @@ import type { AppointmentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import {
   createAppointmentCore,
+  moveAppointmentCore,
   updateAppointmentCore,
-  updateAppointmentStatusCore,
 } from "@/lib/appointment-core";
 import { db } from "@/lib/db";
 import {
@@ -146,27 +146,6 @@ export async function getServicesForAgenda(): Promise<AgendaService[]> {
   }));
 }
 
-// ─── Atualizar status ────────────────────────────────────────────────────────
-
-export async function updateAppointmentStatus(
-  appointmentId: string,
-  status: AppointmentStatus,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const membership = await requireMembership();
-    const result = await updateAppointmentStatusCore(
-      appointmentId,
-      status,
-      membership,
-    );
-    if (!result.success) return { success: false, error: result.error };
-    revalidatePath("/dashboard/agenda");
-    return { success: true };
-  } catch {
-    return { success: false, error: "Erro ao atualizar agendamento." };
-  }
-}
-
 // ─── Mover entre barbeiros ───────────────────────────────────────────────────
 
 export async function moveAppointment(
@@ -175,35 +154,11 @@ export async function moveAppointment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const membership = await requireRole(["owner", "reception"]);
-
-    const appointment = await db.appointment.findFirst({
-      where: {
-        id: appointmentId,
-        barbershopId: membership.barbershopId,
-      },
-    });
-
-    if (!appointment) {
-      return { success: false, error: "Agendamento não encontrado." };
-    }
-
-    const professional = await db.professional.findFirst({
-      where: {
-        id: newProfessionalId,
-        barbershopId: membership.barbershopId,
-        isActive: true,
-      },
-    });
-
-    if (!professional) {
-      return { success: false, error: "Profissional não encontrado." };
-    }
-
-    await db.appointment.update({
-      where: { id: appointmentId },
-      data: { professionalId: newProfessionalId },
-    });
-
+    const result = await moveAppointmentCore(
+      { appointmentId, newProfessionalId },
+      membership,
+    );
+    if (!result.success) return { success: false, error: result.error };
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {

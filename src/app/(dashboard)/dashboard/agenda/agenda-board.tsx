@@ -19,6 +19,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
+import { updateAppointmentStatus } from "../actions";
 import { abrirComanda } from "../comandas/actions";
 import type {
   AgendaAppointment,
@@ -32,7 +33,6 @@ import {
   moveAppointment,
   searchClientsForAgenda,
   updateAppointment,
-  updateAppointmentStatus,
 } from "./agenda-actions";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────

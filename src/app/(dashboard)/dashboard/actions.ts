@@ -1,24 +1,31 @@
 "use server";
 
+import type { AppointmentStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { updateAppointmentStatusCore } from "@/lib/appointment-core";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
-import { revalidatePath } from "next/cache";
 
 export async function updateAppointmentStatus(
   appointmentId: string,
-  status: "confirmed" | "completed" | "cancelled" | "no_show",
-) {
-  const membership = await requireMembership();
-  const result = await updateAppointmentStatusCore(
-    appointmentId,
-    status,
-    membership,
-  );
-  if (!result.success) throw new Error(result.error);
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/agenda");
+  status: AppointmentStatus,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+    const result = await updateAppointmentStatusCore(
+      appointmentId,
+      status,
+      membership,
+    );
+    if (!result.success) return { success: false, error: result.error };
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao atualizar agendamento." };
+  }
 }
+
 // ─── Adicionado no Dia 8 ─────────────────────────────────────────────────────
 
 export async function getDashboardAnalytics(barbershopId: string) {

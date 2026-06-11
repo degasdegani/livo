@@ -224,7 +224,7 @@ export async function updateAppointmentStatusCore(
 ): Promise<AppointmentCoreResult> {
   const appointment = await db.appointment.findFirst({
     where: { id: appointmentId, barbershopId: auth.barbershopId },
-    select: { professionalId: true },
+    select: { professionalId: true, clientId: true, status: true },
   });
   if (!appointment) {
     return { success: false, error: "Agendamento não encontrado." };
@@ -236,6 +236,9 @@ export async function updateAppointmentStatusCore(
   ) {
     return { success: false, error: "Sem permissão para este agendamento." };
   }
+
+  const shouldUpdateCRM =
+    appointment.status !== "completed" && status === "completed";
 
   await db.$transaction(async (tx) => {
     await tx.appointment.update({
@@ -253,6 +256,97 @@ export async function updateAppointmentStatusCore(
         data: { status: ComandaStatus.cancelled },
       });
     }
+
+    if (shouldUpdateCRM && appointment.clientId) {
+      const linkedComanda = await tx.comanda.findFirst({
+        where: {
+          appointmentId,
+          status: { in: [ComandaStatus.open, ComandaStatus.closed] },
+        },
+        select: { id: true },
+      });
+      if (!linkedComanda) {
+        await tx.client.update({
+          where: { id: appointment.clientId },
+          data: {
+            totalVisits: { increment: 1 },
+            lastVisitAt: new Date(),
+          },
+        });
+      }
+    }
+  });
+
+  return { success: true };
+}
+
+// ─── moveAppointmentCore ──────────────────────────────────────────────────────
+
+export interface MoveAppointmentInput {
+  appointmentId: string;
+  newProfessionalId: string;
+}
+
+export async function moveAppointmentCore(
+  input: MoveAppointmentInput,
+  auth: AppointmentAuthContext,
+): Promise<AppointmentCoreResult> {
+  const appointment = await db.appointment.findFirst({
+    where: { id: input.appointmentId, barbershopId: auth.barbershopId },
+    select: { professionalId: true, date: true, endTime: true, status: true },
+  });
+
+  if (!appointment) {
+    return { success: false, error: "Agendamento não encontrado." };
+  }
+
+  if (
+    appointment.status === "completed" ||
+    appointment.status === "cancelled" ||
+    appointment.status === "no_show"
+  ) {
+    return {
+      success: false,
+      error: "Apenas agendamentos pendentes ou confirmados podem ser movidos.",
+    };
+  }
+
+  if (input.newProfessionalId === appointment.professionalId) {
+    return { success: true };
+  }
+
+  const professional = await db.professional.findFirst({
+    where: {
+      id: input.newProfessionalId,
+      barbershopId: auth.barbershopId,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  if (!professional) {
+    return { success: false, error: "Profissional não encontrado." };
+  }
+
+  if (appointment.endTime !== null) {
+    if (
+      await checkConflict(
+        input.newProfessionalId,
+        appointment.date,
+        appointment.endTime,
+        input.appointmentId,
+      )
+    ) {
+      return {
+        success: false,
+        error: "Horário em conflito com outro agendamento deste profissional.",
+      };
+    }
+  }
+
+  await db.appointment.update({
+    where: { id: input.appointmentId },
+    data: { professionalId: input.newProfessionalId },
   });
 
   return { success: true };
