@@ -58,7 +58,10 @@ function MiniGrafico({
             : 4;
         const ehAtual = i === dados.length - 1;
         return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div
+            key={d.label}
+            className="flex-1 flex flex-col items-center gap-1"
+          >
             <div
               title={`${d.label}: ${(d.totalInCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
               style={{
@@ -609,7 +612,9 @@ export default async function DashboardPage() {
         </div>
 
         {/* Ações rápidas */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div
+          className={`grid grid-cols-1 gap-4 ${membership?.role === MemberRole.owner ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
+        >
           {[
             {
               icon: "📊",
@@ -629,6 +634,16 @@ export default async function DashboardPage() {
               desc: "Serviços e horários",
               href: "/dashboard/settings",
             },
+            ...(membership?.role === MemberRole.owner
+              ? [
+                  {
+                    icon: "✦",
+                    label: "Insights",
+                    desc: "Sugestões de crescimento",
+                    href: "/dashboard/insights",
+                  },
+                ]
+              : []),
           ].map((action) => (
             <a
               key={action.label}
@@ -701,9 +716,9 @@ export default async function DashboardPage() {
                   valor: analytics.topServicos[0]?.nome ?? "—",
                   cor: "var(--text-secondary)",
                 },
-              ].map((k, i) => (
+              ].map((k) => (
                 <div
-                  key={i}
+                  key={k.titulo}
                   style={{
                     backgroundColor: "var(--bg-card)",
                     border: "1px solid var(--border)",
@@ -768,7 +783,7 @@ export default async function DashboardPage() {
                 <div className="space-y-2">
                   {analytics.topServicos.map((s, i) => (
                     <div
-                      key={i}
+                      key={s.nome}
                       className="flex items-center justify-between text-sm"
                     >
                       <span style={{ color: "var(--text-primary)" }}>

@@ -1,8 +1,8 @@
 # LIVO PROJECT STATUS
 
-Version: 1.5
-Last Updated: 10/06/2026
-Status: MVP Operacional — Sprint GAP-05 em execução (Integração Total da Agenda)
+Version: 1.6
+Last Updated: 11/06/2026
+Status: MVP Operacional — GAP-09 concluído (UI de Insights completa)
 Source of Truth: LIVO_FUNCTIONAL_AUDIT.md + LIVO_PRODUCTION_GAP.md
 
 ---
@@ -300,3 +300,66 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
   - day-calendar.tsx: SLOTS dinâmico, getTimeSlot snapping 10min, borders em horas cheias
 
 **Próxima fase: B1 — Timezone fix (slotToDateISO)**
+
+---
+
+## Sprint GAP-05 FIX B / GAP-06 / GAP-07 — Consistência e Inteligência (10-11/06/2026)
+
+### Concluído:
+
+**E2 — Navegação bidirecional Appointment ↔ Comanda (10/06/2026):**
+- `agenda-board.tsx`: botão "Ver Comanda" quando `comandaId` existe; "Abrir Comanda" oculto se já existe comanda
+- `comandas/actions.ts`: deduplicação em `abrirComanda` — redireciona para comanda existente se `appointmentId` já vinculado
+
+**F1 — Remoção segura de /dashboard/agenda/new (10/06/2026):**
+- Deletados: `agenda/new/actions.ts`, `agenda/new/new-appointment-form.tsx`, `agenda/new/page.tsx` (678 linhas)
+- Zero callers externos confirmados antes da deleção
+
+**GAP-05 FIX B — Sincronização bidirecional Appointment ↔ Comanda (10/06/2026):**
+- `fecharComanda`: sincroniza appointment vinculado para `completed` (idempotente, `notIn: ["completed","cancelled"]`)
+- `cancelarComanda`: sincroniza appointment vinculado para `cancelled`
+- `updateAppointmentStatusCore`: sincroniza comanda aberta para `cancelled` quando appointment cancelado
+- Anti-loop: cada direção escreve direto no DB sem chamar a função da outra direção
+
+**GAP-06-A — Receita unificada no dashboard/page.tsx (10/06/2026):**
+- `todayRevenue` agora usa `comanda.aggregate(_sum.totalInCents)` onde `status="closed"` e `closedAt` dentro do dia
+- Removido uso de `appointment.service.priceInCents` como receita
+
+**GAP-06-B/C — CRM baseado em comandas fechadas (10/06/2026):**
+- Removido `totalVisits`/`lastVisitAt` de `createAppointmentCore`
+- `fecharComanda`: step 5 = `client.update({ totalVisits: { increment: 1 }, lastVisitAt: new Date() })` para clientId não-null
+- Walk-ins com `clientId` agora são contabilizados corretamente ao fechar comanda
+
+**GAP-06-D — Deduplicação de clientes por clientId FK (10/06/2026):**
+- `relatorios/actions.ts`: `clientesUnicos` usa `new Set(comandas.map(c => c.clientId).filter(id => id !== null)).size`
+- Removida deduplicação por `clientName.toLowerCase().trim()`
+
+**GAP-07 — Camada de inteligência de cliente (11/06/2026):**
+- Criado: `src/app/(dashboard)/dashboard/analytics/client-intelligence.ts`
+- `getClientIntelligence(thresholds?)`: KPIs por cliente — status (ativo/em_risco/inativo), diasSemVisita, ticketMedio, intervaloMedioVisitas (dinâmico por cliente)
+- `getAgendaIntelligence(periodo?)`: slots por hora (quente/normal/ocioso), ranking profissionais, melhorHorario
+- `getReativacaoSugestoes(thresholds?, limite?)`: lista priorizada de clientes para reativação (prioridade alta/media por receita/visitas)
+- Leitura pura — zero writes ao CRM, Comanda, Appointment ou agenda
+
+**GAP-08 — Motor de recomendações acionáveis (11/06/2026):**
+- Criado: `src/app/(dashboard)/dashboard/analytics/recommendation-engine.ts`
+- `getRecommendations(barbershopId, thresholds?, periodo?)`: função pura — orquestra GAP-07 + engine em paralelo
+- 4 tipos de recomendação: `VIP_RISK`, `REACTIVATION`, `REVENUE_OPTIMIZATION`, `CAPACITY_OPTIMIZATION`
+- Campos: `id` (determinístico), `type`, `severity` (low/medium/high), `reason`, `suggestedAction`, `estimatedImpact` (baixo/médio/alto), `metadata`
+- Regras: VIP_RISK (R$300+ ou 8+ visitas em risco/inativo), REACTIVATION (em_risco/inativos sem sobreposição VIP), REVENUE_OPTIMIZATION (horários ociosos agrupados), CAPACITY_OPTIMIZATION (<40% do top performer)
+- Leitura pura — zero writes, zero automação, zero auth
+
+**GAP-09 — UI de Insights (11/06/2026) ✅ CONCLUÍDO:**
+- `src/app/(dashboard)/dashboard/insights/loading.tsx`: skeleton animate-pulse, 3 blocos (VIP + Reativação + Otimização)
+- `src/app/(dashboard)/dashboard/insights/page.tsx`: Server Component com `requireRole(["owner","reception"])`, `getRecommendations(barbershopId)`, 3 seções + empty state
+  - Auth boundary exclusivo em page.tsx; engine 100% puro
+  - Cards com left-border colorida por tipo, badges TYPE+SEVERITY+IMPACT, metadata line
+  - Empty state quando `summary.total === 0`
+- `src/app/(dashboard)/dashboard/page.tsx`: quick action "Insights" adicionada para owner only
+  - Grid `sm:grid-cols-4` (owner) / `sm:grid-cols-3` (outros roles)
+  - Corrigidos 3 erros pré-existentes `noArrayIndexKey` no mesmo arquivo
+
+### Pendente:
+
+- GAP-06-E: `moveAppointment` sem `checkConflict` — adicionar verificação antes do `db.appointment.update`
+- GAP-06-F/G (baixa prioridade): wrappers duplicados `updateAppointmentStatus`; desconto não proporcional em `ComandaItem`
