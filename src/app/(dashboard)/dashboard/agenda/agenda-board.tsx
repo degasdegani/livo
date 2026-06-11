@@ -14,7 +14,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
 import type {
@@ -170,6 +170,8 @@ export default function AgendaBoard({
   services,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get("view");
   const [data, setData] = useState<AgendaDayData>(initialData);
   const [dateKey, setDateKey] = useState(initialDateKey);
   const [modal, setModal] = useState<ModalState>({ type: "none" });
@@ -186,7 +188,9 @@ export default function AgendaBoard({
     const nextKey = formatDateKey(next);
     setLoadingNav(true);
     setDateKey(nextKey);
-    router.push(`/dashboard/agenda?date=${nextKey}`);
+    const params = new URLSearchParams({ date: nextKey });
+    if (viewParam) params.set("view", viewParam);
+    router.push(`/dashboard/agenda?${params.toString()}`);
     const { getAgendaDay } = await import("./agenda-actions");
     const fresh = await getAgendaDay(nextKey);
     setData(fresh);
@@ -197,7 +201,10 @@ export default function AgendaBoard({
     const todayKey = formatDateKey(new Date());
     setLoadingNav(true);
     setDateKey(todayKey);
-    router.push("/dashboard/agenda");
+    const params = new URLSearchParams();
+    if (viewParam) params.set("view", viewParam);
+    const query = params.toString();
+    router.push(`/dashboard/agenda${query ? `?${query}` : ""}`);
     const { getAgendaDay } = await import("./agenda-actions");
     const fresh = await getAgendaDay(todayKey);
     setData(fresh);
