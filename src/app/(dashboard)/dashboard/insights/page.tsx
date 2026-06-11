@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import type {
   Recommendation,
@@ -7,6 +8,7 @@ import type {
   RecommendationType,
 } from "../analytics/recommendation-engine";
 import { getRecommendations } from "../analytics/recommendation-engine";
+import { dismissInsight } from "./actions";
 
 // ─── Config maps (sem lógica de negócio — apenas apresentação) ────────────────
 
@@ -84,6 +86,25 @@ function brl(cents: number): string {
   return `R$${(cents / 100).toFixed(2).replace(".", ",")}`;
 }
 
+function getActionLink(
+  rec: Recommendation,
+): { href: string; label: string } | null {
+  switch (rec.type) {
+    case "VIP_RISK":
+    case "REACTIVATION":
+      return rec.metadata.clientId
+        ? {
+            href: `/dashboard/clients/${rec.metadata.clientId}`,
+            label: "Ver cliente →",
+          }
+        : null;
+    case "REVENUE_OPTIMIZATION":
+      return { href: "/dashboard/agenda", label: "Ver agenda →" };
+    case "CAPACITY_OPTIMIZATION":
+      return { href: "/dashboard/profissionais", label: "Ver profissional →" };
+  }
+}
+
 // ─── Componentes de render (Server Components inline) ─────────────────────────
 
 function Badge({
@@ -131,6 +152,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
   const typeConf = TYPE_CONFIG[rec.type];
   const sevConf = SEVERITY_CONFIG[rec.severity];
   const impConf = IMPACT_CONFIG[rec.estimatedImpact];
+  const actionLink = getActionLink(rec);
 
   return (
     <div
@@ -153,6 +175,38 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
         → {rec.suggestedAction}
       </p>
       <MetadataLine rec={rec} />
+      <div
+        className="mt-4 pt-3 flex items-center justify-between"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
+        {actionLink ? (
+          <a
+            href={actionLink.href}
+            className="text-xs font-semibold hover:underline"
+            style={{ color: typeConf.color }}
+          >
+            {actionLink.label}
+          </a>
+        ) : (
+          <span />
+        )}
+        <form action={dismissInsight}>
+          <input type="hidden" name="recId" value={rec.id} />
+          <button
+            type="submit"
+            className="text-xs hover:underline"
+            style={{
+              color: "var(--text-tertiary)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Dispensar
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -234,24 +288,105 @@ function SummaryHeader({ summary }: { summary: RecommendationSummary }) {
   );
 }
 
-function EmptyState() {
+function BootstrapMode() {
+  const checklistItems = [
+    "Criar primeiros agendamentos",
+    "Fechar comandas reais",
+    "Atender clientes recorrentes",
+    "Utilizar a agenda no dia a dia",
+  ];
+
+  const quickActions = [
+    { label: "Ir para Agenda", href: "/dashboard/agenda" },
+    { label: "Criar Cliente", href: "/dashboard/clients" },
+    { label: "Ver Comandas", href: "/dashboard/comandas" },
+  ];
+
   return (
-    <div
-      className="rounded-2xl flex flex-col items-center justify-center py-16 text-center"
-      style={{
-        backgroundColor: "var(--bg-card-elevated)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <p className="text-4xl mb-4">✓</p>
-      <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-        Nenhuma sugestão no momento
-      </p>
-      <p
-        className="text-sm"
-        style={{ color: "var(--text-tertiary)", maxWidth: "280px" }}
+    <div className="flex flex-col gap-4">
+      {/* Bloco 1 — Explicação */}
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          borderLeft: "3px solid var(--status-yellow)",
+        }}
       >
-        Todos os indicadores estão dentro do esperado.
+        <p
+          className="font-bold text-sm mb-2"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Ainda não temos dados suficientes para gerar insights automáticos
+        </p>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          O LIVO aprende com agendamentos e comandas fechadas da sua barbearia.
+        </p>
+      </div>
+
+      {/* Bloco 2 — Checklist */}
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <h3
+          className="text-xs font-bold tracking-widest uppercase mb-4"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          Para ativar os insights
+        </h3>
+        <ul className="flex flex-col gap-3">
+          {checklistItems.map((item) => (
+            <li key={item} className="flex items-center gap-3">
+              <span
+                className="text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: "rgba(0,212,160,0.12)",
+                  color: "var(--status-green)",
+                }}
+              >
+                ✓
+              </span>
+              <span
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {item}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Bloco 3 — Ações rápidas */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {quickActions.map((action) => (
+          <a
+            key={action.label}
+            href={action.href}
+            className="rounded-2xl p-4 text-sm font-semibold text-center hover:opacity-80 transition-opacity"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              color: "var(--color-primary)",
+              textDecoration: "none",
+            }}
+          >
+            {action.label}
+          </a>
+        ))}
+      </div>
+
+      {/* Bloco 4 — Micro copy */}
+      <p
+        className="text-xs text-center"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        Os insights aparecem automaticamente quando houver histórico suficiente
+        de clientes e atendimentos.
       </p>
     </div>
   );
@@ -259,11 +394,40 @@ function EmptyState() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+function buildSummary(recs: Recommendation[]): RecommendationSummary {
+  return {
+    total: recs.length,
+    high: recs.filter((r) => r.severity === "high").length,
+    medium: recs.filter((r) => r.severity === "medium").length,
+    low: recs.filter((r) => r.severity === "low").length,
+    byType: {
+      VIP_RISK: recs.filter((r) => r.type === "VIP_RISK").length,
+      REACTIVATION: recs.filter((r) => r.type === "REACTIVATION").length,
+      REVENUE_OPTIMIZATION: recs.filter(
+        (r) => r.type === "REVENUE_OPTIMIZATION",
+      ).length,
+      CAPACITY_OPTIMIZATION: recs.filter(
+        (r) => r.type === "CAPACITY_OPTIMIZATION",
+      ).length,
+    },
+  };
+}
+
 export default async function InsightsPage() {
   const membership = await requireRole(["owner", "reception"]);
   const { barbershopId } = membership;
 
-  const { recommendations, summary } = await getRecommendations(barbershopId);
+  const [{ recommendations: all }, dismissed] = await Promise.all([
+    getRecommendations(barbershopId),
+    db.insightDismissal.findMany({
+      where: { barbershopId },
+      select: { recId: true },
+    }),
+  ]);
+
+  const dismissedIds = new Set(dismissed.map((d) => d.recId));
+  const recommendations = all.filter((r) => !dismissedIds.has(r.id));
+  const summary = buildSummary(recommendations);
 
   const vipRisk = recommendations.filter((r) => r.type === "VIP_RISK");
   const reactivation = recommendations.filter((r) => r.type === "REACTIVATION");
@@ -285,8 +449,8 @@ export default async function InsightsPage() {
 
         <SummaryHeader summary={summary} />
 
-        {summary.total === 0 ? (
-          <EmptyState />
+        {recommendations.length === 0 ? (
+          <BootstrapMode />
         ) : (
           <>
             <RecommendationSection

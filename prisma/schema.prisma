@@ -357,6 +357,17 @@ model ComandaItem {
   @@map("comanda_items")
 }
 
+model InsightDismissal {
+  id           String   @id @default(cuid())
+  barbershopId String
+  recId        String
+  dismissedAt  DateTime @default(now())
+
+  @@unique([barbershopId, recId])
+  @@index([barbershopId])
+  @@map("insight_dismissals")
+}
+
 enum Plan {
   start
   pro
