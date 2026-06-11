@@ -45,10 +45,10 @@ export function AppointmentActions({ appointmentId }: Props) {
             width: 20,
             height: 20,
             border: "2px solid rgba(255,255,255,0.1)",
-            borderTopColor: "#FF2D55",
+            borderTopColor: "var(--color-primary)",
           }}
         />
-        <span className="text-xs" style={{ color: "#52525B" }}>
+        <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
           Salvando...
         </span>
       </div>
@@ -67,7 +67,7 @@ export function AppointmentActions({ appointmentId }: Props) {
               message: "Marcar como concluído?",
               subtext: "O atendimento será registrado como finalizado.",
               status: "completed",
-              color: "#00D4A0",
+              color: "var(--status-green)",
               btnLabel: "Concluir",
             })
           }
@@ -77,7 +77,7 @@ export function AppointmentActions({ appointmentId }: Props) {
             width: 30,
             height: 30,
             background: "rgba(0,212,160,0.1)",
-            color: "#00D4A0",
+            color: "var(--status-green)",
             border: "1px solid rgba(0,212,160,0.2)",
           }}
         >
@@ -92,7 +92,7 @@ export function AppointmentActions({ appointmentId }: Props) {
               message: "Cancelar este agendamento?",
               subtext: "Esta ação não pode ser desfeita.",
               status: "cancelled",
-              color: "#FF2D55",
+              color: "var(--color-primary)",
               btnLabel: "Cancelar agendamento",
             })
           }
@@ -102,7 +102,7 @@ export function AppointmentActions({ appointmentId }: Props) {
             width: 30,
             height: 30,
             background: "rgba(255,255,255,0.04)",
-            color: "#52525B",
+            color: "var(--text-tertiary)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
@@ -117,7 +117,7 @@ export function AppointmentActions({ appointmentId }: Props) {
               message: "Marcar que o cliente faltou?",
               subtext: "O agendamento será registrado como ausência.",
               status: "no_show",
-              color: "#FFB020",
+              color: "var(--status-yellow)",
               btnLabel: "Marcar faltou",
             })
           }
@@ -127,7 +127,7 @@ export function AppointmentActions({ appointmentId }: Props) {
             width: 30,
             height: 30,
             background: "rgba(255,176,32,0.08)",
-            color: "#FFB020",
+            color: "var(--status-yellow)",
             border: "1px solid rgba(255,176,32,0.2)",
           }}
         >
@@ -145,7 +145,7 @@ export function AppointmentActions({ appointmentId }: Props) {
           <div
             className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5"
             style={{
-              background: "#111111",
+              background: "var(--bg-card-elevated)",
               border: "1px solid rgba(255,255,255,0.1)",
               boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
             }}
@@ -178,7 +178,7 @@ export function AppointmentActions({ appointmentId }: Props) {
               >
                 {modal.message}
               </p>
-              <p className="text-sm" style={{ color: "#52525B" }}>
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                 {modal.subtext}
               </p>
             </div>
@@ -191,7 +191,7 @@ export function AppointmentActions({ appointmentId }: Props) {
                 className="flex-1 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-80"
                 style={{
                   background: "rgba(255,255,255,0.06)",
-                  color: "#A1A1AA",
+                  color: "var(--text-secondary)",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >

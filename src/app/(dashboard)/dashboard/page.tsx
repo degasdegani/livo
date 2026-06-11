@@ -2,7 +2,7 @@
 
 import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { checkBillingAccess, getCurrentMembership } from "@/lib/permissions";
 import { getDashboardAnalytics } from "./actions";
@@ -230,20 +230,6 @@ export default async function DashboardPage() {
           >
             {session.user.name}
           </span>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button
-              type="submit"
-              className="text-xs font-semibold transition-colors hover:text-white"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Sair
-            </button>
-          </form>
         </div>
       </header>
 
@@ -286,13 +272,13 @@ export default async function DashboardPage() {
               label: "CLIENTES",
               value: barbershop._count.clients.toString(),
               sub: "cadastrados",
-              color: "#00D4FF",
+              color: "var(--color-cyan)",
             },
             {
               label: "MÊS",
               value: monthAppointments.toString(),
               sub: "agendamentos",
-              color: "#7C3AED",
+              color: "var(--color-purple)",
             },
           ].map((kpi) => (
             <div
@@ -722,7 +708,7 @@ export default async function DashboardPage() {
                   style={{
                     backgroundColor: "var(--bg-card)",
                     border: "1px solid var(--border)",
-                    borderRadius: 12,
+                    borderRadius: "var(--radius-md)",
                     padding: 20,
                   }}
                 >
@@ -743,7 +729,7 @@ export default async function DashboardPage() {
               style={{
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 padding: 24,
               }}
             >
@@ -770,7 +756,7 @@ export default async function DashboardPage() {
                 style={{
                   backgroundColor: "var(--bg-card)",
                   border: "1px solid var(--border)",
-                  borderRadius: 12,
+                  borderRadius: "var(--radius-md)",
                   padding: 24,
                 }}
               >

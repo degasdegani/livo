@@ -14,6 +14,7 @@ import {
   Package,
   Scissors,
   Settings,
+  Sparkles,
   Sun,
   Users,
   X,
@@ -36,7 +37,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: "Inicio",
+    label: "Início",
     href: "/dashboard",
     icon: <Home size={18} />,
     roles: ["owner", "reception", "barber"],
@@ -66,13 +67,13 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner", "reception", "barber"],
   },
   {
-    label: "Comissoes",
+    label: "Comissões",
     href: "/dashboard/comissoes",
     icon: <DollarSign size={18} />,
     roles: ["owner", "reception", "barber"],
   },
   {
-    label: "Relatorios",
+    label: "Relatórios",
     href: "/dashboard/relatorios",
     icon: <BarChart2 size={18} />,
     roles: ["owner", "reception"],
@@ -84,13 +85,19 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner", "reception"],
   },
   {
+    label: "Insights",
+    href: "/dashboard/insights",
+    icon: <Sparkles size={18} />,
+    roles: ["owner"],
+  },
+  {
     label: "Profissionais",
     href: "/dashboard/profissionais",
     icon: <Scissors size={18} />,
     roles: ["owner"],
   },
   {
-    label: "Configuracoes",
+    label: "Configurações",
     href: "/dashboard/settings",
     icon: <Settings size={18} />,
     roles: ["owner"],
@@ -143,7 +150,6 @@ function NavLink({
               border: "1px solid var(--color-primary-20)",
             }
           : {
-              color: "var(--text-secondary)",
               border: "1px solid transparent",
             }
       }
@@ -183,7 +189,6 @@ function ThemeToggle({
         theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"
       }
       className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium w-full nav-link transition-all duration-150 group border border-transparent"
-      style={{ color: "var(--text-secondary)" }}
     >
       {theme === "dark" ? (
         <>
@@ -193,7 +198,7 @@ function ThemeToggle({
               color: "var(--text-tertiary)",
               transition: "color 150ms ease",
             }}
-            className="group-hover:!text-[#d4af37]"
+            className="group-hover:text-gold!"
           />
           <span>Tema claro</span>
         </>
@@ -269,7 +274,6 @@ function SidebarContent({
           type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium nav-link transition-all duration-150 w-full group border border-transparent"
-          style={{ color: "var(--text-secondary)" }}
         >
           <LogOut
             size={18}
@@ -277,7 +281,7 @@ function SidebarContent({
               color: "var(--text-tertiary)",
               transition: "color 150ms ease",
             }}
-            className="group-hover:!text-[var(--color-primary)]"
+            className="group-hover:text-(--color-primary)!"
           />
           Sair
         </button>

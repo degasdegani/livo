@@ -4,6 +4,7 @@
 import type { ClientOrigem } from "@prisma/client";
 import { Pencil } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import {
   createClient,
   getClientsData,
@@ -278,28 +279,6 @@ export function ClientsClient({
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    backgroundColor: "var(--bg-base)",
-    border: "1px solid var(--border)",
-    color: "var(--text-primary)",
-    borderRadius: 8,
-    padding: "10px 16px",
-    fontSize: 14,
-    outline: "none",
-    transition: "border-color 150ms ease",
-    width: "100%",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: 12,
-    fontWeight: 500,
-    color: "var(--text-tertiary)",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    marginBottom: 6,
-  };
-
   return (
     <>
       {/* ───── MODAL CRIAR CLIENTE ───── */}
@@ -358,132 +337,80 @@ export function ClientsClient({
 
               {/* Campos */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Nome — obrigatório, ocupa linha inteira */}
                 <div className="col-span-2">
-                  <label htmlFor="create-name" style={labelStyle}>
-                    Nome{" "}
-                    <span style={{ color: "var(--color-primary)" }}>*</span>
-                  </label>
-                  <input
+                  <Input
                     id="create-name"
-                    style={inputStyle}
+                    label="Nome"
+                    required
                     placeholder="Nome completo"
                     value={form.name}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, name: e.target.value }))
                     }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
                   />
                 </div>
 
-                {/* Telefone — obrigatório */}
-                <div>
-                  <label htmlFor="create-phone" style={labelStyle}>
-                    Telefone{" "}
-                    <span style={{ color: "var(--color-primary)" }}>*</span>
-                  </label>
-                  <input
-                    id="create-phone"
-                    style={inputStyle}
-                    placeholder="(11) 99999-9999"
-                    value={form.phone}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="create-phone"
+                  label="Telefone"
+                  required
+                  placeholder="(11) 99999-9999"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                />
 
-                {/* Email */}
-                <div>
-                  <label htmlFor="create-email" style={labelStyle}>
-                    E-mail
-                  </label>
-                  <input
-                    id="create-email"
-                    style={inputStyle}
-                    placeholder="email@exemplo.com"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, email: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="create-email"
+                  label="E-mail"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                />
 
-                {/* CPF */}
-                <div>
-                  <label htmlFor="create-cpf" style={labelStyle}>
-                    CPF
-                  </label>
-                  <input
-                    id="create-cpf"
-                    style={inputStyle}
-                    placeholder="000.000.000-00"
-                    value={form.cpf}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, cpf: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="create-cpf"
+                  label="CPF"
+                  placeholder="000.000.000-00"
+                  value={form.cpf}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, cpf: e.target.value }))
+                  }
+                />
 
-                {/* Data de nascimento */}
-                <div>
-                  <label htmlFor="create-birthdate" style={labelStyle}>
-                    Data de nascimento
-                  </label>
-                  <input
-                    id="create-birthdate"
-                    style={inputStyle}
-                    type="date"
-                    value={form.birthDate}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, birthDate: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="create-birthdate"
+                  label="Data de nascimento"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, birthDate: e.target.value }))
+                  }
+                />
 
                 {/* Origem */}
                 <div className="col-span-2">
-                  <label htmlFor="create-origem" style={labelStyle}>
+                  <label
+                    htmlFor="create-origem"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-tertiary)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 6,
+                    }}
+                  >
                     Como nos conheceu?
                   </label>
                   <select
                     id="create-origem"
-                    style={inputStyle}
+                    className="livo-input"
                     value={form.origem}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, origem: e.target.value }))
@@ -500,29 +427,29 @@ export function ClientsClient({
 
                 {/* Notas */}
                 <div className="col-span-2">
-                  <label htmlFor="create-notes" style={labelStyle}>
+                  <label
+                    htmlFor="create-notes"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-tertiary)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 6,
+                    }}
+                  >
                     Notas internas
                   </label>
                   <textarea
                     id="create-notes"
-                    style={{
-                      ...inputStyle,
-                      resize: "vertical",
-                      minHeight: 72,
-                      padding: "10px 16px",
-                    }}
+                    className="livo-input"
+                    style={{ resize: "vertical", minHeight: 72 }}
                     placeholder="Observações sobre o cliente..."
                     value={form.notes}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, notes: e.target.value }))
                     }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
                   />
                 </div>
               </div>
@@ -639,132 +566,80 @@ export function ClientsClient({
 
               {/* Campos */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Nome */}
                 <div className="col-span-2">
-                  <label htmlFor="edit-name" style={labelStyle}>
-                    Nome{" "}
-                    <span style={{ color: "var(--color-primary)" }}>*</span>
-                  </label>
-                  <input
+                  <Input
                     id="edit-name"
-                    style={inputStyle}
+                    label="Nome"
+                    required
                     placeholder="Nome completo"
                     value={editForm.name}
                     onChange={(e) =>
                       setEditForm((f) => ({ ...f, name: e.target.value }))
                     }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
                   />
                 </div>
 
-                {/* Telefone */}
-                <div>
-                  <label htmlFor="edit-phone" style={labelStyle}>
-                    Telefone{" "}
-                    <span style={{ color: "var(--color-primary)" }}>*</span>
-                  </label>
-                  <input
-                    id="edit-phone"
-                    style={inputStyle}
-                    placeholder="(11) 99999-9999"
-                    value={editForm.phone}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-phone"
+                  label="Telefone"
+                  required
+                  placeholder="(11) 99999-9999"
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                />
 
-                {/* Email */}
-                <div>
-                  <label htmlFor="edit-email" style={labelStyle}>
-                    E-mail
-                  </label>
-                  <input
-                    id="edit-email"
-                    style={inputStyle}
-                    placeholder="email@exemplo.com"
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, email: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-email"
+                  label="E-mail"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                />
 
-                {/* CPF */}
-                <div>
-                  <label htmlFor="edit-cpf" style={labelStyle}>
-                    CPF
-                  </label>
-                  <input
-                    id="edit-cpf"
-                    style={inputStyle}
-                    placeholder="000.000.000-00"
-                    value={editForm.cpf}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, cpf: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-cpf"
+                  label="CPF"
+                  placeholder="000.000.000-00"
+                  value={editForm.cpf}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, cpf: e.target.value }))
+                  }
+                />
 
-                {/* Data de nascimento */}
-                <div>
-                  <label htmlFor="edit-birthdate" style={labelStyle}>
-                    Data de nascimento
-                  </label>
-                  <input
-                    id="edit-birthdate"
-                    style={inputStyle}
-                    type="date"
-                    value={editForm.birthDate}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, birthDate: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-birthdate"
+                  label="Data de nascimento"
+                  type="date"
+                  value={editForm.birthDate}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, birthDate: e.target.value }))
+                  }
+                />
 
                 {/* Origem */}
                 <div className="col-span-2">
-                  <label htmlFor="edit-origem" style={labelStyle}>
+                  <label
+                    htmlFor="edit-origem"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-tertiary)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 6,
+                    }}
+                  >
                     Como nos conheceu?
                   </label>
                   <select
                     id="edit-origem"
-                    style={inputStyle}
+                    className="livo-input"
                     value={editForm.origem}
                     onChange={(e) =>
                       setEditForm((f) => ({ ...f, origem: e.target.value }))
@@ -781,99 +656,65 @@ export function ClientsClient({
 
                 {/* Endereço */}
                 <div className="col-span-2">
-                  <label htmlFor="edit-street" style={labelStyle}>
-                    Rua
-                  </label>
-                  <input
+                  <Input
                     id="edit-street"
-                    style={inputStyle}
+                    label="Rua"
                     placeholder="Rua das Flores, 123"
                     value={editForm.street}
                     onChange={(e) =>
                       setEditForm((f) => ({ ...f, street: e.target.value }))
                     }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="edit-neighborhood" style={labelStyle}>
-                    Bairro
-                  </label>
-                  <input
-                    id="edit-neighborhood"
-                    style={inputStyle}
-                    placeholder="Centro"
-                    value={editForm.neighborhood}
-                    onChange={(e) =>
-                      setEditForm((f) => ({
-                        ...f,
-                        neighborhood: e.target.value,
-                      }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-neighborhood"
+                  label="Bairro"
+                  placeholder="Centro"
+                  value={editForm.neighborhood}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      neighborhood: e.target.value,
+                    }))
+                  }
+                />
 
-                <div>
-                  <label htmlFor="edit-cep" style={labelStyle}>
-                    CEP
-                  </label>
-                  <input
-                    id="edit-cep"
-                    style={inputStyle}
-                    placeholder="00000-000"
-                    value={editForm.cep}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, cep: e.target.value }))
-                    }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
-                  />
-                </div>
+                <Input
+                  id="edit-cep"
+                  label="CEP"
+                  placeholder="00000-000"
+                  value={editForm.cep}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, cep: e.target.value }))
+                  }
+                />
 
                 {/* Notas */}
                 <div className="col-span-2">
-                  <label htmlFor="edit-notes" style={labelStyle}>
+                  <label
+                    htmlFor="edit-notes"
+                    style={{
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-tertiary)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 6,
+                    }}
+                  >
                     Notas internas
                   </label>
                   <textarea
                     id="edit-notes"
-                    style={{
-                      ...inputStyle,
-                      resize: "vertical",
-                      minHeight: 72,
-                      padding: "10px 16px",
-                    }}
+                    className="livo-input"
+                    style={{ resize: "vertical", minHeight: 72 }}
                     placeholder="Observações sobre o cliente..."
                     value={editForm.notes}
                     onChange={(e) =>
                       setEditForm((f) => ({ ...f, notes: e.target.value }))
                     }
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor =
-                        "var(--color-primary)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
                   />
                 </div>
               </div>
@@ -1026,21 +867,17 @@ export function ClientsClient({
             }}
           >
             <div className="flex gap-3">
-              <input
-                style={{ ...inputStyle, flex: 1, width: "auto" }}
-                placeholder="Buscar por nome, telefone, e-mail ou CPF..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-primary)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              />
+              <div className="flex-1">
+                <Input
+                  placeholder="Buscar por nome, telefone, e-mail ou CPF..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                />
+              </div>
               <select
-                style={{ ...inputStyle, width: "auto" }}
+                className="livo-input"
+                style={{ width: "auto" }}
                 value={origem}
                 onChange={(e) => setOrigem(e.target.value)}
               >
@@ -1125,12 +962,8 @@ export function ClientsClient({
                     há mais de
                   </span>
                   <select
-                    style={{
-                      ...inputStyle,
-                      padding: "4px 8px",
-                      fontSize: 12,
-                      width: "auto",
-                    }}
+                    className="livo-input"
+                    style={{ padding: "4px 8px", fontSize: 12, width: "auto" }}
                     value={sumidoDias}
                     onChange={(e) => {
                       const dias = Number(e.target.value);

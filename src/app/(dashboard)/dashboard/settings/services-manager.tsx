@@ -3,6 +3,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import { Input } from "@/components/ui/input";
 import {
   addService,
   deleteService,
@@ -47,24 +48,13 @@ function SubmitButton({
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 16px",
-  borderRadius: 12,
-  fontSize: 14,
-  color: "var(--text-primary)",
-  backgroundColor: "var(--bg-base)",
-  border: "1px solid var(--border)",
-  outline: "none",
-};
-
 function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
   const [state, action] = useActionState(addService, null);
   const [price, setPrice] = useState("0,00");
 
   useEffect(() => {
     if (state?.success) onSuccess();
-  }, [state]);
+  }, [state, onSuccess]);
 
   return (
     <form
@@ -79,52 +69,27 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
         Novo serviço
       </p>
       <div className="flex flex-col gap-3">
-        <input
-          name="name"
-          type="text"
-          placeholder="Nome do serviço"
-          required
-          style={inputStyle}
-        />
+        <Input name="name" type="text" placeholder="Nome do serviço" required />
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              className="block text-xs mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Duração (min)
-            </label>
-            <input
-              name="duration"
-              type="number"
-              placeholder="30"
-              min="5"
-              defaultValue="30"
-              required
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Preço (R$)
-            </label>
-            <input
-              name="price"
-              type="text"
-              inputMode="numeric"
-              value={price}
-              onChange={(e) => setPrice(maskCurrency(e.target.value))}
-              required
-              style={{
-                ...inputStyle,
-                textAlign: "right",
-                fontFamily: "monospace",
-              }}
-            />
-          </div>
+          <Input
+            label="Duração (min)"
+            name="duration"
+            type="number"
+            placeholder="30"
+            min="5"
+            defaultValue="30"
+            required
+          />
+          <Input
+            label="Preço (R$)"
+            name="price"
+            type="text"
+            inputMode="numeric"
+            value={price}
+            onChange={(e) => setPrice(maskCurrency(e.target.value))}
+            required
+            style={{ textAlign: "right", fontFamily: "monospace" }}
+          />
         </div>
         {state?.error && (
           <p className="text-xs" style={{ color: "var(--color-primary)" }}>
@@ -161,57 +126,32 @@ function EditServiceForm({
 
   useEffect(() => {
     if (state?.success) onSuccess();
-  }, [state]);
+  }, [state, onSuccess]);
 
   return (
     <form action={action} className="p-4">
       <input type="hidden" name="serviceId" value={service.id} />
       <div className="flex flex-col gap-3">
-        <input
-          name="name"
-          type="text"
-          defaultValue={service.name}
-          required
-          style={inputStyle}
-        />
+        <Input name="name" type="text" defaultValue={service.name} required />
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              className="block text-xs mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Duração (min)
-            </label>
-            <input
-              name="duration"
-              type="number"
-              defaultValue={service.durationMin}
-              min="5"
-              required
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Preço (R$)
-            </label>
-            <input
-              name="price"
-              type="text"
-              inputMode="numeric"
-              value={price}
-              onChange={(e) => setPrice(maskCurrency(e.target.value))}
-              required
-              style={{
-                ...inputStyle,
-                textAlign: "right",
-                fontFamily: "monospace",
-              }}
-            />
-          </div>
+          <Input
+            label="Duração (min)"
+            name="duration"
+            type="number"
+            defaultValue={service.durationMin}
+            min="5"
+            required
+          />
+          <Input
+            label="Preço (R$)"
+            name="price"
+            type="text"
+            inputMode="numeric"
+            value={price}
+            onChange={(e) => setPrice(maskCurrency(e.target.value))}
+            required
+            style={{ textAlign: "right", fontFamily: "monospace" }}
+          />
         </div>
         {state?.error && (
           <p className="text-xs" style={{ color: "var(--color-primary)" }}>

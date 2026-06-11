@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { createInvitationAction } from "../settings/acessos/actions";
 import type {
   ProfessionalWithDetails,
@@ -33,17 +34,6 @@ const modalStyle: React.CSSProperties = {
   padding: 24,
   width: "100%",
   boxShadow: "var(--shadow-modal)",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-base)",
-  padding: "10px 16px",
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
 };
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -153,24 +143,16 @@ function ProfessionalModal({
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="prof-name"
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Nome *
-            </label>
-            <input
-              id="prof-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: João Silva"
-              style={inputStyle}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            />
-          </div>
+          <Input
+            id="prof-name"
+            label="Nome"
+            required
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex: João Silva"
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          />
 
           <div>
             <label
@@ -186,7 +168,8 @@ function ProfessionalModal({
               onChange={(e) => setBio(e.target.value)}
               placeholder="Especialidades, anos de experiência..."
               rows={3}
-              style={{ ...inputStyle, resize: "vertical" }}
+              className="livo-input"
+              style={{ resize: "vertical" }}
             />
             <p
               className="mt-1 text-right text-xs"
@@ -474,24 +457,16 @@ function InviteModal({
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="invite-email"
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              E-mail *
-            </label>
-            <input
-              id="invite-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@exemplo.com"
-              style={inputStyle}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            />
-          </div>
+          <Input
+            id="invite-email"
+            label="E-mail"
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@exemplo.com"
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          />
 
           <div
             className="rounded-lg px-4 py-3 space-y-3"

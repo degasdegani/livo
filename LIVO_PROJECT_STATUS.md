@@ -1,8 +1,8 @@
 # LIVO PROJECT STATUS
 
-Version: 1.6
+Version: 1.7
 Last Updated: 11/06/2026
-Status: MVP Operacional — GAP-09 concluído (UI de Insights completa)
+Status: MVP Operacional — GAP-UX-02-A/B/C concluídos (Design System Unification)
 Source of Truth: LIVO_FUNCTIONAL_AUDIT.md + LIVO_PRODUCTION_GAP.md
 
 ---
@@ -32,7 +32,7 @@ O sistema encontra-se funcional para operação real de uma barbearia.
 # MATURIDADE ATUAL
 
 Produto ............. 7/10
-UX .................. 7/10  ← GAP-01/02/03 concluídos
+UX .................. 7.5/10  ← GAP-UX-02-A/B/C: CSS tokens, Input component
 Engenharia .......... 7/10  ← P0 Sprint + P1 Sprint concluídos
 Escalabilidade ...... 6/10  ← Índices adicionados
 IA .................. 5/10
@@ -384,3 +384,58 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 - Callers: `appointment-actions.tsx` (sem alteração), `agenda-board.tsx` (import atualizado)
 
 - GAP-06-G (baixa prioridade): desconto não proporcional em `ComandaItem`
+
+---
+
+## Sprint GAP-UX-02 — Design System Unification (11/06/2026)
+
+### Concluído:
+
+**GAP-UX-02-A — CSS Specificity Fix (11/06/2026) ✅:**
+- `dashboard-layout-client.tsx`: removido `color: "var(--text-secondary)"` inline dos NavLinks, ThemeToggle e logout button
+- `globals.css`: adicionadas classes `.nav-link { color: var(--text-secondary) }` e `.nav-link:hover { color: var(--text-primary); background-color: rgba(255,255,255,0.04) }`
+- Eliminado `!important` em `.nav-link:hover` e `.settings-acessos-link:hover` — ambos agora resolvem por CSS cascade natural
+- `settings/page.tsx`: removido `border` inline do card de Acessos (agora em `.settings-acessos-link { border: 1px solid var(--border) }`)
+- Tailwind 4 canônico: `group-hover:!text-[...]` → `group-hover:text-(...)!`
+
+**GAP-UX-02-B — CSS Variable Unification (11/06/2026) ✅:**
+- `:root` unificado: 11 pares duplicados resolvidos via `var()` bridging
+  - `--bg-card`, `--bg-card-elevated`, `--border`, `--text-primary/secondary/tertiary`, `--status-green/yellow/red` agora propagam de `@theme inline`
+- `[data-theme="light"]`: 6 linhas removidas (propagam automaticamente via var chains)
+- Novos tokens: `--radius-md: 12px`, `--z-overlay: 30`, `--z-header: 40`, `--z-modal: 50`
+- `appointment-actions.tsx`: 11 hardcodes (#FF2D55, #00D4A0, #FFB020, #52525B, #A1A1AA, #111111) → tokens CSS
+- `dashboard/page.tsx`: 5 hardcodes (#00D4FF, #7C3AED, borderRadius:12) → tokens CSS
+
+**GAP-UX-02-C — Shared Input Component (11/06/2026) ✅:**
+- Criado: `src/components/ui/input.tsx` — wrapper com `label`, `error`, `required`; classe `.livo-input` no CSS
+- Migrados: `basic-info-form.tsx`, `services-manager.tsx`, `profissionais-client.tsx`, `clients-client.tsx`
+- Eliminados: todos os `inputStyle` const e `labelStyle` const nos 4 arquivos
+- `useExhaustiveDependencies` corrigido em `services-manager.tsx` (ambos `useEffect` — `onSuccess` adicionado aos deps)
+- Biome: zero warnings/errors em 7 arquivos verificados
+- TypeScript: `npx tsc --noEmit` clean
+
+### Backlog criado:
+
+**GAP-UX-02-C2 — Input Rollout (pendente):**
+
+Arquivos ainda com `inputStyle` local ou `<input style={{}}>` direto:
+- `agenda-board.tsx`
+- `nova-comanda-form.tsx`
+- `comanda-pdv.tsx`
+- `comissoes-client.tsx`
+- `produtos-client.tsx`
+- `settings/personal-info-form.tsx`
+- `settings/vip-form.tsx`
+
+### Próxima fase:
+
+**GAP-UX-02-D — Shared Modal Component (pendente):**
+
+Objetivo: criar `src/components/ui/modal.tsx` e migrar modais existentes.
+
+Escopo:
+- Props: `open`, `onClose`, `title`, `description?`, `size?` (`sm`/`md`/`lg`)
+- Backdrop: `fixed inset-0 z-[var(--z-modal)] flex items-center justify-center`
+- Close: ESC key + click-outside via `e.target === e.currentTarget`
+- Scroll: `maxHeight: "90vh"`, `overflowY: "auto"` no dialog
+- Candidatos para migração: `clients-client.tsx` (2 modais), `profissionais-client.tsx` (2 modais), futuros modais

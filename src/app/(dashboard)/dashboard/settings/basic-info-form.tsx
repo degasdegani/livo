@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Input } from "@/components/ui/input";
 import { updateBasicInfo } from "./actions";
 
 function maskPhone(value: string): string {
@@ -27,18 +28,6 @@ function SaveButton() {
     </button>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px 16px",
-  borderRadius: 12,
-  fontSize: 14,
-  color: "var(--text-primary)",
-  backgroundColor: "var(--bg-card-elevated)",
-  border: "1px solid var(--border)",
-  outline: "none",
-  transition: "border-color 150ms ease",
-};
 
 interface Props {
   name: string;
@@ -78,72 +67,33 @@ export function BasicInfoForm({ name, phone, city }: Props) {
         style={{ backgroundColor: "var(--bg-card-elevated)" }}
       >
         <div className="p-6 flex flex-col gap-4">
-          <div>
-            <label
-              className="block text-xs font-semibold mb-2"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Nome da barbearia *
-            </label>
-            <input
-              name="name"
-              type="text"
-              defaultValue={name}
-              required
-              style={inputStyle}
-              onFocus={(e) =>
-                (e.currentTarget.style.borderColor = "var(--color-primary)")
-              }
-              onBlur={(e) =>
-                (e.currentTarget.style.borderColor = "var(--border)")
-              }
-            />
-          </div>
+          <Input
+            id="basic-name"
+            name="name"
+            type="text"
+            label="Nome da barbearia"
+            required
+            defaultValue={name}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                className="block text-xs font-semibold mb-2"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Telefone
-              </label>
-              <input
-                name="phone"
-                type="tel"
-                value={phoneValue}
-                onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
-                placeholder="(16) 99999-9999"
-                style={inputStyle}
-                onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--color-primary)")
-                }
-                onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--border)")
-                }
-              />
-            </div>
-            <div>
-              <label
-                className="block text-xs font-semibold mb-2"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Cidade
-              </label>
-              <input
-                name="city"
-                type="text"
-                defaultValue={city}
-                placeholder="Ribeirao Preto"
-                style={inputStyle}
-                onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--color-primary)")
-                }
-                onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--border)")
-                }
-              />
-            </div>
+            <Input
+              id="basic-phone"
+              name="phone"
+              type="tel"
+              label="Telefone"
+              value={phoneValue}
+              onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
+              placeholder="(16) 99999-9999"
+            />
+            <Input
+              id="basic-city"
+              name="city"
+              type="text"
+              label="Cidade"
+              defaultValue={city}
+              placeholder="Ribeirao Preto"
+            />
           </div>
 
           {state?.error && (

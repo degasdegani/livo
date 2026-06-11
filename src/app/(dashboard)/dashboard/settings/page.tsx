@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/settings/page.tsx
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 import { SettingsAccordion } from "./settings-accordion";
 
 export default async function SettingsPage() {
@@ -111,10 +111,7 @@ export default async function SettingsPage() {
         <a
           href="/dashboard/settings/acessos"
           className="flex items-center justify-between rounded-xl px-5 py-4 transition-all settings-acessos-link"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
+          style={{ backgroundColor: "var(--bg-card)" }}
         >
           <div>
             <p
