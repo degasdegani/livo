@@ -5,6 +5,7 @@ import type { ClientOrigem } from "@prisma/client";
 import { Pencil } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import {
   createClient,
   getClientsData,
@@ -282,498 +283,377 @@ export function ClientsClient({
   return (
     <>
       {/* ───── MODAL CRIAR CLIENTE ───── */}
-      {showModal && (
-        <>
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop fecha modal ao clicar fora */}
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) closeModal();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") closeModal();
-            }}
-          >
-            <div
-              className="w-full max-w-lg rounded-2xl p-6 space-y-5"
+      <Modal
+        open={showModal}
+        onClose={closeModal}
+        title="Novo cliente"
+        description="Cadastro manual na sua base"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Input
+              id="create-name"
+              label="Nome"
+              required
+              placeholder="Nome completo"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
+          <Input
+            id="create-phone"
+            label="Telefone"
+            required
+            placeholder="(11) 99999-9999"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          />
+
+          <Input
+            id="create-email"
+            label="E-mail"
+            type="email"
+            placeholder="email@exemplo.com"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          />
+
+          <Input
+            id="create-cpf"
+            label="CPF"
+            placeholder="000.000.000-00"
+            value={form.cpf}
+            onChange={(e) => setForm((f) => ({ ...f, cpf: e.target.value }))}
+          />
+
+          <Input
+            id="create-birthdate"
+            label="Data de nascimento"
+            type="date"
+            value={form.birthDate}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, birthDate: e.target.value }))
+            }
+          />
+
+          <div className="col-span-2">
+            <label
+              htmlFor="create-origem"
               style={{
-                backgroundColor: "var(--bg-card)",
-                border: "1px solid var(--border)",
-                maxHeight: "90vh",
-                overflowY: "auto",
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
               }}
             >
-              {/* Header modal */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2
-                    className="text-lg font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Novo cliente
-                  </h2>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Cadastro manual na sua base
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  style={{ color: "var(--text-tertiary)", fontSize: 20 }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-tertiary)";
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Campos */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Input
-                    id="create-name"
-                    label="Nome"
-                    required
-                    placeholder="Nome completo"
-                    value={form.name}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <Input
-                  id="create-phone"
-                  label="Telefone"
-                  required
-                  placeholder="(11) 99999-9999"
-                  value={form.phone}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="create-email"
-                  label="E-mail"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="create-cpf"
-                  label="CPF"
-                  placeholder="000.000.000-00"
-                  value={form.cpf}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, cpf: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="create-birthdate"
-                  label="Data de nascimento"
-                  type="date"
-                  value={form.birthDate}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, birthDate: e.target.value }))
-                  }
-                />
-
-                {/* Origem */}
-                <div className="col-span-2">
-                  <label
-                    htmlFor="create-origem"
-                    style={{
-                      display: "block",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--text-tertiary)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Como nos conheceu?
-                  </label>
-                  <select
-                    id="create-origem"
-                    className="livo-input"
-                    value={form.origem}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, origem: e.target.value }))
-                    }
-                  >
-                    <option value="">Selecionar origem</option>
-                    {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Notas */}
-                <div className="col-span-2">
-                  <label
-                    htmlFor="create-notes"
-                    style={{
-                      display: "block",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--text-tertiary)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Notas internas
-                  </label>
-                  <textarea
-                    id="create-notes"
-                    className="livo-input"
-                    style={{ resize: "vertical", minHeight: 72 }}
-                    placeholder="Observações sobre o cliente..."
-                    value={form.notes}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, notes: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Erro */}
-              {modalError && (
-                <div
-                  className="rounded-lg px-4 py-3 text-sm"
-                  style={{
-                    backgroundColor: "rgba(200,16,46,0.1)",
-                    border: "1px solid rgba(200,16,46,0.3)",
-                    color: "var(--status-red)",
-                  }}
-                >
-                  {modalError}
-                </div>
-              )}
-
-              {/* Botões */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={modalLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: "var(--bg-base)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateClient}
-                  disabled={modalLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: "var(--color-primary)",
-                    color: "#ffffff",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!modalLoading)
-                      e.currentTarget.style.backgroundColor =
-                        "var(--color-primary-hover)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-primary)";
-                  }}
-                >
-                  {modalLoading ? "Cadastrando..." : "Cadastrar cliente"}
-                </button>
-              </div>
-            </div>
+              Como nos conheceu?
+            </label>
+            <select
+              id="create-origem"
+              className="livo-input"
+              value={form.origem}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, origem: e.target.value }))
+              }
+            >
+              <option value="">Selecionar origem</option>
+              {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
-        </>
-      )}
+
+          <div className="col-span-2">
+            <label
+              htmlFor="create-notes"
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
+              }}
+            >
+              Notas internas
+            </label>
+            <textarea
+              id="create-notes"
+              className="livo-input"
+              style={{ resize: "vertical", minHeight: 72 }}
+              placeholder="Observações sobre o cliente..."
+              value={form.notes}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, notes: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+
+        {modalError && (
+          <div
+            className="rounded-lg px-4 py-3 text-sm"
+            style={{
+              backgroundColor: "rgba(200,16,46,0.1)",
+              border: "1px solid rgba(200,16,46,0.3)",
+              color: "var(--status-red)",
+            }}
+          >
+            {modalError}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={closeModal}
+            disabled={modalLoading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--bg-base)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateClient}
+            disabled={modalLoading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--color-primary)",
+              color: "#ffffff",
+            }}
+            onMouseEnter={(e) => {
+              if (!modalLoading)
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+            }}
+          >
+            {modalLoading ? "Cadastrando..." : "Cadastrar cliente"}
+          </button>
+        </div>
+      </Modal>
 
       {/* ───── MODAL EDITAR CLIENTE ───── */}
-      {editingClient && (
-        <>
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop fecha modal ao clicar fora */}
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) closeEditModal();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") closeEditModal();
-            }}
-          >
-            <div
-              className="w-full max-w-lg rounded-2xl p-6 space-y-5"
+      <Modal
+        open={!!editingClient}
+        onClose={closeEditModal}
+        title="Editar cliente"
+        description="Atualiza os dados do cadastro"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Input
+              id="edit-name"
+              label="Nome"
+              required
+              placeholder="Nome completo"
+              value={editForm.name}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, name: e.target.value }))
+              }
+            />
+          </div>
+
+          <Input
+            id="edit-phone"
+            label="Telefone"
+            required
+            placeholder="(11) 99999-9999"
+            value={editForm.phone}
+            onChange={(e) =>
+              setEditForm((f) => ({ ...f, phone: e.target.value }))
+            }
+          />
+
+          <Input
+            id="edit-email"
+            label="E-mail"
+            type="email"
+            placeholder="email@exemplo.com"
+            value={editForm.email}
+            onChange={(e) =>
+              setEditForm((f) => ({ ...f, email: e.target.value }))
+            }
+          />
+
+          <Input
+            id="edit-cpf"
+            label="CPF"
+            placeholder="000.000.000-00"
+            value={editForm.cpf}
+            onChange={(e) =>
+              setEditForm((f) => ({ ...f, cpf: e.target.value }))
+            }
+          />
+
+          <Input
+            id="edit-birthdate"
+            label="Data de nascimento"
+            type="date"
+            value={editForm.birthDate}
+            onChange={(e) =>
+              setEditForm((f) => ({ ...f, birthDate: e.target.value }))
+            }
+          />
+
+          <div className="col-span-2">
+            <label
+              htmlFor="edit-origem"
               style={{
-                backgroundColor: "var(--bg-card)",
-                border: "1px solid var(--border)",
-                maxHeight: "90vh",
-                overflowY: "auto",
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
               }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2
-                    className="text-lg font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Editar cliente
-                  </h2>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    Atualiza os dados do cadastro
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  style={{ color: "var(--text-tertiary)", fontSize: 20 }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-tertiary)";
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Campos */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Input
-                    id="edit-name"
-                    label="Nome"
-                    required
-                    placeholder="Nome completo"
-                    value={editForm.name}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <Input
-                  id="edit-phone"
-                  label="Telefone"
-                  required
-                  placeholder="(11) 99999-9999"
-                  value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="edit-email"
-                  label="E-mail"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="edit-cpf"
-                  label="CPF"
-                  placeholder="000.000.000-00"
-                  value={editForm.cpf}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, cpf: e.target.value }))
-                  }
-                />
-
-                <Input
-                  id="edit-birthdate"
-                  label="Data de nascimento"
-                  type="date"
-                  value={editForm.birthDate}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, birthDate: e.target.value }))
-                  }
-                />
-
-                {/* Origem */}
-                <div className="col-span-2">
-                  <label
-                    htmlFor="edit-origem"
-                    style={{
-                      display: "block",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--text-tertiary)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Como nos conheceu?
-                  </label>
-                  <select
-                    id="edit-origem"
-                    className="livo-input"
-                    value={editForm.origem}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, origem: e.target.value }))
-                    }
-                  >
-                    <option value="">Selecionar origem</option>
-                    {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Endereço */}
-                <div className="col-span-2">
-                  <Input
-                    id="edit-street"
-                    label="Rua"
-                    placeholder="Rua das Flores, 123"
-                    value={editForm.street}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, street: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <Input
-                  id="edit-neighborhood"
-                  label="Bairro"
-                  placeholder="Centro"
-                  value={editForm.neighborhood}
-                  onChange={(e) =>
-                    setEditForm((f) => ({
-                      ...f,
-                      neighborhood: e.target.value,
-                    }))
-                  }
-                />
-
-                <Input
-                  id="edit-cep"
-                  label="CEP"
-                  placeholder="00000-000"
-                  value={editForm.cep}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, cep: e.target.value }))
-                  }
-                />
-
-                {/* Notas */}
-                <div className="col-span-2">
-                  <label
-                    htmlFor="edit-notes"
-                    style={{
-                      display: "block",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "var(--text-tertiary)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Notas internas
-                  </label>
-                  <textarea
-                    id="edit-notes"
-                    className="livo-input"
-                    style={{ resize: "vertical", minHeight: 72 }}
-                    placeholder="Observações sobre o cliente..."
-                    value={editForm.notes}
-                    onChange={(e) =>
-                      setEditForm((f) => ({ ...f, notes: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Erro */}
-              {editError && (
-                <div
-                  className="rounded-lg px-4 py-3 text-sm"
-                  style={{
-                    backgroundColor: "rgba(200,16,46,0.1)",
-                    border: "1px solid rgba(200,16,46,0.3)",
-                    color: "var(--status-red)",
-                  }}
-                >
-                  {editError}
-                </div>
-              )}
-
-              {/* Botões */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  disabled={editLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: "var(--bg-base)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUpdateClient}
-                  disabled={editLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: "var(--color-primary)",
-                    color: "#ffffff",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!editLoading)
-                      e.currentTarget.style.backgroundColor =
-                        "var(--color-primary-hover)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-primary)";
-                  }}
-                >
-                  {editLoading ? "Salvando..." : "Salvar alterações"}
-                </button>
-              </div>
-            </div>
+              Como nos conheceu?
+            </label>
+            <select
+              id="edit-origem"
+              className="livo-input"
+              value={editForm.origem}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, origem: e.target.value }))
+              }
+            >
+              <option value="">Selecionar origem</option>
+              {Object.entries(ORIGEM_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
-        </>
-      )}
+
+          <div className="col-span-2">
+            <Input
+              id="edit-street"
+              label="Rua"
+              placeholder="Rua das Flores, 123"
+              value={editForm.street}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, street: e.target.value }))
+              }
+            />
+          </div>
+
+          <Input
+            id="edit-neighborhood"
+            label="Bairro"
+            placeholder="Centro"
+            value={editForm.neighborhood}
+            onChange={(e) =>
+              setEditForm((f) => ({
+                ...f,
+                neighborhood: e.target.value,
+              }))
+            }
+          />
+
+          <Input
+            id="edit-cep"
+            label="CEP"
+            placeholder="00000-000"
+            value={editForm.cep}
+            onChange={(e) =>
+              setEditForm((f) => ({ ...f, cep: e.target.value }))
+            }
+          />
+
+          <div className="col-span-2">
+            <label
+              htmlFor="edit-notes"
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
+              }}
+            >
+              Notas internas
+            </label>
+            <textarea
+              id="edit-notes"
+              className="livo-input"
+              style={{ resize: "vertical", minHeight: 72 }}
+              placeholder="Observações sobre o cliente..."
+              value={editForm.notes}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, notes: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+
+        {editError && (
+          <div
+            className="rounded-lg px-4 py-3 text-sm"
+            style={{
+              backgroundColor: "rgba(200,16,46,0.1)",
+              border: "1px solid rgba(200,16,46,0.3)",
+              color: "var(--status-red)",
+            }}
+          >
+            {editError}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={closeEditModal}
+            disabled={editLoading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--bg-base)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleUpdateClient}
+            disabled={editLoading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--color-primary)",
+              color: "#ffffff",
+            }}
+            onMouseEnter={(e) => {
+              if (!editLoading)
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-primary-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-primary)";
+            }}
+          >
+            {editLoading ? "Salvando..." : "Salvar alterações"}
+          </button>
+        </div>
+      </Modal>
 
       <div className="flex h-full gap-6">
         {/* Coluna principal */}

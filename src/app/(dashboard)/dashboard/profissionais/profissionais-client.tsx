@@ -8,10 +8,10 @@ import {
   ToggleLeft,
   ToggleRight,
   Trash2,
-  X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { createInvitationAction } from "../settings/acessos/actions";
 import type {
   ProfessionalWithDetails,
@@ -24,17 +24,6 @@ import {
   toggleProfessionalActive,
   updateProfessional,
 } from "./actions";
-
-// ─── Estilos compartilhados ───────────────────────────────────────────────────
-
-const modalStyle: React.CSSProperties = {
-  backgroundColor: "var(--bg-card)",
-  border: "1px solid var(--border)",
-  borderRadius: 16,
-  padding: 24,
-  width: "100%",
-  boxShadow: "var(--shadow-modal)",
-};
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -112,100 +101,75 @@ function ProfessionalModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={professional ? "Editar Profissional" : "Novo Profissional"}
+      size="sm"
     >
-      <div style={{ ...modalStyle, maxWidth: 448 }}>
-        <div className="mb-5 flex items-center justify-between">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {professional ? "Editar Profissional" : "Novo Profissional"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div className="space-y-4">
+        <Input
+          id="prof-name"
+          label="Nome"
+          required
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: João Silva"
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        />
 
-        <div className="space-y-4">
-          <Input
-            id="prof-name"
-            label="Nome"
-            required
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: João Silva"
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        <div>
+          <label
+            htmlFor="prof-bio"
+            className="mb-1.5 block text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Bio
+          </label>
+          <textarea
+            id="prof-bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Especialidades, anos de experiência..."
+            rows={3}
+            className="livo-input"
+            style={{ resize: "vertical" }}
           />
-
-          <div>
-            <label
-              htmlFor="prof-bio"
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Bio
-            </label>
-            <textarea
-              id="prof-bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Especialidades, anos de experiência..."
-              rows={3}
-              className="livo-input"
-              style={{ resize: "vertical" }}
-            />
-            <p
-              className="mt-1 text-right text-xs"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {bio.length}/500
-            </p>
-          </div>
-
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          <p
+            className="mt-1 text-right text-xs"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {bio.length}/500
+          </p>
         </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {pending ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
-    </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={pending}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          {pending ? "Salvando..." : "Salvar"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -221,78 +185,53 @@ function ConfirmDeactivateModal({
   onConfirmed: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Desativar profissional?"
+      size="sm"
     >
-      <div style={{ ...modalStyle, maxWidth: 448 }}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Desativar profissional?
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div
+        className="rounded-lg px-4 py-3"
+        style={{
+          backgroundColor: "rgba(234,179,8,0.08)",
+          border: "1px solid rgba(234,179,8,0.25)",
+        }}
+      >
+        <p className="text-sm text-yellow-400">
+          Este profissional possui{" "}
+          <strong>
+            {futureCount} agendamento{futureCount !== 1 ? "s" : ""} futuro
+            {futureCount !== 1 ? "s" : ""}
+          </strong>{" "}
+          ativo{futureCount !== 1 ? "s" : ""}. Ao desativar, ele não aparecerá
+          para novos agendamentos. Os agendamentos existentes não serão
+          cancelados automaticamente.
+        </p>
+      </div>
 
-        <div
-          className="mb-5 rounded-lg px-4 py-3"
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
           style={{
-            backgroundColor: "rgba(234,179,8,0.08)",
-            border: "1px solid rgba(234,179,8,0.25)",
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
           }}
         >
-          <p className="text-sm text-yellow-400">
-            Este profissional possui{" "}
-            <strong>
-              {futureCount} agendamento{futureCount !== 1 ? "s" : ""} futuro
-              {futureCount !== 1 ? "s" : ""}
-            </strong>{" "}
-            ativo{futureCount !== 1 ? "s" : ""}. Ao desativar, ele não aparecerá
-            para novos agendamentos. Os agendamentos existentes não serão
-            cancelados automaticamente.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirmed}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
-            style={{ backgroundColor: "var(--status-red)" }}
-          >
-            Desativar mesmo assim
-          </button>
-        </div>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={onConfirmed}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
+          style={{ backgroundColor: "var(--status-red)" }}
+        >
+          Desativar mesmo assim
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -308,73 +247,48 @@ function ConfirmDeleteModal({
   onConfirmed: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Excluir profissional?"
+      size="sm"
     >
-      <div style={{ ...modalStyle, maxWidth: 448 }}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Excluir profissional?
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div
+        className="rounded-lg px-4 py-3"
+        style={{
+          backgroundColor: "rgba(239,68,68,0.08)",
+          border: "1px solid rgba(239,68,68,0.25)",
+        }}
+      >
+        <p className="text-sm" style={{ color: "var(--status-red)" }}>
+          <strong>{professionalName}</strong> será removido permanentemente.
+          Esta ação é irreversível. Se o profissional possuir histórico de
+          atendimentos ou comandas, a exclusão será bloqueada automaticamente.
+        </p>
+      </div>
 
-        <div
-          className="mb-5 rounded-lg px-4 py-3"
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
           style={{
-            backgroundColor: "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.25)",
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
           }}
         >
-          <p className="text-sm" style={{ color: "var(--status-red)" }}>
-            <strong>{professionalName}</strong> será removido permanentemente.
-            Esta ação é irreversível. Se o profissional possuir histórico de
-            atendimentos ou comandas, a exclusão será bloqueada automaticamente.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirmed}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
-            style={{ backgroundColor: "var(--status-red)" }}
-          >
-            Excluir permanentemente
-          </button>
-        </div>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={onConfirmed}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
+          style={{ backgroundColor: "var(--status-red)" }}
+        >
+          Excluir permanentemente
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -418,136 +332,104 @@ function InviteModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-      }}
+    <Modal
+      open={true}
+      onClose={onClose}
+      title="Convidar por e-mail"
+      description={professional.name}
+      size="sm"
     >
-      <div style={{ ...modalStyle, maxWidth: 448 }}>
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Convidar por e-mail
-            </h2>
-            <p
-              className="mt-0.5 text-sm"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {professional.name}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-tertiary)";
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div className="space-y-4">
+        <Input
+          id="invite-email"
+          label="E-mail"
+          required
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@exemplo.com"
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        />
 
-        <div className="space-y-4">
-          <Input
-            id="invite-email"
-            label="E-mail"
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@exemplo.com"
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          />
-
-          <div
-            className="rounded-lg px-4 py-3 space-y-3"
-            style={{
-              backgroundColor: "var(--bg-card-elevated)",
-              border: "1px solid var(--border)",
-            }}
+        <div
+          className="rounded-lg px-4 py-3 space-y-3"
+          style={{
+            backgroundColor: "var(--bg-card-elevated)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <p
+            className="text-xs font-medium"
+            style={{ color: "var(--text-secondary)" }}
           >
-            <p
-              className="text-xs font-medium"
+            Comissões
+          </p>
+
+          <label
+            htmlFor="invite-commission-services"
+            className="flex cursor-pointer items-center justify-between"
+          >
+            <span
+              className="text-sm"
               style={{ color: "var(--text-secondary)" }}
             >
-              Comissões
-            </p>
+              Comissão em serviços
+            </span>
+            <input
+              id="invite-commission-services"
+              type="checkbox"
+              checked={commissionServices}
+              onChange={(e) => setCommissionServices(e.target.checked)}
+              className="h-4 w-4 accent-[var(--color-primary)]"
+            />
+          </label>
 
-            <label
-              htmlFor="invite-commission-services"
-              className="flex cursor-pointer items-center justify-between"
+          <label
+            htmlFor="invite-commission-products"
+            className="flex cursor-pointer items-center justify-between"
+          >
+            <span
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
             >
-              <span
-                className="text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Comissão em serviços
-              </span>
-              <input
-                id="invite-commission-services"
-                type="checkbox"
-                checked={commissionServices}
-                onChange={(e) => setCommissionServices(e.target.checked)}
-                className="h-4 w-4 accent-[var(--color-primary)]"
-              />
-            </label>
-
-            <label
-              htmlFor="invite-commission-products"
-              className="flex cursor-pointer items-center justify-between"
-            >
-              <span
-                className="text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Comissão em produtos
-              </span>
-              <input
-                id="invite-commission-products"
-                type="checkbox"
-                checked={commissionProducts}
-                onChange={(e) => setCommissionProducts(e.target.checked)}
-                className="h-4 w-4 accent-[var(--color-primary)]"
-              />
-            </label>
-          </div>
-
-          {error && <p className="text-sm text-red-400">{error}</p>}
+              Comissão em produtos
+            </span>
+            <input
+              id="invite-commission-products"
+              type="checkbox"
+              checked={commissionProducts}
+              onChange={(e) => setCommissionProducts(e.target.checked)}
+              className="h-4 w-4 accent-[var(--color-primary)]"
+            />
+          </label>
         </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {pending ? "Enviando..." : "Enviar convite"}
-          </button>
-        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
-    </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+          style={{
+            border: "1px solid var(--border)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={pending}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          {pending ? "Enviando..." : "Enviar convite"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
