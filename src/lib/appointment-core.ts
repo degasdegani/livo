@@ -103,16 +103,13 @@ export async function createAppointmentCore(
       });
 
       if (existing) {
-        await tx.client.update({
-          where: { id: existing.id },
-          data: {
-            totalVisits: { increment: 1 },
-            lastVisitAt: startDate,
-            ...(input.clientEmail?.trim() && !existing.email
-              ? { email: input.clientEmail.trim() }
-              : {}),
-          },
-        });
+        // CRM stats (totalVisits/lastVisitAt) são atualizados em fecharComanda, não aqui
+        if (input.clientEmail?.trim() && !existing.email) {
+          await tx.client.update({
+            where: { id: existing.id },
+            data: { email: input.clientEmail.trim() },
+          });
+        }
         clientId = existing.id;
       } else {
         const created = await tx.client.create({
@@ -121,8 +118,8 @@ export async function createAppointmentCore(
             phone: normalizedPhone,
             email: input.clientEmail?.trim() || null,
             barbershopId: input.barbershopId,
-            totalVisits: 1,
-            lastVisitAt: startDate,
+            totalVisits: 0,
+            lastVisitAt: null,
           },
         });
         clientId = created.id;

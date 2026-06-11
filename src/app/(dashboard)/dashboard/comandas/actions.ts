@@ -381,6 +381,17 @@ export async function fecharComanda(
         data: { status: "completed" },
       });
     }
+
+    // 5. CRM: visita real = comanda fechada (fonte de verdade para totalVisits/lastVisitAt)
+    if (comanda.clientId) {
+      await tx.client.update({
+        where: { id: comanda.clientId },
+        data: {
+          totalVisits: { increment: 1 },
+          lastVisitAt: new Date(),
+        },
+      });
+    }
   });
 
   revalidatePath("/dashboard/agenda");
