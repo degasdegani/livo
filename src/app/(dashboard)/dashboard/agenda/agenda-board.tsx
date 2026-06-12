@@ -19,6 +19,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { SLOT_CONFIG, TOTAL_SLOTS } from "@/lib/slot-config";
 import { updateAppointmentStatus } from "../actions";
 import { abrirComanda } from "../comandas/actions";
@@ -1169,11 +1171,10 @@ function EditAppointmentModal({
           <label htmlFor="edit-service" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Serviço
           </label>
-          <select
+          <Select
             id="edit-service"
             value={serviceId}
             onChange={(e) => setServiceId(e.target.value)}
-            className="livo-input"
           >
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1181,7 +1182,7 @@ function EditAppointmentModal({
                 min)
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -1201,18 +1202,17 @@ function EditAppointmentModal({
             <label htmlFor="edit-slot" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Horário
             </label>
-            <select
+            <Select
               id="edit-slot"
               value={selectedSlot}
               onChange={(e) => setSelectedSlot(Number(e.target.value))}
-              className="livo-input"
             >
               {slots.map((i) => (
                 <option key={i} value={i}>
                   {slotToTime(i)}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -1248,13 +1248,13 @@ function EditAppointmentModal({
           <label htmlFor="edit-notes" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Observações (opcional)
           </label>
-          <textarea
+          <Textarea
             id="edit-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="Ex: cliente prefere tesoura"
-            className="livo-input" style={{ resize: "none" }}
+            style={{ resize: "none" }}
           />
         </div>
 
@@ -1431,18 +1431,17 @@ function NewAppointmentModal({
             <label htmlFor="create-professional" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Barbeiro
             </label>
-            <select
+            <Select
               id="create-professional"
               value={selectedProfId}
               onChange={(e) => setSelectedProfId(e.target.value)}
-              className="livo-input"
             >
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -1451,11 +1450,10 @@ function NewAppointmentModal({
           <label htmlFor="create-service" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Serviço
           </label>
-          <select
+          <Select
             id="create-service"
             value={serviceId}
             onChange={(e) => setServiceId(e.target.value)}
-            className="livo-input"
           >
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -1463,7 +1461,7 @@ function NewAppointmentModal({
                 min)
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Cliente */}
@@ -1689,13 +1687,13 @@ function NewAppointmentModal({
           <label htmlFor="create-notes" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
             Observações (opcional)
           </label>
-          <textarea
+          <Textarea
             id="create-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="Ex: cliente prefere tesoura"
-            className="livo-input" style={{ resize: "none" }}
+            style={{ resize: "none" }}
           />
         </div>
 

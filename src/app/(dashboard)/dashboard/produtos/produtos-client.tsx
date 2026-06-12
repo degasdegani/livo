@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import type {
   CategoryWithCount,
   ProductWithCategory,
@@ -265,10 +266,9 @@ function ProductModal({
           >
             Categoria
           </label>
-          <select
+          <Select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="livo-input"
           >
             <option value="">Sem categoria</option>
             {categories.map((c) => (
@@ -276,7 +276,7 @@ function ProductModal({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -555,17 +555,16 @@ function StockModal({
           >
             Motivo
           </label>
-          <select
+          <Select
             value={reason}
             onChange={(e) => setReason(e.target.value as StockMovementReason)}
-            className="livo-input"
           >
             {(isEntry ? entryReasons : exitReasons).map((r) => (
               <option key={r} value={r}>
                 {REASON_LABELS[r]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label

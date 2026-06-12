@@ -3,6 +3,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { abrirComanda, getClientsForComanda } from "../actions";
 
 type Professional = { id: string; name: string };
@@ -97,10 +99,9 @@ export default function NovaComandaForm({
             {professionals.find((p) => p.id === myProfessionalId)?.name || "—"}
           </div>
         ) : (
-          <select
+          <Select
             value={professionalId}
             onChange={(e) => setProfessionalId(e.target.value)}
-            className="livo-input"
           >
             <option value="">Selecione...</option>
             {professionals.map((p) => (
@@ -108,7 +109,7 @@ export default function NovaComandaForm({
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 
@@ -299,12 +300,11 @@ export default function NovaComandaForm({
         >
           Observações (opcional)
         </label>
-        <textarea
+        <Textarea
           placeholder="Ex: cliente preferência..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          className="livo-input"
           style={{ resize: "none" }}
         />
       </div>

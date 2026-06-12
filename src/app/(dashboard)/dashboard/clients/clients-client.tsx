@@ -6,6 +6,8 @@ import { Pencil } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createClient,
   getClientsData,
@@ -352,9 +354,8 @@ export function ClientsClient({
             >
               Como nos conheceu?
             </label>
-            <select
+            <Select
               id="create-origem"
-              className="livo-input"
               value={form.origem}
               onChange={(e) =>
                 setForm((f) => ({ ...f, origem: e.target.value }))
@@ -366,7 +367,7 @@ export function ClientsClient({
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="col-span-2">
@@ -384,9 +385,8 @@ export function ClientsClient({
             >
               Notas internas
             </label>
-            <textarea
+            <Textarea
               id="create-notes"
-              className="livo-input"
               style={{ resize: "vertical", minHeight: 72 }}
               placeholder="Observações sobre o cliente..."
               value={form.notes}
@@ -525,9 +525,8 @@ export function ClientsClient({
             >
               Como nos conheceu?
             </label>
-            <select
+            <Select
               id="edit-origem"
-              className="livo-input"
               value={editForm.origem}
               onChange={(e) =>
                 setEditForm((f) => ({ ...f, origem: e.target.value }))
@@ -539,7 +538,7 @@ export function ClientsClient({
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="col-span-2">
@@ -592,9 +591,8 @@ export function ClientsClient({
             >
               Notas internas
             </label>
-            <textarea
+            <Textarea
               id="edit-notes"
-              className="livo-input"
               style={{ resize: "vertical", minHeight: 72 }}
               placeholder="Observações sobre o cliente..."
               value={editForm.notes}
@@ -755,8 +753,7 @@ export function ClientsClient({
                   onKeyDown={handleSearchKeyDown}
                 />
               </div>
-              <select
-                className="livo-input"
+              <Select
                 style={{ width: "auto" }}
                 value={origem}
                 onChange={(e) => setOrigem(e.target.value)}
@@ -767,7 +764,7 @@ export function ClientsClient({
                     {label}
                   </option>
                 ))}
-              </select>
+              </Select>
               <button
                 type="button"
                 onClick={applyFilters}
@@ -841,8 +838,7 @@ export function ClientsClient({
                   >
                     há mais de
                   </span>
-                  <select
-                    className="livo-input"
+                  <Select
                     style={{ padding: "4px 8px", fontSize: 12, width: "auto" }}
                     value={sumidoDias}
                     onChange={(e) => {
@@ -860,7 +856,7 @@ export function ClientsClient({
                     <option value={60}>60 dias</option>
                     <option value={90}>90 dias</option>
                     <option value={120}>120 dias</option>
-                  </select>
+                  </Select>
                 </div>
               )}
             </div>
