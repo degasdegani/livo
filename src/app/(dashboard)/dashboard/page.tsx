@@ -95,12 +95,13 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
 
   const membership = await getCurrentMembership();
-  if (membership?.role === "owner" && membership.barbershopId) {
+  if (!membership) redirect("/onboarding");
+  if (membership.role === MemberRole.owner) {
     await checkBillingAccess(membership.barbershopId);
   }
 
   const barbershop = await db.barbershop.findUnique({
-    where: { ownerId: session.user.id },
+    where: { id: membership.barbershopId },
     include: {
       services: { where: { isActive: true }, orderBy: { name: "asc" } },
       professionals: { where: { isActive: true } },
@@ -151,12 +152,12 @@ export default async function DashboardPage() {
   });
 
   const comissoesDoMes =
-    membership?.role === MemberRole.barber && membership.professionalId
+    membership.role === MemberRole.barber && membership.professionalId
       ? await getComissoesData("mes_atual", membership.professionalId)
       : null;
 
   const analytics =
-    membership?.role === MemberRole.owner
+    membership.role === MemberRole.owner
       ? await getDashboardAnalytics(barbershop.id)
       : null;
 
@@ -599,7 +600,7 @@ export default async function DashboardPage() {
 
         {/* Ações rápidas */}
         <div
-          className={`grid grid-cols-1 gap-4 ${membership?.role === MemberRole.owner ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
+          className={`grid grid-cols-1 gap-4 ${membership.role === MemberRole.owner ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
         >
           {[
             {
@@ -620,7 +621,7 @@ export default async function DashboardPage() {
               desc: "Serviços e horários",
               href: "/dashboard/settings",
             },
-            ...(membership?.role === MemberRole.owner
+            ...(membership.role === MemberRole.owner
               ? [
                   {
                     icon: "✦",
