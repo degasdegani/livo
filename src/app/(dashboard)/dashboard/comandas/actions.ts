@@ -452,6 +452,23 @@ export async function cancelarComanda(comandaId: string) {
         data: { status: "cancelled" },
       });
     }
+
+    // CRM: se uma comanda open é cancelada e o appointment vinculado já estava
+    // completed, a visita ocorreu mas o increment foi adiado por updateAppointmentStatusCore
+    // (que defere quando existe comanda open) e nunca acontecerá via fecharComanda.
+    // Contabilizar aqui garante que totalVisits/lastVisitAt reflitam a visita real.
+    if (comanda.status === ComandaStatus.open && comanda.appointmentId) {
+      const apt = await tx.appointment.findFirst({
+        where: { id: comanda.appointmentId, status: "completed" },
+        select: { clientId: true },
+      });
+      if (apt?.clientId) {
+        await tx.client.update({
+          where: { id: apt.clientId },
+          data: { totalVisits: { increment: 1 }, lastVisitAt: new Date() },
+        });
+      }
+    }
   });
 
   revalidatePath("/dashboard/agenda");

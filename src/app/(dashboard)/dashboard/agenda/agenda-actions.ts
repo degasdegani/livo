@@ -159,6 +159,7 @@ export async function moveAppointment(
       membership,
     );
     if (!result.success) return { success: false, error: result.error };
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
@@ -192,6 +193,7 @@ export async function updateAppointment(
       membership,
     );
     if (!result.success) return { success: false, error: result.error };
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
@@ -231,6 +233,7 @@ export async function createQuickAppointment(data: {
     });
 
     if (!result.success) return { success: false, error: result.error };
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/agenda");
     return { success: true };
   } catch {
