@@ -1,4 +1,6 @@
 // src/lib/asaas.ts
+import { log } from "@/lib/logger";
+
 const ASAAS_BASE_URL =
   process.env.NEXT_PUBLIC_ASAAS_SANDBOX === "true"
     ? "https://sandbox.asaas.com/api/v3"
@@ -22,7 +24,12 @@ async function asaasRequest<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    console.error("[Asaas] Erro:", error);
+    log.billing.error("Asaas API error", {
+      method,
+      path,
+      status: response.status,
+      asaasError: error,
+    });
     throw new Error(`Asaas API error: ${response.status}`);
   }
 

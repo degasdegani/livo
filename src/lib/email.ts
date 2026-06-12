@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import { log } from "@/lib/logger";
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = process.env.RESEND_FROM ?? "noreply@livobarber.com.br";
@@ -63,7 +65,7 @@ const ROLE_LABELS: Record<"reception" | "barber", string> = {
   barber: "Barbeiro Colaborador",
 };
 
-// ─── Confirmação de agendamento (já existia) ───────────────────────────────────
+// ─── Confirmação de agendamento ────────────────────────────────────────────────
 
 export async function sendAppointmentConfirmation(
   data: AppointmentConfirmationData,
@@ -76,13 +78,19 @@ export async function sendAppointmentConfirmation(
       subject: `✅ Agendamento confirmado — ${data.barbershopName}`,
       html: buildConfirmationHTML(data),
     });
-    console.log(`[email] Confirmação enviada para ${data.clientEmail}`);
+    log.email.info("confirmação de agendamento enviada", {
+      to: data.clientEmail,
+      barbershopName: data.barbershopName,
+    });
   } catch (err) {
-    console.error("[email] Falha ao enviar confirmação:", err);
+    log.email.error("falha ao enviar confirmação de agendamento", {
+      to: data.clientEmail,
+      barbershopName: data.barbershopName,
+    }, err);
   }
 }
 
-// ─── Boas-vindas (já existia) ──────────────────────────────────────────────────
+// ─── Boas-vindas ───────────────────────────────────────────────────────────────
 
 export async function sendWelcomeEmail(
   to: string,
@@ -96,13 +104,13 @@ export async function sendWelcomeEmail(
       subject: "Bem-vindo ao LIVO! 🎉",
       html: buildWelcomeHtml(name),
     });
-    console.log(`[email] Boas-vindas enviado para ${to}`);
+    log.email.info("e-mail de boas-vindas enviado", { to });
   } catch (err) {
-    console.error("[email] Falha ao enviar boas-vindas:", err);
+    log.email.error("falha ao enviar e-mail de boas-vindas", { to }, err);
   }
 }
 
-// ─── E-mail de convite (Dia 2) ─────────────────────────────────────────────────
+// ─── E-mail de convite ─────────────────────────────────────────────────────────
 
 export async function sendInvitationEmail(payload: InvitationEmailPayload) {
   const { to, barbershopName, inviterName, role, token } = payload;
@@ -121,8 +129,9 @@ export async function sendInvitationEmail(payload: InvitationEmailPayload) {
         inviteUrl,
       }),
     });
+    log.email.info("e-mail de convite enviado", { to, barbershopName, role });
   } catch (err) {
-    console.error("[email] sendInvitationEmail falhou:", err);
+    log.email.error("falha ao enviar e-mail de convite", { to, barbershopName }, err);
     throw new Error("Falha ao enviar o e-mail de convite. Tente novamente.");
   }
 }

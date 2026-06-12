@@ -5,6 +5,7 @@
 
 import { type AppointmentStatus, ComandaStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -85,6 +86,11 @@ export async function createAppointmentCore(
   const endDate = new Date(startDate.getTime() + service.durationMin * 60_000);
 
   if (await checkConflict(input.professionalId, startDate, endDate)) {
+    log.agenda.warn("conflito de horário detectado na criação", {
+      barbershopId: input.barbershopId,
+      professionalId: input.professionalId,
+      dateISO: input.dateISO,
+    });
     return {
       success: false,
       error: "Horário em conflito com outro agendamento.",
@@ -143,6 +149,13 @@ export async function createAppointmentCore(
     });
   });
 
+  log.agenda.info("agendamento criado", {
+    barbershopId: input.barbershopId,
+    professionalId: input.professionalId,
+    appointmentId: appointment.id,
+    status: input.status ?? "pending",
+  });
+
   return { success: true, appointmentId: appointment.id };
 }
 
@@ -194,6 +207,11 @@ export async function updateAppointmentCore(
       input.appointmentId,
     )
   ) {
+    log.agenda.warn("conflito de horário detectado na edição", {
+      barbershopId: auth.barbershopId,
+      appointmentId: input.appointmentId,
+      dateISO: input.dateISO,
+    });
     return {
       success: false,
       error: "Horário em conflito com outro agendamento.",

@@ -28,7 +28,9 @@ export async function updateAppointmentStatus(
 
 // ─── Adicionado no Dia 8 ─────────────────────────────────────────────────────
 
-export async function getDashboardAnalytics(barbershopId: string) {
+export async function getDashboardAnalytics() {
+  const membership = await requireMembership();
+  const barbershopId = membership.barbershopId;
   const agora = new Date();
   const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
   const inicioAnoPassado = new Date(

@@ -10,6 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import { requireMembership, requireRole } from "@/lib/permissions";
 
 export type ComandaWithItems = Prisma.ComandaGetPayload<{
@@ -141,6 +142,12 @@ export async function abrirComanda(data: {
       status: ComandaStatus.open,
       totalInCents: 0,
     },
+  });
+
+  log.comanda.info("comanda aberta", {
+    barbershopId: membership.barbershopId,
+    comandaId: comanda.id,
+    professionalId: data.professionalId,
   });
 
   redirect(`/dashboard/comandas/${comanda.id}`);
@@ -394,6 +401,13 @@ export async function fecharComanda(
     }
   });
 
+  log.comanda.info("comanda fechada", {
+    barbershopId: membership.barbershopId,
+    comandaId,
+    paymentMethod,
+    totalInCents: totalFinal,
+  });
+
   revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);
   revalidatePath(`/dashboard/comandas/${comandaId}`);
@@ -403,10 +417,10 @@ export async function fecharComanda(
 // ─── CANCELAR COMANDA ────────────────────────────────────────────────────────
 
 export async function cancelarComanda(comandaId: string) {
-  await requireRole(["owner"]);
+  const membership = await requireRole(["owner"]);
 
   const comanda = await db.comanda.findFirst({
-    where: { id: comandaId },
+    where: { id: comandaId, barbershopId: membership.barbershopId },
     include: { items: true },
   });
 
@@ -469,6 +483,12 @@ export async function cancelarComanda(comandaId: string) {
         });
       }
     }
+  });
+
+  log.comanda.warn("comanda cancelada", {
+    barbershopId: membership.barbershopId,
+    comandaId,
+    status: comanda.status,
   });
 
   revalidatePath("/dashboard/agenda");

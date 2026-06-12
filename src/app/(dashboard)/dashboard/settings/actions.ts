@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { MemberRole } from "@prisma/client";
@@ -390,8 +389,6 @@ export async function updateBusinessHours(_: unknown, formData: FormData) {
 
 export async function updatePersonalInfo(_: unknown, formData: FormData) {
   const membership = await requireRole("owner");
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Não autenticado." };
 
   try {
     const name = String(formData.get("name") || "").trim();
@@ -403,7 +400,7 @@ export async function updatePersonalInfo(_: unknown, formData: FormData) {
     if (!name) return { error: "Nome é obrigatório." };
 
     await db.user.update({
-      where: { id: session.user.id },
+      where: { id: membership.userId },
       data: {
         name,
         cpf: cpf || null,

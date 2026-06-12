@@ -4,8 +4,8 @@
 // ============================================================
 
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { getCurrentMembership } from "@/lib/permissions";
 
 export default async function OnboardingLayout({
   children,
@@ -17,11 +17,9 @@ export default async function OnboardingLayout({
   // Não logado → login
   if (!session?.user?.id) redirect("/login");
 
-  // Já tem barbearia → pula o onboarding e vai direto para o dashboard
-  const barbershop = await db.barbershop.findUnique({
-    where: { ownerId: session.user.id },
-  });
-  if (barbershop) redirect("/dashboard");
+  // Já tem membership (owner, barber ou reception) → pula o onboarding
+  const membership = await getCurrentMembership();
+  if (membership) redirect("/dashboard");
 
   return (
     <main

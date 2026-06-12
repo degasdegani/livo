@@ -112,7 +112,9 @@ export async function updateClientNotes(clientId: string, notes: string) {
   revalidatePath("/dashboard/clients");
 }
 
-export async function getClientStats(barbershopId: string) {
+export async function getClientStats() {
+  const membership = await requireMembership();
+  const barbershopId = membership.barbershopId;
   const month = new Date().getMonth() + 1;
 
   const [total, bloqueados, aniversariosRaw] = await Promise.all([

@@ -185,6 +185,7 @@ model Appointment {
   comanda        Comanda?
 
   @@index([barbershopId])
+  @@index([barbershopId, date])
   @@index([professionalId, date, endTime])
   @@map("appointments")
 }

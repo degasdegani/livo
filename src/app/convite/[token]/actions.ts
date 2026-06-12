@@ -2,6 +2,7 @@
 
 import { auth, signIn } from "@/auth";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import { InvitationStatus, MemberRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
@@ -10,12 +11,12 @@ import { redirect } from "next/navigation";
 
 type AcceptInvitationInput =
   | {
-      invitationId: string;
-      mode: "existing"; // usuário já logado aceita com a conta atual
+      token: string;
+      mode: "existing";
     }
   | {
-      invitationId: string;
-      mode: "create"; // cria conta nova e aceita
+      token: string;
+      mode: "create";
       name: string;
       password: string;
     };
@@ -27,16 +28,20 @@ type ActionResult = { success: true } | { success: false; error: string };
 export async function acceptInvitationAction(
   input: AcceptInvitationInput,
 ): Promise<ActionResult> {
-  // 1. Busca o convite (fresco, sem cache)
   const invitation = await db.invitation.findUnique({
-    where: { id: input.invitationId },
+    where: { token: input.token },
   });
 
   if (!invitation) {
+    log.convite.warn("convite não encontrado", { token: input.token });
     return { success: false, error: "Convite não encontrado." };
   }
 
   if (invitation.status !== InvitationStatus.pending) {
+    log.convite.warn("convite indisponível", {
+      invitationId: invitation.id,
+      status: invitation.status,
+    });
     return { success: false, error: "Este convite não está mais disponível." };
   }
 
@@ -45,14 +50,13 @@ export async function acceptInvitationAction(
       where: { id: invitation.id },
       data: { status: InvitationStatus.expired },
     });
+    log.convite.warn("convite expirado", { invitationId: invitation.id });
     return { success: false, error: "Este convite expirou." };
   }
 
-  // 2. Determinar o userId que vai receber o crachá
   let userId: string;
 
   if (input.mode === "existing") {
-    // Usuário já logado
     const session = await auth();
     if (!session?.user?.id) {
       return {
@@ -63,7 +67,6 @@ export async function acceptInvitationAction(
     }
     userId = session.user.id as string;
   } else {
-    // Criar conta nova com o e-mail do convite
     const existingUser = await db.user.findUnique({
       where: { email: invitation.email },
     });
@@ -87,9 +90,12 @@ export async function acceptInvitationAction(
     });
 
     userId = newUser.id;
+    log.convite.info("usuário criado via convite", {
+      userId,
+      barbershopId: invitation.barbershopId,
+    });
   }
 
-  // 3. Verificar se este userId já é membro desta barbearia
   const alreadyMember = await db.membership.findFirst({
     where: {
       userId,
@@ -105,7 +111,6 @@ export async function acceptInvitationAction(
     };
   }
 
-  // 4. Criar o Membership + marcar convite como aceito (transação)
   await db.$transaction(async (tx) => {
     await tx.membership.create({
       data: {
@@ -128,7 +133,13 @@ export async function acceptInvitationAction(
     });
   });
 
-  // 5. Se criou conta nova, fazer login automático via credentials
+  log.convite.info("convite aceito com sucesso", {
+    userId,
+    barbershopId: invitation.barbershopId,
+    role: invitation.role,
+    mode: input.mode,
+  });
+
   if (input.mode === "create") {
     try {
       await signIn("credentials", {
@@ -141,6 +152,5 @@ export async function acceptInvitationAction(
     }
   }
 
-  // 6. Redirecionar para o dashboard
   redirect("/dashboard");
 }

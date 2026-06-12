@@ -1,30 +1,31 @@
 // src/app/(dashboard)/dashboard/settings/page.tsx
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { MemberRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { requireRole } from "@/lib/permissions";
 import { SettingsAccordion } from "./settings-accordion";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const membership = await requireRole(MemberRole.owner);
 
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      name: true,
-      email: true,
-      cpf: true,
-      birthDate: true,
-    },
-  });
-
-  const barbershop = await db.barbershop.findUnique({
-    where: { ownerId: session.user.id },
-    include: {
-      services: { orderBy: { name: "asc" } },
-      businessHours: { orderBy: { dayOfWeek: "asc" } },
-    },
-  });
+  const [user, barbershop] = await Promise.all([
+    db.user.findUnique({
+      where: { id: membership.userId },
+      select: {
+        name: true,
+        email: true,
+        cpf: true,
+        birthDate: true,
+      },
+    }),
+    db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      include: {
+        services: { orderBy: { name: "asc" } },
+        businessHours: { orderBy: { dayOfWeek: "asc" } },
+      },
+    }),
+  ]);
 
   if (!barbershop || !user) redirect("/onboarding");
 

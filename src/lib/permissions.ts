@@ -85,7 +85,20 @@ export async function checkBillingAccess(barbershopId: string): Promise<void> {
     if (new Date() < new Date(barbershop.trialEndsAt)) return; // ainda no prazo
   }
 
-  // Trial expirado ou status desconhecido → tela de assinatura
+  // Trial expirado → tela de assinatura
+  if (barbershop.planStatus === PlanStatus.trial) {
+    redirect("/dashboard/assinar");
+  }
+
+  // Suspenso ou cancelado → tela de recuperação financeira
+  if (
+    barbershop.planStatus === PlanStatus.suspended ||
+    barbershop.planStatus === PlanStatus.cancelled
+  ) {
+    redirect("/dashboard/suspenso");
+  }
+
+  // Fallback para qualquer estado desconhecido
   redirect("/dashboard/assinar");
 }
 

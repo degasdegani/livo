@@ -1,8 +1,8 @@
 // src/app/(dashboard)/dashboard/assinar/actions.ts
 "use server";
 
-import { PlanStatus } from "@prisma/client";
-import { auth } from "@/auth";
+import { MemberRole, PlanStatus } from "@prisma/client";
+import { getCurrentMembership } from "@/lib/permissions";
 import {
   createAsaasCustomer,
   createAsaasSubscription,
@@ -10,6 +10,7 @@ import {
   getSubscriptionPayments,
 } from "@/lib/asaas";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 const PLAN_PRICES = {
   monthly: 197.0,
@@ -26,12 +27,13 @@ export interface SubscriptionResult {
 }
 
 export async function createSubscription(
-  prevState: SubscriptionResult | null,
+  _prevState: SubscriptionResult | null,
   formData: FormData,
 ): Promise<SubscriptionResult> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { error: "Não autenticado." };
+    const membership = await getCurrentMembership();
+    if (!membership) return { error: "Não autenticado." };
+    if (membership.role !== MemberRole.owner) return { error: "Sem permissão." };
 
     const cpfCnpj = formData.get("cpfCnpj") as string;
     if (!cpfCnpj || cpfCnpj.replace(/\D/g, "").length < 11) {
@@ -42,7 +44,7 @@ export async function createSubscription(
       (formData.get("billingType") as "monthly" | "yearly") ?? "monthly";
 
     const barbershop = await db.barbershop.findUnique({
-      where: { ownerId: session.user.id },
+      where: { id: membership.barbershopId },
       include: { owner: true },
     });
 
@@ -55,6 +57,13 @@ export async function createSubscription(
     if (barbershop.planStatus === PlanStatus.lifetime) {
       return { error: "Sua conta tem acesso vitalício." };
     }
+
+    log.billing.info("iniciando criação de assinatura", {
+      userId: membership.userId,
+      barbershopId: membership.barbershopId,
+      billingType,
+      planStatus: barbershop.planStatus,
+    });
 
     let customerId = barbershop.asaasCustomerId;
 
@@ -69,6 +78,10 @@ export async function createSubscription(
       await db.barbershop.update({
         where: { id: barbershop.id },
         data: { asaasCustomerId: customerId },
+      });
+      log.billing.info("cliente Asaas criado", {
+        barbershopId: barbershop.id,
+        asaasCustomerId: customerId,
       });
     }
 
@@ -95,10 +108,17 @@ export async function createSubscription(
     });
 
     // NÃO ativa aqui. O acesso só é liberado quando o webhook receber
-    // PAYMENT_CONFIRMED/PAYMENT_RECEIVED. Aqui apenas guardamos a assinatura.
+    // PAYMENT_CONFIRMED/PAYMENT_RECEIVED.
     await db.barbershop.update({
       where: { id: barbershop.id },
       data: { asaasSubscriptionId: subscription.id },
+    });
+
+    log.billing.info("assinatura Asaas criada", {
+      barbershopId: barbershop.id,
+      subscriptionId: subscription.id,
+      billingType,
+      nextDueDate,
     });
 
     const payments = await getSubscriptionPayments(subscription.id);
@@ -125,7 +145,7 @@ export async function createSubscription(
       };
     }
   } catch (err) {
-    console.error("[createSubscription]", err);
+    log.billing.error("erro ao criar assinatura", {}, err);
     return {
       error: "Erro ao criar assinatura. Verifique os dados e tente novamente.",
     };

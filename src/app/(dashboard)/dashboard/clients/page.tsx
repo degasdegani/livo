@@ -4,10 +4,10 @@ import { getClientsData, getClientStats } from "./actions";
 import { ClientsClient } from "./clients-client";
 
 export default async function ClientsPage() {
-  const membership = await requireMembership();
+  await requireMembership();
   const [clients, stats] = await Promise.all([
     getClientsData(),
-    getClientStats(membership.barbershopId),
+    getClientStats(),
   ]);
 
   return (

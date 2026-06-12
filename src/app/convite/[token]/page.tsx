@@ -102,7 +102,7 @@ export default async function ConvitePage({ params }: Props) {
           {/* Form */}
           <div className="px-6 py-6">
             <AcceptInviteForm
-              invitationId={invitation.id}
+              token={token}
               invitationEmail={invitation.email}
               loggedUser={
                 loggedUser

@@ -4,13 +4,13 @@ import { useState, useTransition } from "react";
 import { acceptInvitationAction } from "./actions";
 
 interface Props {
-  invitationId: string;
+  token: string;
   invitationEmail: string;
   loggedUser: { id: string; email: string; name: string } | null;
 }
 
 export default function AcceptInviteForm({
-  invitationId,
+  token,
   invitationEmail,
   loggedUser,
 }: Props) {
@@ -27,7 +27,7 @@ export default function AcceptInviteForm({
     setError(null);
     startTransition(async () => {
       const result = await acceptInvitationAction({
-        invitationId,
+        token,
         mode: "existing",
       });
       if (!result.success) {
@@ -54,7 +54,7 @@ export default function AcceptInviteForm({
 
     startTransition(async () => {
       const result = await acceptInvitationAction({
-        invitationId,
+        token,
         mode: "create",
         name: name.trim(),
         password,
@@ -120,7 +120,7 @@ export default function AcceptInviteForm({
           </button>
 
           <a
-            href={`/login?callbackUrl=/convite/${invitationId}&inviteId=${invitationId}`}
+            href={`/login?callbackUrl=/convite/${token}`}
             className="w-full flex items-center justify-center border border-[#2A2A33] hover:border-[#9A9AA6] text-[#9A9AA6] hover:text-white font-medium py-3 rounded-lg text-sm transition-colors"
           >
             Já tenho uma conta — Entrar

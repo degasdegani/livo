@@ -1,0 +1,58 @@
+"use client";
+
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
+export default function OnboardingError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6">
+      <div className="w-full max-w-md text-center">
+        <div className="text-center mb-8">
+          <span className="text-2xl font-black tracking-widest">
+            <span style={{ color: "#fff" }}>LI</span>
+            <span style={{ color: "#C8102E" }}>VO</span>
+          </span>
+        </div>
+
+        <div className="text-4xl mb-6">⚠️</div>
+
+        <h1 className="text-white font-bold text-xl mb-3">
+          Algo deu errado
+        </h1>
+
+        <p
+          className="text-sm mb-8"
+          style={{ color: "#9A9AA6", lineHeight: 1.6 }}
+        >
+          Ocorreu um erro durante o cadastro. Nossa equipe foi notificada.
+          Seus dados não foram perdidos.
+        </p>
+
+        {error.digest && (
+          <p className="text-xs font-mono mb-6" style={{ color: "#6E6E78" }}>
+            Código: {error.digest}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={reset}
+          className="w-full py-3 rounded-xl font-bold text-white text-sm transition-all hover:opacity-90"
+          style={{ background: "#C8102E" }}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+  );
+}

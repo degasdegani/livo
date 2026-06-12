@@ -1,6 +1,7 @@
 // ============================================================
-// LIVO — Middleware de Autenticação
-// Protege rotas do dashboard e onboarding
+// LIVO — Middleware de Autenticação + Correlation IDs
+// Protege rotas do dashboard e onboarding.
+// Injeta x-correlation-id em cada request para rastreabilidade.
 // ============================================================
 
 import { auth } from "@/auth";
@@ -10,29 +11,34 @@ export default auth((req) => {
   const pathname = req.nextUrl.pathname;
   const isLoggedIn = !!req.auth;
 
-  // Rotas que exigem autenticação
+  // Propaga o ID externo ou gera um novo UUID para rastreabilidade
+  const correlationId =
+    req.headers.get("x-correlation-id") ?? crypto.randomUUID();
+
+  // Copia os headers originais e injeta o correlationId para Server Components
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-correlation-id", correlationId);
+
   const isProtectedRoute =
     pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
-
-  // Rotas de autenticação (login e cadastro)
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 
-  // Rotas públicas explícitas (documentação — não precisam de nada):
-  // /convite/[token] → aceite de convite
-  // /vip            → captura de leads
-  // /[slug]         → página pública da barbearia
-
-  // Não logado tentando acessar área protegida → login
   if (isProtectedRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const res = NextResponse.redirect(new URL("/login", req.url));
+    res.headers.set("x-correlation-id", correlationId);
+    return res;
   }
 
-  // Já logado tentando acessar login/register → dashboard
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    const res = NextResponse.redirect(new URL("/dashboard", req.url));
+    res.headers.set("x-correlation-id", correlationId);
+    return res;
   }
 
-  return NextResponse.next();
+  // Propaga o correlationId para downstream (server components, actions)
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set("x-correlation-id", correlationId);
+  return res;
 });
 
 export const config = {

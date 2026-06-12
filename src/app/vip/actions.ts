@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 interface LeadData {
   name: string;
@@ -24,7 +25,6 @@ export async function createLead(
     if (!email || !email.includes("@"))
       return { error: "Informe um e-mail válido." };
 
-    // Evita duplicado (mesma pessoa escaneando 2x)
     const existing = await db.waitlistLead.findFirst({ where: { email } });
     if (existing) return { success: true };
 
@@ -38,9 +38,14 @@ export async function createLead(
       },
     });
 
+    log.lead.info("novo lead capturado", {
+      email,
+      barbershopName: data.barbershopName ?? undefined,
+    });
+
     return { success: true };
   } catch (err) {
-    console.error("[createLead] Erro:", err);
+    log.lead.error("erro ao criar lead", { email: data.email }, err);
     return { error: "Algo deu errado. Tente de novo." };
   }
 }

@@ -158,7 +158,7 @@ export default async function DashboardPage() {
 
   const analytics =
     membership.role === MemberRole.owner
-      ? await getDashboardAnalytics(barbershop.id)
+      ? await getDashboardAnalytics()
       : null;
 
   const greeting = getSaudacao();

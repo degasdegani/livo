@@ -1,8 +1,9 @@
 // src/app/api/livia/route.ts
 
 import { type NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getCurrentMembership } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 // Rate limiter em memória — 20 req/min por userId (1:1 com barbershopId no modelo atual).
 // Em multi-instância serverless cada instância mantém seu próprio Map — suficiente para
@@ -13,20 +14,25 @@ const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
 export async function POST(req: NextRequest) {
+  const correlationId = req.headers.get("x-correlation-id") ?? undefined;
+
   try {
-    // 1. Verificar autenticação
-    const session = await auth();
-    if (!session?.user?.id) {
+    const membership = await getCurrentMembership();
+    if (!membership) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // 2. Rate limiting — antes de qualquer query ao banco ou chamada à IA
-    const userId = session.user.id;
+    const userId = membership.userId;
     const now = Date.now();
     const entry = rateLimitMap.get(userId);
 
     if (entry && now < entry.resetAt) {
       if (entry.count >= RATE_LIMIT_MAX) {
+        log.livia.warn("rate limit atingido", {
+          correlationId,
+          userId,
+          barbershopId: membership.barbershopId,
+        });
         return NextResponse.json(
           { error: "Limite de mensagens atingido. Tente novamente em breve." },
           { status: 429 },
@@ -40,8 +46,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Pegar mensagens do body
-    const { messages, barbershopId } = await req.json();
+    const { messages } = await req.json();
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
         { error: "Mensagens inválidas" },
@@ -49,52 +54,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Buscar contexto da barbearia para a Lívia
-    const barbershop = barbershopId
-      ? await db.barbershop.findUnique({
-          where: { id: barbershopId },
-          include: {
-            services: {
-              where: { isActive: true },
-              select: { name: true, priceInCents: true, durationMin: true },
-            },
-            professionals: {
-              where: { isActive: true },
-              select: { name: true },
-            },
-            _count: { select: { clients: true } },
-          },
-        })
-      : null;
+    const barbershop = await db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: { name: true, priceInCents: true, durationMin: true },
+        },
+        professionals: {
+          where: { isActive: true },
+          select: { name: true },
+        },
+        _count: { select: { clients: true } },
+      },
+    });
 
-    // 6. Buscar dados financeiros do mês atual
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [faturamentoMes, totalAgendamentos] = barbershopId
-      ? await Promise.all([
-          db.comanda.aggregate({
-            where: {
-              barbershopId,
-              status: "closed",
-              closedAt: { gte: monthStart },
-            },
-            _sum: { totalInCents: true },
-          }),
-          db.appointment.count({
-            where: {
-              barbershopId,
-              date: { gte: monthStart },
-              status: { notIn: ["cancelled", "no_show"] },
-            },
-          }),
-        ])
-      : [{ _sum: { totalInCents: null } }, 0];
+    const [faturamentoMes, totalAgendamentos] = await Promise.all([
+      db.comanda.aggregate({
+        where: {
+          barbershopId: membership.barbershopId,
+          status: "closed",
+          closedAt: { gte: monthStart },
+        },
+        _sum: { totalInCents: true },
+      }),
+      db.appointment.count({
+        where: {
+          barbershopId: membership.barbershopId,
+          date: { gte: monthStart },
+          status: { notIn: ["cancelled", "no_show"] },
+        },
+      }),
+    ]);
 
     const faturamento = (faturamentoMes._sum.totalInCents ?? 0) / 100;
 
-    // 7. Montar o system prompt com contexto real da barbearia
     const systemPrompt = `Você é a Lívia, assistente de inteligência artificial do sistema LIVO — a plataforma de gestão para barbearias modernas.
 
 Sua personalidade:
@@ -138,7 +136,6 @@ Sobre o sistema LIVO:
 
 Nunca invente dados financeiros. Se não tiver os dados reais, diga que não tem acesso a essa informação específica no momento.`;
 
-    // 8. Chamar a API da Anthropic
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -159,7 +156,13 @@ Nunca invente dados financeiros. Se não tiver os dados reais, diga que não tem
 
     if (!response.ok) {
       const error = await response.json();
-      console.error("Anthropic API error:", error);
+      log.livia.error("Anthropic API error", {
+        correlationId,
+        userId,
+        barbershopId: membership.barbershopId,
+        status: response.status,
+        anthropicError: error,
+      });
       return NextResponse.json(
         { error: "Erro ao chamar a IA. Tente novamente." },
         { status: 500 },
@@ -170,9 +173,15 @@ Nunca invente dados financeiros. Se não tiver os dados reais, diga que não tem
     const text =
       data.content?.[0]?.text ?? "Desculpe, não consegui gerar uma resposta.";
 
+    log.livia.info("resposta gerada", {
+      correlationId,
+      userId,
+      barbershopId: membership.barbershopId,
+    });
+
     return NextResponse.json({ message: text });
   } catch (error) {
-    console.error("Lívia route error:", error);
+    log.livia.error("erro interno na rota Lívia", { correlationId }, error);
     return NextResponse.json(
       { error: "Erro interno. Tente novamente." },
       { status: 500 },

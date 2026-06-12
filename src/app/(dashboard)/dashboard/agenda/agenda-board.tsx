@@ -135,9 +135,8 @@ function slotToTime(slotIndex: number): string {
 
 function slotToDateISO(dateKey: string, slotIndex: number): string {
   const timeStr = slotToTime(slotIndex);
-  // Sem sufixo: browser interpreta como hora local (Brazil UTC-3).
-  // toISOString() converte corretamente local → UTC antes de enviar ao servidor.
-  return new Date(`${dateKey}T${timeStr}:00`).toISOString();
+  // Sufixo -03:00 ancora em Brasília (sem DST desde 2019), independente do timezone do browser.
+  return new Date(`${dateKey}T${timeStr}:00-03:00`).toISOString();
 }
 
 function formatTime(date: Date): string {
