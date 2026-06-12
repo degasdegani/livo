@@ -154,7 +154,7 @@ export async function updateAppointmentCore(
 ): Promise<AppointmentCoreResult> {
   const existing = await db.appointment.findFirst({
     where: { id: input.appointmentId, barbershopId: auth.barbershopId },
-    select: { status: true, professionalId: true },
+    select: { status: true, professionalId: true, clientPhone: true, clientId: true },
   });
   if (!existing)
     return { success: false, error: "Agendamento não encontrado." };
@@ -200,16 +200,49 @@ export async function updateAppointmentCore(
     };
   }
 
-  await db.appointment.update({
-    where: { id: input.appointmentId },
-    data: {
-      serviceId: input.serviceId,
-      date: startDate,
-      endTime: endDate,
-      clientName: input.clientName.trim(),
-      clientPhone: input.clientPhone.trim(),
-      notes: input.notes?.trim() || null,
-    },
+  const normalizedPhone = input.clientPhone.replace(/\D/g, "");
+  const existingNormalizedPhone = existing.clientPhone?.replace(/\D/g, "") ?? "";
+  const phoneChanged = normalizedPhone !== existingNormalizedPhone;
+
+  await db.$transaction(async (tx) => {
+    let newClientId: string | null = existing.clientId;
+
+    if (phoneChanged) {
+      newClientId = null;
+      if (normalizedPhone) {
+        const found = await tx.client.findFirst({
+          where: { phone: normalizedPhone, barbershopId: auth.barbershopId },
+          select: { id: true },
+        });
+        if (found) {
+          newClientId = found.id;
+        } else {
+          const created = await tx.client.create({
+            data: {
+              name: input.clientName.trim(),
+              phone: normalizedPhone,
+              barbershopId: auth.barbershopId,
+              totalVisits: 0,
+              lastVisitAt: null,
+            },
+          });
+          newClientId = created.id;
+        }
+      }
+    }
+
+    await tx.appointment.update({
+      where: { id: input.appointmentId },
+      data: {
+        serviceId: input.serviceId,
+        date: startDate,
+        endTime: endDate,
+        clientName: input.clientName.trim(),
+        clientPhone: normalizedPhone || input.clientPhone.trim(),
+        notes: input.notes?.trim() || null,
+        clientId: newClientId,
+      },
+    });
   });
 
   return { success: true };
