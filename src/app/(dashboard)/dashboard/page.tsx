@@ -4,7 +4,7 @@ import { MemberRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { checkBillingAccess, getCurrentMembership } from "@/lib/permissions";
+import { getCurrentMembership } from "@/lib/permissions";
 import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
@@ -96,9 +96,6 @@ export default async function DashboardPage() {
 
   const membership = await getCurrentMembership();
   if (!membership) redirect("/onboarding");
-  if (membership.role === MemberRole.owner) {
-    await checkBillingAccess(membership.barbershopId);
-  }
 
   const barbershop = await db.barbershop.findUnique({
     where: { id: membership.barbershopId },

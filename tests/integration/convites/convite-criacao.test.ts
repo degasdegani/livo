@@ -41,7 +41,7 @@ vi.mock("@/lib/permissions", () => ({
 }));
 
 vi.mock("@/lib/plans", () => ({
-  canAddMember: vi.fn().mockReturnValue(true),
+  canAddMember: vi.fn().mockResolvedValue({ allowed: true, current: 1, limit: 3 }),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -94,7 +94,7 @@ const baseInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireRole).mockResolvedValue(ownerCtx());
-  vi.mocked(canAddMember).mockReturnValue(true as never);
+  vi.mocked(canAddMember).mockResolvedValue({ allowed: true, current: 1, limit: 3 } as never);
   vi.mocked(db.user.findUnique).mockResolvedValue(null);
   vi.mocked(db.membership.findFirst).mockResolvedValue(null);
   vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
@@ -234,7 +234,7 @@ describe("createInvitationAction() — duplicate guards", () => {
 
 describe("createInvitationAction() — plan guard", () => {
   it("returns error when plan member limit is reached", async () => {
-    vi.mocked(canAddMember).mockReturnValue(false as never);
+    vi.mocked(canAddMember).mockResolvedValue({ allowed: false, current: 3, limit: 3 } as never);
 
     const result = await createInvitationAction(baseInput);
 

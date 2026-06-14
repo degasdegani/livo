@@ -15,9 +15,10 @@ export default auth((req) => {
   const correlationId =
     req.headers.get("x-correlation-id") ?? crypto.randomUUID();
 
-  // Copia os headers originais e injeta o correlationId para Server Components
+  // Copia os headers originais e injeta o correlationId e pathname para Server Components
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-correlation-id", correlationId);
+  requestHeaders.set("x-pathname", pathname);
 
   const isProtectedRoute =
     pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");

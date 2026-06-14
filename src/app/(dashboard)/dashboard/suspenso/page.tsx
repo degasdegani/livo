@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support";
 
 export default async function SuspensoPage() {
   const membership = await requireMembership();
@@ -164,7 +165,7 @@ export default async function SuspensoPage() {
           </Link>
 
           <a
-            href="https://wa.me/5516999999999?text=Ol%C3%A1%2C+preciso+de+ajuda+com+minha+assinatura+LIVO"
+            href={`${SUPPORT_WHATSAPP_URL}?text=Ol%C3%A1%2C+preciso+de+ajuda+com+minha+assinatura+LIVO`}
             target="_blank"
             rel="noreferrer"
             className="w-full py-3 rounded-xl font-semibold text-sm text-center transition-all hover:opacity-80"

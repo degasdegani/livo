@@ -1,16 +1,17 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support";
 
 const PERKS = [
   {
     icon: "💰",
-    title: "Comissao recorrente",
-    desc: "20% MRR no 1 ano, 10% no 2. Pago mensalmente.",
+    title: "Comissão recorrente",
+    desc: "20% MRR no 1º ano, 10% no 2º. Pago mensalmente.",
   },
   {
     icon: "🏆",
-    title: "Territorio exclusivo",
-    desc: "Voce e o unico representante da sua regiao.",
+    title: "Território exclusivo",
+    desc: "Você é o único representante da sua região.",
   },
   {
     icon: "🛠",
@@ -61,7 +62,7 @@ export function Partnership() {
                 border: "1px solid rgba(255,45,85,0.2)",
               }}
             >
-              ✦ Programa de Parceiros · Ribeirao Preto
+              ✦ Programa de Parceiros
             </div>
 
             <h2
@@ -74,7 +75,7 @@ export function Partnership() {
             >
               Leve o Livo para as maiores
               <br />
-              barbearias da regiao.
+              barbearias da sua região.
             </h2>
 
             <p
@@ -86,8 +87,8 @@ export function Partnership() {
                 lineHeight: 1.7,
               }}
             >
-              Selecionamos parceiros estrategicos para representar o Livo. Se
-              voce conhece o mercado local, essa conversa e para voce.
+              Selecionamos parceiros estratégicos para representar o Livo. Se
+              você conhece o mercado local, essa conversa é para você.
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
@@ -116,7 +117,7 @@ export function Partnership() {
 
             <div className="flex flex-wrap gap-4 justify-center">
               <a
-                href="https://wa.me/5516999999999"
+                href={SUPPORT_WHATSAPP_URL}
                 className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold text-base rounded-xl transition-all duration-200 hover:opacity-90"
                 style={{
                   background: "#FF2D55",

@@ -333,6 +333,8 @@ model Comanda {
   professional   Professional   @relation(fields: [professionalId], references: [id])
 
   @@index([barbershopId])
+  @@index([barbershopId, closedAt])
+  @@index([barbershopId, status])
   @@map("comandas")
 }
 

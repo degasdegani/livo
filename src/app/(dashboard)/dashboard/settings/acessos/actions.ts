@@ -76,11 +76,10 @@ export async function createInvitationAction(
   }
 
   const canAdd = await canAddMember(barbershopId);
-  if (!canAdd) {
+  if (!canAdd.allowed) {
     return {
       success: false,
-      error:
-        "Limite de membros do seu plano atingido. Faça upgrade para adicionar mais pessoas.",
+      error: `Limite de membros do seu plano atingido (${canAdd.current}/${canAdd.limit}). Faça upgrade para adicionar mais pessoas.`,
     };
   }
 

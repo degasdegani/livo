@@ -5,17 +5,16 @@ const LINKS = {
     { label: "Funcionalidades", href: "#funcionalidades" },
     { label: "Planos", href: "#planos" },
     { label: "IA integrada", href: "#ia" },
-    { label: "Seguranca", href: "#" },
+    { label: "Parceiros", href: "#parceria" },
   ],
-  Empresa: [
-    { label: "Sobre o Livo", href: "#" },
-    { label: "Parceiros", href: "#" },
-    { label: "Contato", href: "#" },
+  Acesso: [
+    { label: "Criar conta", href: "/onboarding" },
+    { label: "Entrar", href: "/login" },
+    { label: "Lista de espera", href: "/vip" },
   ],
   Legal: [
     { label: "Termos de Uso", href: "/termos" },
     { label: "Privacidade", href: "/privacidade" },
-    { label: "LGPD", href: "/privacidade" },
   ],
 } as const;
 
@@ -52,7 +51,7 @@ export function Footer() {
               className="text-sm leading-relaxed"
               style={{ color: "#52525B", maxWidth: "200px" }}
             >
-              Gestao inteligente para barbearias modernas.
+              Gestão inteligente para barbearias modernas.
             </p>
           </div>
 

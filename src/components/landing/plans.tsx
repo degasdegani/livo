@@ -5,56 +5,60 @@ import { Check, X } from "lucide-react";
 const PLANS = [
   {
     name: "Livo Start",
-    price: "97",
-    originalPrice: "197",
-    desc: "Para o barbeiro solo que esta digitalizando o negocio.",
+    price: "Trial",
+    originalPrice: undefined,
+    desc: "Para o barbeiro solo que está digitalizando o negócio.",
     featured: false,
+    cta: "Começar grátis — 30 dias",
     features: [
       { text: "1 profissional", ok: true },
-      { text: "Ate 150 agendamentos/mes", ok: true },
-      { text: "Pagina publica personalizada", ok: true },
-      { text: "Confirmacao por e-mail", ok: true },
-      { text: "Painel basico", ok: true },
-      { text: "WhatsApp automatico", ok: false },
-      { text: "Planos mensais", ok: false },
-      { text: "Relatorios financeiros", ok: false },
-      { text: "IA integrada", ok: false },
+      { text: "Agendamentos ilimitados", ok: true },
+      { text: "Página pública personalizada", ok: true },
+      { text: "Confirmação por e-mail", ok: true },
+      { text: "Dashboard básico", ok: true },
+      { text: "CRM de clientes", ok: false },
+      { text: "Comandas e estoque", ok: false },
+      { text: "Relatórios financeiros", ok: false },
+      { text: "Lívia IA", ok: false },
     ],
   },
   {
     name: "Livo Pro",
-    price: "297",
+    price: "197",
     originalPrice: undefined,
     desc: "Para barbearias estabelecidas que querem crescer.",
     featured: true,
+    cta: "Começar grátis — 30 dias",
     features: [
-      { text: "Ate 3 profissionais", ok: true },
+      { text: "Até 3 profissionais", ok: true },
       { text: "Agendamentos ilimitados", ok: true },
-      { text: "WhatsApp automatico completo", ok: true },
-      { text: "Lembrete 2h antes", ok: true },
-      { text: "Planos mensais para clientes", ok: true },
-      { text: "Relatorios financeiros", ok: true },
-      { text: "IA basica com insights", ok: true },
+      { text: "CRM de clientes completo", ok: true },
+      { text: "Comandas e controle de estoque", ok: true },
+      { text: "Relatórios financeiros", ok: true },
+      { text: "Comissões por barbeiro", ok: true },
+      { text: "Lívia IA — assistente inteligente", ok: true },
       { text: "Suporte via WhatsApp", ok: true },
       { text: "Pagamento online integrado", ok: false },
     ],
   },
   {
     name: "Livo Prime",
-    price: "497",
+    price: "Em breve",
     originalPrice: undefined,
-    desc: "Para barbearias premium com maximo em IA e automacao.",
+    desc: "Para barbearias premium com máximo em IA e automação.",
     featured: false,
+    cta: "Entrar na lista de espera",
+    ctaHref: "/vip",
     features: [
       { text: "Profissionais ilimitados", ok: true },
       { text: "Tudo do Pro", ok: true },
-      { text: "Pagamento online PIX + cartao", ok: true },
-      { text: "IA avancada e preditiva", ok: true },
+      { text: "WhatsApp automático", ok: true },
+      { text: "Lembretes automáticos", ok: true },
+      { text: "Relatórios PDF e Excel", ok: true },
+      { text: "Campanhas automáticas", ok: true },
       { text: "Assistente IA no WhatsApp", ok: true },
-      { text: "Relatorios PDF e Excel", ok: true },
-      { text: "Campanhas automaticas", ok: true },
       { text: "PWA no celular", ok: true },
-      { text: "Onboarding presencial", ok: true },
+      { text: "Pagamento online integrado", ok: true },
     ],
   },
 ];
@@ -68,13 +72,13 @@ export function Plans() {
             className="text-xs font-semibold tracking-widest uppercase mb-4"
             style={{ color: "#FF2D55" }}
           >
-            Planos e precos
+            Planos e preços
           </p>
           <h2
             className="font-black text-white mb-4"
             style={{ fontSize: "clamp(32px,5vw,56px)", letterSpacing: "-2px" }}
           >
-            Sem surpresas. Sem letra miuda.
+            Sem surpresas. Sem letra miúda.
           </h2>
           <p
             style={{
@@ -85,7 +89,7 @@ export function Plans() {
               lineHeight: 1.7,
             }}
           >
-            30 dias gratis em qualquer plano. Cancele quando quiser.
+            30 dias grátis para testar. Cancele quando quiser.
           </p>
         </div>
 
@@ -154,27 +158,31 @@ export function Plans() {
               )}
 
               <div className="flex items-baseline gap-1 mb-3">
-                <span
-                  style={{
-                    color: "#A1A1AA",
-                    fontSize: "22px",
-                    fontWeight: 600,
-                  }}
-                >
-                  R$
-                </span>
+                {plan.price !== "Trial" && plan.price !== "Em breve" && (
+                  <span
+                    style={{
+                      color: "#A1A1AA",
+                      fontSize: "22px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    R$
+                  </span>
+                )}
                 <span
                   className="font-black"
                   style={{
-                    fontSize: "56px",
-                    letterSpacing: "-3px",
+                    fontSize: plan.price === "Trial" || plan.price === "Em breve" ? "32px" : "56px",
+                    letterSpacing: "-2px",
                     color: plan.featured ? "#FF2D55" : "#FFFFFF",
                     lineHeight: 1,
                   }}
                 >
                   {plan.price}
                 </span>
-                <span style={{ color: "#52525B", fontSize: "14px" }}>/mes</span>
+                {plan.price !== "Trial" && plan.price !== "Em breve" && (
+                  <span style={{ color: "#52525B", fontSize: "14px" }}>/mês</span>
+                )}
               </div>
 
               <p
@@ -219,7 +227,7 @@ export function Plans() {
               </ul>
 
               <a
-                href="/onboarding"
+                href={"ctaHref" in plan ? plan.ctaHref : "/onboarding"}
                 className="block text-center py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90"
                 style={{
                   background: plan.featured
@@ -234,14 +242,14 @@ export function Plans() {
                     : "none",
                 }}
               >
-                Comecar gratis — 30 dias
+                {plan.cta}
               </a>
             </div>
           ))}
         </div>
 
         <p className="text-center text-xs mt-8" style={{ color: "#3F3F46" }}>
-          Sem cartao de credito · Cancele quando quiser · Suporte em portugues
+          Sem cartão de crédito · Cancele quando quiser · Suporte em português
         </p>
       </Container>
     </Section>
