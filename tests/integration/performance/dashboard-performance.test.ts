@@ -3,7 +3,7 @@
  *
  * getDashboardAnalytics (src/app/(dashboard)/dashboard/actions.ts)
  *
- * Query profile: 1 db.comanda.findMany scoped to last 12 months.
+ * Query profile: 2 parallel db.comanda.findMany (12-month totals + current-month items).
  *
  * DOCUMENTED GARGALO: no `take:` limit — large tenants with 10k+ comandas/year
  *   will load the entire set into memory for JS aggregation.
@@ -33,6 +33,12 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/permissions", () => ({
   requireMembership: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: vi.fn((fn: () => unknown) => fn),
 }));
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -145,10 +151,10 @@ describe("Query bounds — date range and select", () => {
     expect(arg).not.toHaveProperty("take");
   });
 
-  it("makes exactly 1 DB query (all aggregations done in JS)", async () => {
+  it("makes exactly 2 DB queries (12-month totals + current-month items, parallel)", async () => {
     await getDashboardAnalytics();
 
-    expect(vi.mocked(db.comanda.findMany)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(db.comanda.findMany)).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -223,8 +229,8 @@ describe("High-volume correctness — 1 000+ comandas", () => {
 
     const result = await getDashboardAnalytics();
 
-    // Only 1 DB call total (no extra query for barber ranking)
-    expect(vi.mocked(db.comanda.findMany)).toHaveBeenCalledTimes(1);
+    // Only 2 DB calls total (the 2 parallel structural queries — no extra for barber ranking)
+    expect(vi.mocked(db.comanda.findMany)).toHaveBeenCalledTimes(2);
     expect(result.rankingBarbeiros[0].nome).toBe("Pedro");
     expect(result.rankingBarbeiros[0].faturamento).toBe(1_200_000);
   });

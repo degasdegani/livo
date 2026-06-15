@@ -195,7 +195,7 @@ describe("createSubscription() — input validation", () => {
   it("accepts CPF with formatting (masks stripped before validation)", async () => {
     vi.mocked(getCurrentMembership).mockResolvedValue(makeOwnerMembership());
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(
-      makeBarbershop({ planStatus: PlanStatus.suspended }) as never,
+      makeBarbershop({ planStatus: PlanStatus.trial }) as never,
     );
 
     // CPF with mask has 11 actual digits
@@ -243,7 +243,7 @@ describe("createSubscription() — billing state guards", () => {
     expect(vi.mocked(createAsaasSubscription)).not.toHaveBeenCalled();
   });
 
-  it("allows reactivation when plan is suspended", async () => {
+  it("blocks new subscription when plan is suspended (must pay pending invoice)", async () => {
     vi.mocked(getCurrentMembership).mockResolvedValue(makeOwnerMembership());
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(
       makeBarbershop({ planStatus: PlanStatus.suspended }) as never,
@@ -251,8 +251,8 @@ describe("createSubscription() — billing state guards", () => {
 
     const result = await createSubscription(null, makeFormData());
 
-    expect(result.error).toBeUndefined();
-    expect(vi.mocked(createAsaasSubscription)).toHaveBeenCalled();
+    expect(result.error).toContain("inadimplência");
+    expect(vi.mocked(createAsaasSubscription)).not.toHaveBeenCalled();
   });
 
   it("allows reactivation when plan is cancelled", async () => {

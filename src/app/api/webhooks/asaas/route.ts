@@ -2,7 +2,6 @@
 // LIVO — Webhook Asaas
 // Única autoridade que ativa/suspende/cancela o acesso pago.
 // ============================================================
-
 // src/app/api/webhooks/asaas/route.ts
 import { PlanStatus } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
@@ -98,6 +97,47 @@ export async function POST(req: NextRequest) {
         log.billing.warn("plano cancelado por exclusão de assinatura", {
           correlationId,
           subscriptionId,
+        });
+      }
+    }
+
+    // ── Pagamento estornado → suspende acesso imediatamente ────
+    // Suspensão (não cancelamento) — a assinatura pode ser reativada se o
+    // estorno for revertido ou um novo pagamento for confirmado.
+    if (event === "PAYMENT_REFUNDED") {
+      if (payment?.subscription) {
+        await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: PlanStatus.lifetime },
+          },
+          data: { planStatus: PlanStatus.suspended },
+        });
+        log.billing.warn("plano suspenso por estorno de pagamento", {
+          correlationId,
+          subscriptionId: payment.subscription,
+          paymentId: payment.id,
+        });
+      }
+    }
+
+    // ── Chargeback solicitado → suspensão cautelar imediata ────
+    // Suspensão cautelar: disputa bancária ainda em andamento.
+    // Se o chargeback for rejeitado e PAYMENT_CONFIRMED chegar,
+    // o plano é reativado automaticamente pelo handler existente.
+    if (event === "PAYMENT_CHARGEBACK_REQUESTED") {
+      if (payment?.subscription) {
+        await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: PlanStatus.lifetime },
+          },
+          data: { planStatus: PlanStatus.suspended },
+        });
+        log.billing.warn("plano suspenso por chargeback solicitado", {
+          correlationId,
+          subscriptionId: payment.subscription,
+          paymentId: payment.id,
         });
       }
     }

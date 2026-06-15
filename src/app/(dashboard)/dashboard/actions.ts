@@ -1,17 +1,24 @@
 "use server";
 
 import type { AppointmentStatus } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { updateAppointmentStatusCore } from "@/lib/appointment-core";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import { requireMembership } from "@/lib/permissions";
 
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: AppointmentStatus,
 ): Promise<{ success: boolean; error?: string }> {
+  let barbershopId: string | undefined;
+  let userId: string | undefined;
+
   try {
     const membership = await requireMembership();
+    barbershopId = membership.barbershopId;
+    userId = membership.userId;
+
     const result = await updateAppointmentStatusCore(
       appointmentId,
       status,
@@ -21,16 +28,19 @@ export async function updateAppointmentStatus(
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/agenda");
     return { success: true };
-  } catch {
+  } catch (err) {
+    log.agenda.error("erro ao atualizar status de agendamento", {
+      appointmentId,
+      barbershopId,
+      userId,
+    }, err);
     return { success: false, error: "Erro ao atualizar agendamento." };
   }
 }
 
 // ─── Adicionado no Dia 8 ─────────────────────────────────────────────────────
 
-export async function getDashboardAnalytics() {
-  const membership = await requireMembership();
-  const barbershopId = membership.barbershopId;
+async function fetchDashboardAnalytics(barbershopId: string) {
   const agora = new Date();
   const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
   const inicioAnoPassado = new Date(
@@ -39,28 +49,41 @@ export async function getDashboardAnalytics() {
     1,
   );
 
-  // Últimos 12 meses de faturamento (comandas fechadas)
-  const comandas12Meses = await db.comanda.findMany({
-    where: {
-      barbershopId,
-      status: "closed",
-      closedAt: { gte: inicioAnoPassado },
-    },
-    select: {
-      totalInCents: true,
-      closedAt: true,
-      professional: { select: { name: true } },
-      items: {
-        select: {
-          type: true,
-          serviceName: true,
-          quantity: true,
-          totalInCents: true,
+  // Query 1: 12 meses — apenas totais financeiros + profissional (sem items)
+  // Query 2: mês atual — apenas items de serviço (sem totais financeiros)
+  // Executadas em paralelo para reduzir latência total.
+  const [comandas12Meses, itensDoMes] = await Promise.all([
+    db.comanda.findMany({
+      where: {
+        barbershopId,
+        status: "closed",
+        closedAt: { gte: inicioAnoPassado },
+      },
+      select: {
+        totalInCents: true,
+        closedAt: true,
+        professional: { select: { name: true } },
+      },
+      orderBy: { closedAt: "asc" },
+    }),
+    db.comanda.findMany({
+      where: {
+        barbershopId,
+        status: "closed",
+        closedAt: { gte: inicioMes },
+      },
+      select: {
+        items: {
+          select: {
+            type: true,
+            serviceName: true,
+            quantity: true,
+            totalInCents: true,
+          },
         },
       },
-    },
-    orderBy: { closedAt: "asc" },
-  });
+    }),
+  ]);
 
   // Faturamento do mês atual
   const faturamentoMes = comandas12Meses
@@ -76,13 +99,12 @@ export async function getDashboardAnalytics() {
   const ticketMedio =
     totalComandasMes > 0 ? Math.round(faturamentoMes / totalComandasMes) : 0;
 
-  // Serviços mais vendidos no mês (top 5)
+  // Serviços mais vendidos no mês (top 5) — usa Query 2, já filtrada pelo mês
   const servicosMap = new Map<
     string,
     { nome: string; quantidade: number; totalInCents: number }
   >();
-  for (const comanda of comandas12Meses) {
-    if (!comanda.closedAt || comanda.closedAt < inicioMes) continue;
+  for (const comanda of itensDoMes) {
     for (const item of comanda.items) {
       if (item.type !== "service") continue;
       const key = item.serviceName;
@@ -171,4 +193,13 @@ export async function getDashboardAnalytics() {
     evolucaoMensal,
     rankingBarbeiros,
   };
+}
+
+export async function getDashboardAnalytics() {
+  const membership = await requireMembership();
+  return unstable_cache(
+    fetchDashboardAnalytics,
+    ["dashboard-analytics", membership.barbershopId],
+    { revalidate: 300 },
+  )(membership.barbershopId);
 }
