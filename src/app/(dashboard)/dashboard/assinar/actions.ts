@@ -58,6 +58,16 @@ export async function createSubscription(
       return { error: "Sua conta tem acesso vitalício." };
     }
 
+    // Suspenso = inadimplência em assinatura existente. Criar nova assinatura
+    // sobrescreveria asaasSubscriptionId e quebraria o roteamento do webhook,
+    // impedindo a reativação automática via PAYMENT_CONFIRMED do débito pendente.
+    if (barbershop.planStatus === PlanStatus.suspended) {
+      return {
+        error:
+          "Assinatura suspensa por inadimplência. Pague a fatura pendente para reativar o acesso automaticamente.",
+      };
+    }
+
     log.billing.info("iniciando criação de assinatura", {
       userId: membership.userId,
       barbershopId: membership.barbershopId,

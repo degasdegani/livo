@@ -1,6 +1,7 @@
 // src/app/(dashboard)/layout.tsx
 import { headers } from "next/headers";
 import { checkBillingAccess, requireMembership } from "@/lib/permissions";
+import { db } from "@/lib/db";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 
 // Rotas que não devem ser bloqueadas pelo billing check
@@ -22,10 +23,16 @@ export default async function DashboardLayout({
     await checkBillingAccess(membership.barbershopId);
   }
 
+  const barbershop = await db.barbershop.findUnique({
+    where: { id: membership.barbershopId },
+    select: { name: true },
+  });
+
   return (
     <DashboardLayoutClient
       role={membership.role}
       barbershopId={membership.barbershopId}
+      barbershopName={barbershop?.name ?? ""}
     >
       {children}
     </DashboardLayoutClient>

@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useToast } from "@/components/ui/toast";
 import { createSubscription } from "./actions";
 
 function maskCPF(value: string): string {
@@ -40,6 +41,7 @@ export default function AssinarPage() {
   const [billingType, setBillingType] = useState<"monthly" | "yearly">(
     "monthly",
   );
+  const { toast } = useToast();
 
   const monthlyPrice = 197;
   const yearlyPrice = 1997;
@@ -108,7 +110,7 @@ export default function AssinarPage() {
               }}
               onClick={() => {
                 navigator.clipboard.writeText(state.pixPayload || "");
-                alert("Código copiado!");
+                toast("Código PIX copiado!", "success");
               }}
             >
               {state.pixPayload?.slice(0, 60)}...
@@ -348,7 +350,7 @@ export default function AssinarPage() {
               "Comandas e controle de estoque",
               "Comissões por barbeiro",
               "Lívia IA — assistente inteligente",
-              "Profissionais ilimitados",
+              "Até 3 profissionais",
               "Suporte via WhatsApp",
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-2">
