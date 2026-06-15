@@ -72,12 +72,14 @@ const baseCreateInput = {
 
 function makeTxMock() {
   return {
+    $executeRaw: vi.fn().mockResolvedValue(undefined),
     client: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "new-client-id" }),
       update: vi.fn().mockResolvedValue({}),
     },
     appointment: {
+      findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "new-appt-id" }),
       update: vi.fn().mockResolvedValue({}),
     },
@@ -374,7 +376,7 @@ describe("updateAppointmentCore()", () => {
           professionalId: PROF_A,
           status: "pending",
           clientPhone: "11888888888", // original phone
-          clientId: "old-client-id",
+          clientId: null,
         }),
       )
       .mockResolvedValueOnce(null); // no conflict
@@ -407,7 +409,7 @@ describe("updateAppointmentCore()", () => {
           professionalId: PROF_A,
           status: "pending",
           clientPhone: "11888888888",
-          clientId: "old-client-id",
+          clientId: null,
         }),
       )
       .mockResolvedValueOnce(null);

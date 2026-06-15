@@ -226,13 +226,20 @@ export async function addProdutoItem(
     },
   });
   if (!product) throw new Error("Produto não encontrado.");
-  if (product.stockQuantity < quantity)
-    throw new Error("Estoque insuficiente.");
 
   const total = product.priceInCents * quantity;
 
-  await db.$transaction([
-    db.comandaItem.create({
+  await db.$transaction(async (tx) => {
+    // Atomic decrement: only succeeds if stock is sufficient at commit time
+    const stockUpdated = await tx.product.updateMany({
+      where: { id: product.id, stockQuantity: { gte: quantity } },
+      data: { stockQuantity: { decrement: quantity } },
+    });
+    if (stockUpdated.count === 0) {
+      throw new Error("Estoque insuficiente.");
+    }
+
+    await tx.comandaItem.create({
       data: {
         comandaId,
         type: "product",
@@ -245,12 +252,13 @@ export async function addProdutoItem(
         unitPriceInCents: product.priceInCents,
         totalInCents: total,
       },
-    }),
-    db.comanda.update({
+    });
+
+    await tx.comanda.update({
       where: { id: comandaId },
       data: { totalInCents: { increment: total } },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/dashboard/comandas/${comandaId}`);
 }
@@ -313,6 +321,7 @@ export async function fecharComanda(
   });
 
   const totalFinal = Math.max(0, comanda.totalInCents - discountInCents);
+  const closedAt = new Date();
 
   await db.$transaction(async (tx) => {
     // 1. Calcular e gravar comissão em cada item
@@ -352,10 +361,13 @@ export async function fecharComanda(
       (i) => i.type === "product" && i.productId,
     );
     for (const item of produtoItems) {
-      await tx.product.update({
-        where: { id: item.productId! },
+      const stockUpdated = await tx.product.updateMany({
+        where: { id: item.productId!, stockQuantity: { gte: item.quantity } },
         data: { stockQuantity: { decrement: item.quantity } },
       });
+      if (stockUpdated.count === 0) {
+        throw new Error("Estoque insuficiente para fechar a comanda.");
+      }
       await tx.stockMovement.create({
         data: {
           productId: item.productId!,
@@ -374,7 +386,7 @@ export async function fecharComanda(
         status: ComandaStatus.closed,
         paymentMethod,
         totalInCents: totalFinal,
-        closedAt: new Date(),
+        closedAt,
       },
     });
 
@@ -395,7 +407,7 @@ export async function fecharComanda(
         where: { id: comanda.clientId },
         data: {
           totalVisits: { increment: 1 },
-          lastVisitAt: new Date(),
+          lastVisitAt: closedAt,
         },
       });
     }
@@ -465,23 +477,6 @@ export async function cancelarComanda(comandaId: string) {
         },
         data: { status: "cancelled" },
       });
-    }
-
-    // CRM: se uma comanda open é cancelada e o appointment vinculado já estava
-    // completed, a visita ocorreu mas o increment foi adiado por updateAppointmentStatusCore
-    // (que defere quando existe comanda open) e nunca acontecerá via fecharComanda.
-    // Contabilizar aqui garante que totalVisits/lastVisitAt reflitam a visita real.
-    if (comanda.status === ComandaStatus.open && comanda.appointmentId) {
-      const apt = await tx.appointment.findFirst({
-        where: { id: comanda.appointmentId, status: "completed" },
-        select: { clientId: true },
-      });
-      if (apt?.clientId) {
-        await tx.client.update({
-          where: { id: apt.clientId },
-          data: { totalVisits: { increment: 1 }, lastVisitAt: new Date() },
-        });
-      }
     }
   });
 

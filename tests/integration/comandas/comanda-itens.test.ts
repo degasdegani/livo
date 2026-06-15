@@ -196,6 +196,27 @@ describe("addServicoItem()", () => {
 describe("addProdutoItem()", () => {
   const PROD_A = "product-a";
 
+  // addProdutoItem uses callback-style $transaction with atomic updateMany.
+  // Share db mock references so existing assertions (db.comandaItem.create,
+  // db.comanda.update) still work even though calls go through tx.
+  let produtoTx: {
+    product: { updateMany: ReturnType<typeof vi.fn> };
+    comandaItem: { create: ReturnType<typeof vi.fn> };
+    comanda: { update: ReturnType<typeof vi.fn> };
+  };
+
+  beforeEach(() => {
+    produtoTx = {
+      product: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      comandaItem: { create: vi.mocked(db.comandaItem.create) },
+      comanda: { update: vi.mocked(db.comanda.update) },
+    };
+    vi.mocked(db.$transaction).mockImplementation(async (arg: unknown) => {
+      if (typeof arg === "function") return arg(produtoTx);
+      return Promise.all(arg as Promise<unknown>[]);
+    });
+  });
+
   it("throws when comanda not found or already closed", async () => {
     vi.mocked(db.comanda.findFirst).mockResolvedValue(null);
 
@@ -241,6 +262,8 @@ describe("addProdutoItem()", () => {
       priceInCents: 1500,
       stockQuantity: 2,
     } as never);
+    // Simulate atomic check failure: stockQuantity < requested quantity
+    produtoTx.product.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(addProdutoItem(COMANDA_A, PROD_A, 5)).rejects.toThrow(
       "Estoque insuficiente.",

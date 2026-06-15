@@ -22,7 +22,6 @@ import { canAddMember } from "@/lib/plans";
 import { sendInvitationEmail } from "@/lib/email";
 import { InvitationStatus, MemberRole } from "@prisma/client";
 import { createInvitationAction } from "@/app/(dashboard)/dashboard/settings/acessos/actions";
-import { convidarMembro } from "@/app/(dashboard)/dashboard/settings/actions";
 import { makeMembershipContext } from "../../helpers/membership";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -46,15 +45,6 @@ vi.mock("@/lib/plans", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
-}));
-
-// settings/actions.ts instantiates Resend at module load — share one mock across instances
-const mockResendSend = vi.hoisted(() => vi.fn().mockResolvedValue({ id: "sent" }));
-
-vi.mock("resend", () => ({
-  Resend: class {
-    emails = { send: mockResendSend };
-  },
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -335,101 +325,3 @@ describe("createInvitationAction() — success path", () => {
   });
 });
 
-// ── convidarMembro ─────────────────────────────────────────────────────────────
-
-describe("convidarMembro() — validation", () => {
-  it("throws when email is already an active member", async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue({ id: "user-1" } as never);
-    vi.mocked(db.membership.findUnique).mockResolvedValue(
-      { isActive: true } as never,
-    );
-
-    await expect(
-      convidarMembro({ email: "membro@example.com", role: MemberRole.barber }),
-    ).rejects.toThrow("Este e-mail já tem acesso à barbearia.");
-  });
-});
-
-describe("convidarMembro() — invitation creation", () => {
-  beforeEach(() => {
-    vi.mocked(db.user.findUnique).mockResolvedValue(null);
-    vi.mocked(db.membership.findUnique).mockResolvedValue(null);
-    vi.mocked(db.invitation.updateMany).mockResolvedValue({ count: 1 });
-    vi.mocked(db.invitation.create).mockResolvedValue({ id: "invite-new" } as never);
-  });
-
-  it("expires previous pending invites for same email before creating new one", async () => {
-    await convidarMembro({ email: "novo@example.com", role: MemberRole.reception });
-
-    expect(vi.mocked(db.invitation.updateMany)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          email: "novo@example.com",
-          barbershopId: SHOP_A,
-          status: "pending",
-        }),
-        data: { status: "expired" },
-      }),
-    );
-  });
-
-  it("creates invitation with role and professionalId", async () => {
-    await convidarMembro({
-      email: "novo@example.com",
-      role: MemberRole.barber,
-      professionalId: "prof-1",
-    });
-
-    expect(vi.mocked(db.invitation.create)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          role: MemberRole.barber,
-          professionalId: "prof-1",
-          status: "pending",
-          barbershopId: SHOP_A,
-        }),
-      }),
-    );
-  });
-
-  it("generates a token and stores it with the invitation", async () => {
-    await convidarMembro({ email: "novo@example.com", role: MemberRole.reception });
-
-    const token = (
-      vi.mocked(db.invitation.create).mock.calls[0][0] as { data: { token: string } }
-    ).data.token;
-
-    expect(token).toBeTruthy();
-    expect(typeof token).toBe("string");
-  });
-
-  it("sends email via Resend to the invitation email address", async () => {
-    vi.mocked(db.invitation.create).mockResolvedValue({ id: "inv" } as never);
-
-    await convidarMembro({ email: "novo@example.com", role: MemberRole.reception });
-
-    expect(mockResendSend).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "novo@example.com" }),
-    );
-  });
-
-  it("token in email URL matches the token stored in DB", async () => {
-    await convidarMembro({ email: "novo@example.com", role: MemberRole.reception });
-
-    const storedToken = (
-      vi.mocked(db.invitation.create).mock.calls[0][0] as { data: { token: string } }
-    ).data.token;
-
-    const emailCall = mockResendSend.mock.calls[0][0] as { html: string };
-    expect(emailCall.html).toContain(storedToken);
-  });
-
-  it("returns { success: true }", async () => {
-    const result = await convidarMembro({
-      email: "novo@example.com",
-      role: MemberRole.reception,
-    });
-
-    expect(result).toEqual({ success: true });
-  });
-});

@@ -69,7 +69,7 @@ function ownerCtx() {
 function makeFechamentoTx() {
   return {
     comandaItem: { update: vi.fn().mockResolvedValue({}) },
-    product: { update: vi.fn().mockResolvedValue({}) },
+    product: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     stockMovement: { create: vi.fn().mockResolvedValue({}) },
     comanda: { update: vi.fn().mockResolvedValue({}) },
     appointment: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
@@ -250,9 +250,9 @@ describe("fecharComanda()", () => {
 
     await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(tx.product.update).toHaveBeenCalledWith(
+    expect(tx.product.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "prod-1" },
+        where: expect.objectContaining({ id: "prod-1" }),
         data: { stockQuantity: { decrement: 3 } },
       }),
     );
@@ -288,7 +288,7 @@ describe("fecharComanda()", () => {
 
     await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(tx.product.update).not.toHaveBeenCalled();
+    expect(tx.product.updateMany).not.toHaveBeenCalled();
     expect(tx.stockMovement.create).not.toHaveBeenCalled();
   });
 

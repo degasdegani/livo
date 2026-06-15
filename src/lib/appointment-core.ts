@@ -99,55 +99,97 @@ export async function createAppointmentCore(
 
   const normalizedPhone = input.clientPhone.replace(/\D/g, "");
 
-  const appointment = await db.$transaction(async (tx) => {
-    let clientId: string | null = null;
+  let appointment: Awaited<ReturnType<typeof db.appointment.create>> | null =
+    null;
+  try {
+    appointment = await db.$transaction(async (tx) => {
+      // Serialize concurrent bookings for the same professional.
+      // pg_advisory_xact_lock blocks until the first transaction commits,
+      // ensuring the re-check below sees the committed state.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.professionalId}))`;
 
-    if (normalizedPhone) {
-      const existing = await tx.client.findFirst({
-        where: { phone: normalizedPhone, barbershopId: input.barbershopId },
-        select: { id: true, email: true },
-      });
-
-      if (existing) {
-        // CRM stats (totalVisits/lastVisitAt) são atualizados em fecharComanda, não aqui
-        if (input.clientEmail?.trim() && !existing.email) {
-          await tx.client.update({
-            where: { id: existing.id },
-            data: { email: input.clientEmail.trim() },
-          });
-        }
-        clientId = existing.id;
-      } else {
-        const created = await tx.client.create({
-          data: {
-            name: input.clientName.trim(),
-            phone: normalizedPhone,
-            email: input.clientEmail?.trim() || null,
-            barbershopId: input.barbershopId,
-            totalVisits: 0,
-            lastVisitAt: null,
+      // Authoritative conflict check inside the lock
+      const conflictInTx = await tx.appointment.findFirst({
+        where: {
+          professionalId: input.professionalId,
+          status: {
+            notIn: ["cancelled", "no_show"] as AppointmentStatus[],
           },
-        });
-        clientId = created.id;
+          date: { lt: endDate },
+          endTime: { gt: startDate },
+        },
+        select: { id: true },
+      });
+      if (conflictInTx) {
+        throw Object.assign(new Error("conflict"), { isConflict: true });
       }
-    }
 
-    return tx.appointment.create({
-      data: {
-        date: startDate,
-        endTime: endDate,
-        status: input.status ?? "pending",
-        clientName: input.clientName.trim(),
-        clientPhone: normalizedPhone || input.clientPhone.trim(),
-        clientEmail: input.clientEmail?.trim() || null,
-        notes: input.notes?.trim() || null,
+      let clientId: string | null = null;
+
+      if (normalizedPhone) {
+        const existing = await tx.client.findFirst({
+          where: { phone: normalizedPhone, barbershopId: input.barbershopId },
+          select: { id: true, email: true },
+        });
+
+        if (existing) {
+          // CRM stats (totalVisits/lastVisitAt) são atualizados em fecharComanda, não aqui
+          if (input.clientEmail?.trim() && !existing.email) {
+            await tx.client.update({
+              where: { id: existing.id },
+              data: { email: input.clientEmail.trim() },
+            });
+          }
+          clientId = existing.id;
+        } else {
+          const created = await tx.client.create({
+            data: {
+              name: input.clientName.trim(),
+              phone: normalizedPhone,
+              email: input.clientEmail?.trim() || null,
+              barbershopId: input.barbershopId,
+              totalVisits: 0,
+              lastVisitAt: null,
+            },
+          });
+          clientId = created.id;
+        }
+      }
+
+      return tx.appointment.create({
+        data: {
+          date: startDate,
+          endTime: endDate,
+          status: input.status ?? "pending",
+          clientName: input.clientName.trim(),
+          clientPhone: normalizedPhone || input.clientPhone.trim(),
+          clientEmail: input.clientEmail?.trim() || null,
+          notes: input.notes?.trim() || null,
+          barbershopId: input.barbershopId,
+          professionalId: input.professionalId,
+          serviceId: input.serviceId,
+          clientId,
+        },
+      });
+    });
+  } catch (err) {
+    if (err && typeof err === "object" && "isConflict" in err) {
+      log.agenda.warn("conflito de horário detectado (com lock) na criação", {
         barbershopId: input.barbershopId,
         professionalId: input.professionalId,
-        serviceId: input.serviceId,
-        clientId,
-      },
-    });
-  });
+        dateISO: input.dateISO,
+      });
+      return {
+        success: false,
+        error: "Horário em conflito com outro agendamento.",
+      };
+    }
+    throw err;
+  }
+
+  if (!appointment) {
+    return { success: false, error: "Horário em conflito com outro agendamento." };
+  }
 
   log.agenda.info("agendamento criado", {
     barbershopId: input.barbershopId,
@@ -223,9 +265,11 @@ export async function updateAppointmentCore(
   const phoneChanged = normalizedPhone !== existingNormalizedPhone;
 
   await db.$transaction(async (tx) => {
+    // clientId is immutable once set — never reassign an appointment that already
+    // has a linked client record (would corrupt CRM history for the original client)
     let newClientId: string | null = existing.clientId;
 
-    if (phoneChanged) {
+    if (phoneChanged && existing.clientId === null) {
       newClientId = null;
       if (normalizedPhone) {
         const found = await tx.client.findFirst({

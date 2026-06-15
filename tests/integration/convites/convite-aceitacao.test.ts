@@ -83,8 +83,9 @@ function makePendingInvitation(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeAcceptTx() {
+function makeAcceptTx(userId = "new-user-id") {
   return {
+    user: { create: vi.fn().mockResolvedValue({ id: userId }) },
     membership: { create: vi.fn().mockResolvedValue({}) },
     invitation: { update: vi.fn().mockResolvedValue({}) },
   };
@@ -233,8 +234,6 @@ describe("acceptInvitationAction() — mode: create", () => {
       makePendingInvitation() as never,
     );
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
-    vi.mocked(db.user.create).mockResolvedValue({ id: "new-user-id" } as never);
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
 
     const tx = makeAcceptTx();
     vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) =>
@@ -247,7 +246,7 @@ describe("acceptInvitationAction() — mode: create", () => {
 
     const bcrypt = await import("bcryptjs");
     expect(vi.mocked(bcrypt.default.hash)).toHaveBeenCalledWith("senha123", 10);
-    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
+    expect(tx.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           name: "João",
@@ -262,8 +261,6 @@ describe("acceptInvitationAction() — mode: create", () => {
       makePendingInvitation({ email: "invitation@example.com" }) as never,
     );
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
-    vi.mocked(db.user.create).mockResolvedValue({ id: "new-user-id" } as never);
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
 
     const tx = makeAcceptTx();
     vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) =>
@@ -274,7 +271,7 @@ describe("acceptInvitationAction() — mode: create", () => {
       acceptInvitationAction({ token: TOKEN, mode: "create", name: "João", password: "senha" }),
     ).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(vi.mocked(db.user.create)).toHaveBeenCalledWith(
+    expect(tx.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ email: "invitation@example.com" }),
       }),
@@ -286,10 +283,8 @@ describe("acceptInvitationAction() — mode: create", () => {
       makePendingInvitation() as never,
     );
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
-    vi.mocked(db.user.create).mockResolvedValue({ id: "created-user-id" } as never);
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
 
-    const tx = makeAcceptTx();
+    const tx = makeAcceptTx("created-user-id");
     vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) =>
       (fn as (t: typeof tx) => unknown)(tx),
     );
@@ -519,10 +514,8 @@ describe("acceptInvitationAction() — observabilidade", () => {
       makePendingInvitation() as never,
     );
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
-    vi.mocked(db.user.create).mockResolvedValue({ id: "new-user-id" } as never);
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
 
-    const tx = makeAcceptTx();
+    const tx = makeAcceptTx("new-user-id");
     vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) =>
       (fn as (t: typeof tx) => unknown)(tx),
     );

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { updateAppointmentStatus } from "./actions";
 
 interface ConfirmModal {
@@ -16,9 +17,16 @@ interface Props {
   appointmentId: string;
 }
 
+const TOAST_MESSAGES: Record<"completed" | "cancelled" | "no_show", string> = {
+  completed: "Atendimento concluído",
+  cancelled: "Agendamento cancelado",
+  no_show: "Ausência registrada",
+};
+
 export function AppointmentActions({ appointmentId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [modal, setModal] = useState<ConfirmModal | null>(null);
+  const { toast } = useToast();
 
   function openModal(config: ConfirmModal) {
     setModal(config);
@@ -33,7 +41,12 @@ export function AppointmentActions({ appointmentId }: Props) {
     const status = modal.status;
     closeModal();
     startTransition(async () => {
-      await updateAppointmentStatus(appointmentId, status);
+      const result = await updateAppointmentStatus(appointmentId, status);
+      if (result.success) {
+        toast(TOAST_MESSAGES[status]);
+      } else {
+        toast(result.error ?? "Erro ao atualizar agendamento.", "error");
+      }
     });
   }
 

@@ -268,6 +268,7 @@ describe("MT — Agenda / Appointment Core", () => {
       vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) => {
         const txDb = {
           ...db,
+          $executeRaw: vi.fn().mockResolvedValue(0),
           client: {
             ...db.client,
             findFirst: vi.fn().mockResolvedValue(null),
@@ -275,6 +276,7 @@ describe("MT — Agenda / Appointment Core", () => {
           },
           appointment: {
             ...db.appointment,
+            findFirst: vi.fn().mockResolvedValue(null),
             create: vi.fn().mockResolvedValue({ id: "new-appt-id" }),
           },
         };

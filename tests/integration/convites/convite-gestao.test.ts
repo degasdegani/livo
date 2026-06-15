@@ -23,12 +23,7 @@ import {
   revokeMembershipAction,
   resendInvitationAction,
 } from "@/app/(dashboard)/dashboard/settings/acessos/actions";
-import {
-  revogarConvite,
-  reenviarConvite,
-  revogarMembro,
-  updateMembershipComissao,
-} from "@/app/(dashboard)/dashboard/settings/actions";
+import { updateMembershipComissao } from "@/app/(dashboard)/dashboard/settings/actions";
 import { makeMembershipContext } from "../../helpers/membership";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -54,15 +49,6 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
-}));
-
-// settings/actions.ts instantiates Resend at module load — share one mock across instances
-const mockResendSend = vi.hoisted(() => vi.fn().mockResolvedValue({ id: "sent" }));
-
-vi.mock("resend", () => ({
-  Resend: class {
-    emails = { send: mockResendSend };
-  },
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -304,111 +290,6 @@ describe("resendInvitationAction() — acessos", () => {
     const result = await resendInvitationAction(INVITE_ID);
 
     expect(result).toEqual({ success: true, message: expect.any(String) });
-  });
-});
-
-// ── revogarConvite (settings) ─────────────────────────────────────────────────
-
-describe("revogarConvite() — settings", () => {
-  it("updates invitation status to revoked via updateMany with id + barbershopId", async () => {
-    await revogarConvite(INVITE_ID);
-
-    expect(vi.mocked(db.invitation.updateMany)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: INVITE_ID,
-          barbershopId: SHOP_A,
-        }),
-        data: { status: "revoked" },
-      }),
-    );
-  });
-});
-
-// ── reenviarConvite (settings) ────────────────────────────────────────────────
-
-describe("reenviarConvite() — settings", () => {
-  it("throws when invitation not found in tenant", async () => {
-    vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-    await expect(reenviarConvite(INVITE_ID)).rejects.toThrow(
-      "Convite não encontrado.",
-    );
-  });
-
-  it("generates a new token (rotation) when resending", async () => {
-    const OLD_TOKEN = "old-token";
-    mockPendingInvitation({ token: OLD_TOKEN });
-
-    await reenviarConvite(INVITE_ID);
-
-    const newToken = (
-      vi.mocked(db.invitation.update).mock.calls[0][0] as { data: { token: string } }
-    ).data.token;
-
-    expect(newToken).toBeTruthy();
-    expect(newToken).not.toBe(OLD_TOKEN);
-  });
-
-  it("refreshes expiresAt to ~7 days from now", async () => {
-    mockPendingInvitation();
-
-    const before = Date.now();
-    await reenviarConvite(INVITE_ID);
-    const after = Date.now();
-
-    const newExpiresAt = (
-      vi.mocked(db.invitation.update).mock.calls[0][0] as { data: { expiresAt: Date } }
-    ).data.expiresAt.getTime();
-
-    const sevenDays = 7 * 24 * 60 * 60 * 1000;
-    expect(newExpiresAt).toBeGreaterThanOrEqual(before + sevenDays - 1000);
-    expect(newExpiresAt).toBeLessThanOrEqual(after + sevenDays + 1000);
-  });
-
-  it("sends email via Resend to invitation email address", async () => {
-    mockPendingInvitation({ email: "membro@example.com" });
-
-    await reenviarConvite(INVITE_ID);
-
-    expect(mockResendSend).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "membro@example.com" }),
-    );
-  });
-});
-
-// ── revogarMembro (settings) ──────────────────────────────────────────────────
-
-describe("revogarMembro() — settings", () => {
-  it("throws when membership not found in tenant", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-    await expect(revogarMembro(MEMBER_ID)).rejects.toThrow("Membro não encontrado.");
-  });
-
-  it("throws when target is the owner (cannot remove owner)", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(
-      { id: MEMBER_ID, role: MemberRole.owner } as never,
-    );
-
-    await expect(revogarMembro(MEMBER_ID)).rejects.toThrow(
-      "Não é possível remover o dono.",
-    );
-  });
-
-  it("sets isActive to false for non-owner members", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(
-      { id: MEMBER_ID, role: MemberRole.barber } as never,
-    );
-
-    await revogarMembro(MEMBER_ID);
-
-    expect(vi.mocked(db.membership.update)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: MEMBER_ID },
-        data: { isActive: false },
-      }),
-    );
   });
 });
 

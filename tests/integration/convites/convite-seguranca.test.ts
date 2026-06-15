@@ -30,11 +30,6 @@ import {
   revokeInvitationAction,
   resendInvitationAction,
 } from "@/app/(dashboard)/dashboard/settings/acessos/actions";
-import {
-  revogarConvite,
-  reenviarConvite,
-  revogarMembro,
-} from "@/app/(dashboard)/dashboard/settings/actions";
 import { makeMembershipContext } from "../../helpers/membership";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -69,12 +64,6 @@ vi.mock("bcryptjs", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("resend", () => ({
-  Resend: class {
-    emails = { send: vi.fn().mockResolvedValue({ id: "sent" }) };
-  },
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -267,49 +256,6 @@ describe("Multi-tenant — management mutations scoped to membership.barbershopI
     );
   });
 
-  it("revogarConvite uses updateMany with barbershopId (cannot affect other tenants)", async () => {
-    await revogarConvite("invite-x");
-
-    expect(vi.mocked(db.invitation.updateMany)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ barbershopId: SHOP_A }),
-      }),
-    );
-  });
-
-  it("reenviarConvite queries invitation with barbershopId", async () => {
-    vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-    try {
-      await reenviarConvite("invite-x");
-    } catch {
-      /* expected */
-    }
-
-    expect(vi.mocked(db.invitation.findFirst)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ barbershopId: SHOP_A }),
-      }),
-    );
-  });
-
-  it("revogarMembro queries membership with barbershopId before deactivating", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-    try {
-      await revogarMembro("member-x");
-    } catch {
-      /* expected */
-    }
-
-    expect(vi.mocked(db.membership.findFirst)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ barbershopId: SHOP_A }),
-      }),
-    );
-    // No update without first confirming ownership
-    expect(vi.mocked(db.membership.update)).not.toHaveBeenCalled();
-  });
 });
 
 // ── Membership Data Integrity ─────────────────────────────────────────────────
@@ -324,6 +270,7 @@ describe("Membership data integrity — values from invitation, not user input",
     vi.mocked(db.membership.findFirst).mockResolvedValue(null);
 
     const tx = {
+      user: { create: vi.fn().mockResolvedValue({ id: "new-user" }) },
       membership: { create: vi.fn().mockResolvedValue({}) },
       invitation: { update: vi.fn().mockResolvedValue({}) },
     };

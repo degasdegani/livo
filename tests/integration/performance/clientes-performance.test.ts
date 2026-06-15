@@ -53,6 +53,12 @@ vi.mock("@/lib/permissions", () => ({
   clientScope: vi.fn(),
 }));
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: vi.fn((fn: () => unknown) => fn),
+}));
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const SHOP_ID = "shop-clientes-perf";

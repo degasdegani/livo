@@ -50,12 +50,14 @@ const ownerAuth = { role: "owner", professionalId: null, barbershopId: SHOP_A };
 
 function makeTxMock() {
   return {
+    $executeRaw: vi.fn().mockResolvedValue(undefined),
     client: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "new-client-id" }),
       update: vi.fn().mockResolvedValue({}),
     },
     appointment: {
+      findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "new-appt-id" }),
       update: vi.fn().mockResolvedValue({}),
     },

@@ -54,8 +54,6 @@ export async function acceptInvitationAction(
     return { success: false, error: "Este convite expirou." };
   }
 
-  let userId: string;
-
   if (input.mode === "existing") {
     const session = await auth();
     if (!session?.user?.id) {
@@ -65,12 +63,51 @@ export async function acceptInvitationAction(
           "Você precisa estar logado para aceitar com uma conta existente.",
       };
     }
-    userId = session.user.id as string;
+    const userId = session.user.id as string;
+
+    const alreadyMember = await db.membership.findFirst({
+      where: {
+        userId,
+        barbershopId: invitation.barbershopId,
+        isActive: true,
+      },
+    });
+    if (alreadyMember) {
+      return { success: false, error: "Você já é membro desta barbearia." };
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.membership.create({
+        data: {
+          role: invitation.role as MemberRole,
+          userId,
+          barbershopId: invitation.barbershopId,
+          professionalId: invitation.professionalId ?? null,
+          commissionOnServices: invitation.commissionOnServices,
+          commissionOnProducts: invitation.commissionOnProducts,
+          isActive: true,
+        },
+      });
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: InvitationStatus.accepted,
+          acceptedAt: new Date(),
+        },
+      });
+    });
+
+    log.convite.info("convite aceito com sucesso", {
+      userId,
+      barbershopId: invitation.barbershopId,
+      role: invitation.role,
+      mode: input.mode,
+    });
   } else {
+    // "create" mode: check email first, then do all writes atomically to prevent orphan accounts
     const existingUser = await db.user.findUnique({
       where: { email: invitation.email },
     });
-
     if (existingUser) {
       return {
         success: false,
@@ -80,67 +117,50 @@ export async function acceptInvitationAction(
     }
 
     const hashedPassword = await bcrypt.hash(input.password, 10);
+    let createdUserId = "";
 
-    const newUser = await db.user.create({
-      data: {
-        name: input.name,
-        email: invitation.email,
-        password: hashedPassword,
-      },
+    await db.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name: input.name,
+          email: invitation.email,
+          password: hashedPassword,
+        },
+      });
+      createdUserId = newUser.id;
+
+      await tx.membership.create({
+        data: {
+          role: invitation.role as MemberRole,
+          userId: newUser.id,
+          barbershopId: invitation.barbershopId,
+          professionalId: invitation.professionalId ?? null,
+          commissionOnServices: invitation.commissionOnServices,
+          commissionOnProducts: invitation.commissionOnProducts,
+          isActive: true,
+        },
+      });
+
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: InvitationStatus.accepted,
+          acceptedAt: new Date(),
+        },
+      });
     });
 
-    userId = newUser.id;
     log.convite.info("usuário criado via convite", {
-      userId,
+      userId: createdUserId,
       barbershopId: invitation.barbershopId,
     });
-  }
-
-  const alreadyMember = await db.membership.findFirst({
-    where: {
-      userId,
+    log.convite.info("convite aceito com sucesso", {
+      userId: createdUserId,
       barbershopId: invitation.barbershopId,
-      isActive: true,
-    },
-  });
-
-  if (alreadyMember) {
-    return {
-      success: false,
-      error: "Você já é membro desta barbearia.",
-    };
-  }
-
-  await db.$transaction(async (tx) => {
-    await tx.membership.create({
-      data: {
-        role: invitation.role as MemberRole,
-        userId,
-        barbershopId: invitation.barbershopId,
-        professionalId: invitation.professionalId ?? null,
-        commissionOnServices: invitation.commissionOnServices,
-        commissionOnProducts: invitation.commissionOnProducts,
-        isActive: true,
-      },
+      role: invitation.role,
+      mode: input.mode,
     });
 
-    await tx.invitation.update({
-      where: { id: invitation.id },
-      data: {
-        status: InvitationStatus.accepted,
-        acceptedAt: new Date(),
-      },
-    });
-  });
-
-  log.convite.info("convite aceito com sucesso", {
-    userId,
-    barbershopId: invitation.barbershopId,
-    role: invitation.role,
-    mode: input.mode,
-  });
-
-  if (input.mode === "create") {
     try {
       await signIn("credentials", {
         email: invitation.email,

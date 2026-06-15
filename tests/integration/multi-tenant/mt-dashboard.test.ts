@@ -38,7 +38,11 @@ vi.mock("@/lib/permissions", () => ({
   requireMembership: vi.fn(),
 }));
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: vi.fn((fn: () => unknown) => fn),
+}));
 
 vi.mock("@/lib/appointment-core", () => ({
   updateAppointmentStatusCore: vi.fn(),

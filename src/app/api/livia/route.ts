@@ -54,6 +54,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const MAX_MESSAGES = 50;
+    const MAX_CONTENT_LENGTH = 4000;
+    const ALLOWED_ROLES = new Set(["user", "assistant"]);
+
+    if (messages.length > MAX_MESSAGES) {
+      return NextResponse.json({ error: "Muitas mensagens." }, { status: 400 });
+    }
+    for (const m of messages) {
+      if (!m || typeof m !== "object") {
+        return NextResponse.json(
+          { error: "Mensagem inválida." },
+          { status: 400 },
+        );
+      }
+      if (!ALLOWED_ROLES.has(m.role)) {
+        return NextResponse.json(
+          { error: "Role de mensagem inválido." },
+          { status: 400 },
+        );
+      }
+      if (
+        typeof m.content !== "string" ||
+        m.content.length > MAX_CONTENT_LENGTH
+      ) {
+        return NextResponse.json(
+          { error: "Conteúdo de mensagem inválido." },
+          { status: 400 },
+        );
+      }
+    }
+
     const barbershop = await db.barbershop.findUnique({
       where: { id: membership.barbershopId },
       include: {

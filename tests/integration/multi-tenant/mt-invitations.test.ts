@@ -11,11 +11,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
-import {
-  revogarConvite,
-  reenviarConvite,
-  revogarMembro,
-} from "@/app/(dashboard)/dashboard/settings/actions";
 import { acceptInvitationAction } from "@/app/convite/[token]/actions";
 import { makeMembershipContext } from "../../helpers/membership";
 import { InvitationStatus, MemberRole } from "@prisma/client";
@@ -53,13 +48,6 @@ vi.mock("@/lib/permissions", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-// settings/actions.ts instantiates Resend at module load time — use class, not arrow fn
-vi.mock("resend", () => ({
-  Resend: class {
-    emails = { send: vi.fn().mockResolvedValue({ id: "sent" }) };
-  },
-}));
-
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
   signIn: vi.fn(),
@@ -75,8 +63,6 @@ vi.mock("@/lib/logger", () => ({
 
 const SHOP_A = "shop-tenant-a";
 const SHOP_B = "shop-tenant-b";
-const INVITE_B = "invite-from-shop-b";
-const MEMBER_B = "member-from-shop-b";
 const ownerCtx = () => makeMembershipContext({ barbershopId: SHOP_A, role: "owner" });
 
 // ── Setup ──────────────────────────────────────────────────────────────────────
@@ -93,132 +79,6 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("MT — Invitations & Access Control", () => {
-  describe("revogarConvite", () => {
-    it("scopes revocation to authenticated tenant via updateMany WHERE", async () => {
-      vi.mocked(db.invitation.updateMany).mockResolvedValue({ count: 0 });
-
-      await revogarConvite(INVITE_B);
-
-      expect(vi.mocked(db.invitation.updateMany)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ barbershopId: SHOP_A }),
-        }),
-      );
-    });
-
-    it("zero rows affected when invitation belongs to another tenant", async () => {
-      vi.mocked(db.invitation.updateMany).mockResolvedValue({ count: 0 });
-
-      await revogarConvite(INVITE_B);
-
-      // updateMany with {id: INVITE_B, barbershopId: SHOP_A} → 0 rows if it belongs to SHOP_B
-      expect(vi.mocked(db.invitation.updateMany)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            id: INVITE_B,
-            barbershopId: SHOP_A,
-          }),
-        }),
-      );
-    });
-
-    it("requires owner role before revoking any invitation", async () => {
-      vi.mocked(db.invitation.updateMany).mockResolvedValue({ count: 0 });
-
-      await revogarConvite(INVITE_B);
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-  });
-
-  describe("reenviarConvite", () => {
-    it("throws when invitation belongs to another tenant", async () => {
-      vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-      await expect(reenviarConvite(INVITE_B)).rejects.toThrow(
-        "Convite não encontrado.",
-      );
-    });
-
-    it("scopes invitation lookup to authenticated tenant", async () => {
-      vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-      try {
-        await reenviarConvite(INVITE_B);
-      } catch {
-        // Expected throw
-      }
-
-      expect(vi.mocked(db.invitation.findFirst)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ barbershopId: SHOP_A }),
-        }),
-      );
-    });
-
-    it("requires owner role before resending invitation", async () => {
-      vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-      try {
-        await reenviarConvite(INVITE_B);
-      } catch {
-        // Expected throw
-      }
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-  });
-
-  describe("revogarMembro", () => {
-    it("throws when membership belongs to another tenant", async () => {
-      vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-      await expect(revogarMembro(MEMBER_B)).rejects.toThrow(
-        "Membro não encontrado.",
-      );
-    });
-
-    it("scopes membership lookup to authenticated tenant", async () => {
-      vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-      try {
-        await revogarMembro(MEMBER_B);
-      } catch {
-        // Expected throw
-      }
-
-      expect(vi.mocked(db.membership.findFirst)).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ barbershopId: SHOP_A }),
-        }),
-      );
-    });
-
-    it("never deactivates membership without verifying barbershopId first", async () => {
-      vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-      try {
-        await revogarMembro(MEMBER_B);
-      } catch {
-        // Expected throw
-      }
-
-      expect(vi.mocked(db.membership.update)).not.toHaveBeenCalled();
-    });
-
-    it("requires owner role before revoking membership", async () => {
-      vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-      try {
-        await revogarMembro(MEMBER_B);
-      } catch {
-        // Expected throw
-      }
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-  });
-
   describe("acceptInvitationAction", () => {
     it("returns error for non-existent invitation token", async () => {
       vi.mocked(db.invitation.findUnique).mockResolvedValue(null);
@@ -295,6 +155,7 @@ describe("MT — Invitations & Access Control", () => {
       vi.mocked(db.membership.findFirst).mockResolvedValue(null); // not already member
 
       const txMock = {
+        user: { create: vi.fn().mockResolvedValue({ id: "new-user-id" }) },
         membership: { create: vi.fn().mockResolvedValue({}) },
         invitation: { update: vi.fn().mockResolvedValue({}) },
       };

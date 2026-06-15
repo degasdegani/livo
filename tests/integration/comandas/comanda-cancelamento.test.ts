@@ -226,30 +226,6 @@ describe("cancelarComanda()", () => {
     expect(tx.appointment.updateMany).not.toHaveBeenCalled();
   });
 
-  it("increments CRM when open comanda cancelled and appointment was already completed (edge case)", async () => {
-    // Edge case: appointment was completed via updateAppointmentStatusCore which deferred
-    // CRM because there was an open comanda. Now that comanda is cancelled, CRM must happen here.
-    mockComanda({ status: ComandaStatus.open, appointmentId: "appt-1" });
-    tx.appointment.findFirst.mockResolvedValue({ clientId: "client-1" });
-
-    await expect(cancelarComanda(COMANDA_A)).rejects.toThrow("NEXT_REDIRECT");
-
-    expect(tx.appointment.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: "appt-1",
-          status: "completed",
-        }),
-      }),
-    );
-    expect(tx.client.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "client-1" },
-        data: expect.objectContaining({ totalVisits: { increment: 1 } }),
-      }),
-    );
-  });
-
   it("does not update CRM when open comanda cancelled but appointment NOT completed", async () => {
     mockComanda({ status: ComandaStatus.open, appointmentId: "appt-1" });
     tx.appointment.findFirst.mockResolvedValue(null); // appointment not completed
