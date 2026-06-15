@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getCurrentMembership } from "@/lib/permissions";
+import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
 import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
@@ -158,6 +159,17 @@ export default async function DashboardPage() {
       ? await getDashboardAnalytics()
       : null;
 
+  // Checklist de configuração inicial
+  const hasProfessionals = barbershop.professionals.length > 0;
+  const hasServices = barbershop.services.length > 0;
+  const hasAnyAppointment = barbershop._count.appointments > 0;
+  const setupComplete = hasProfessionals && hasServices && hasAnyAppointment;
+
+  // Analytics aparecem apenas quando há dados reais de faturamento
+  const hasRevenueHistory =
+    analytics !== null &&
+    analytics.evolucaoMensal.some((m) => m.totalInCents > 0);
+
   const greeting = getSaudacao();
 
   const statusColors = {
@@ -242,7 +254,7 @@ export default async function DashboardPage() {
               color: "var(--text-primary)",
             }}
           >
-            {greeting}, {barbershop.name} ✦
+            {greeting}, {session.user.name?.split(" ")[0] ?? barbershop.name} ✦
           </h1>
           <p style={{ color: "var(--text-tertiary)", fontSize: "14px" }}>
             {todayAppointments.length === 0
@@ -250,6 +262,35 @@ export default async function DashboardPage() {
               : `Hoje você tem ${todayAppointments.length} agendamento${todayAppointments.length > 1 ? "s" : ""}.`}
           </p>
         </div>
+
+        {/* Checklist de configuração — visível apenas para owners com setup incompleto */}
+        {membership.role === MemberRole.owner && !setupComplete && (
+          <OnboardingChecklist
+            steps={[
+              {
+                label: "Adicionar profissional",
+                description: "Cadastre os barbeiros que atendem na sua barbearia.",
+                done: hasProfessionals,
+                href: "/dashboard/profissionais",
+                cta: "Adicionar →",
+              },
+              {
+                label: "Criar serviços",
+                description: "Defina os cortes e serviços com preços e duração.",
+                done: hasServices,
+                href: "/dashboard/settings",
+                cta: "Criar →",
+              },
+              {
+                label: "Fazer o primeiro agendamento",
+                description: "Agende o primeiro cliente e comece a operar.",
+                done: hasAnyAppointment,
+                href: "/dashboard/agenda",
+                cta: "Agendar →",
+              },
+            ]}
+          />
+        )}
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -469,34 +510,71 @@ export default async function DashboardPage() {
               className="flex flex-col items-center justify-center py-16 text-center"
               style={{ backgroundColor: "var(--bg-card-elevated)" }}
             >
-              <div className="text-4xl mb-4">📅</div>
-              <p
-                className="font-bold mb-2"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Nenhum agendamento hoje
-              </p>
-              <p
-                className="text-sm mb-6"
-                style={{ color: "var(--text-tertiary)", maxWidth: "280px" }}
-              >
-                Compartilhe o link da sua página para seus clientes agendarem
-                online.
-              </p>
-              <div
-                className="px-4 py-2 rounded-xl"
-                style={{
-                  backgroundColor: "var(--color-primary-10)",
-                  border: "1px solid var(--color-primary-20)",
-                }}
-              >
-                <span
-                  className="text-xs"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  livobarber.com.br/{barbershop.slug}
-                </span>
-              </div>
+              {!hasProfessionals ? (
+                <>
+                  <div className="text-4xl mb-4">✂️</div>
+                  <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                    Adicione um profissional primeiro
+                  </p>
+                  <p className="text-sm mb-6" style={{ color: "var(--text-tertiary)", maxWidth: "280px" }}>
+                    Cadastre os barbeiros da sua equipe para começar a agendar.
+                  </p>
+                  <a
+                    href="/dashboard/profissionais"
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm transition-opacity hover:opacity-80"
+                    style={{ backgroundColor: "var(--color-primary)", color: "white" }}
+                  >
+                    Adicionar profissional →
+                  </a>
+                </>
+              ) : !hasServices ? (
+                <>
+                  <div className="text-4xl mb-4">💈</div>
+                  <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                    Crie seus serviços primeiro
+                  </p>
+                  <p className="text-sm mb-6" style={{ color: "var(--text-tertiary)", maxWidth: "280px" }}>
+                    Defina os serviços oferecidos com preço e duração para liberar o agendamento.
+                  </p>
+                  <a
+                    href="/dashboard/settings"
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm transition-opacity hover:opacity-80"
+                    style={{ backgroundColor: "var(--color-primary)", color: "white" }}
+                  >
+                    Criar serviços →
+                  </a>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl mb-4">📅</div>
+                  <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                    Nenhum agendamento hoje
+                  </p>
+                  <p className="text-sm mb-4" style={{ color: "var(--text-tertiary)", maxWidth: "300px" }}>
+                    Agende manualmente ou compartilhe o link da sua barbearia para receber agendamentos online.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <a
+                      href="/dashboard/agenda"
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: "var(--color-primary)", color: "white" }}
+                    >
+                      Agendar agora →
+                    </a>
+                    <div
+                      className="px-4 py-2.5 rounded-xl"
+                      style={{
+                        backgroundColor: "var(--color-primary-10)",
+                        border: "1px solid var(--color-primary-20)",
+                      }}
+                    >
+                      <span className="text-xs" style={{ color: "var(--color-primary)" }}>
+                        livobarber.com.br/{barbershop.slug}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ backgroundColor: "var(--bg-card-elevated)" }}>
@@ -658,8 +736,8 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* Analytics do owner */}
-        {analytics && (
+        {/* Analytics do owner — aparece apenas quando há histórico de faturamento real */}
+        {analytics && hasRevenueHistory && (
           <div className="space-y-6">
             <div
               className="border-t pt-6"

@@ -25,6 +25,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LiviaBubble } from "@/components/livia-bubble";
+import { ToastProvider } from "@/components/ui/toast";
 
 type MemberRole = "owner" | "reception" | "barber";
 
@@ -294,10 +295,12 @@ export function DashboardLayoutClient({
   children,
   role,
   barbershopId,
+  barbershopName,
 }: {
   children: React.ReactNode;
   role: MemberRole;
   barbershopId: string;
+  barbershopName: string;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -324,6 +327,7 @@ export function DashboardLayoutClient({
   }, [mobileOpen]);
 
   return (
+    <ToastProvider>
     <div
       className="min-h-screen flex"
       style={{ backgroundColor: "var(--bg-base)" }}
@@ -420,8 +424,9 @@ export function DashboardLayoutClient({
 
         <main className="flex-1">{children}</main>
 
-        <LiviaBubble barbershopId={barbershopId} />
+        <LiviaBubble barbershopId={barbershopId} barbershopName={barbershopName} />
       </div>
     </div>
+    </ToastProvider>
   );
 }

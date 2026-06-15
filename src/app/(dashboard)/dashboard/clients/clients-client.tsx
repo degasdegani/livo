@@ -871,24 +871,55 @@ export function ClientsClient({
             }}
           >
             {clients.length === 0 ? (
-              <div
-                className="p-12 text-center"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                <p className="text-4xl mb-3">👤</p>
-                <p className="font-medium">Nenhum cliente encontrado</p>
-                <p className="text-sm mt-1">
-                  Tente outros filtros ou{" "}
+              stats.total === 0 ? (
+                /* Nunca houve clientes — estado de primeiro uso */
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                  <div className="text-5xl mb-4">👥</div>
+                  <p
+                    className="font-bold text-base mb-2"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Sua base de clientes está vazia
+                  </p>
+                  <p
+                    className="text-sm mb-6 max-w-xs"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Clientes são criados automaticamente ao fechar uma comanda ou podem ser cadastrados manualmente.
+                  </p>
                   <button
                     type="button"
                     onClick={openModal}
-                    style={{ color: "var(--color-primary)" }}
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-opacity hover:opacity-80"
+                    style={{ backgroundColor: "var(--color-primary)" }}
                   >
-                    cadastre o primeiro cliente
+                    Cadastrar primeiro cliente →
                   </button>
-                  .
-                </p>
-              </div>
+                </div>
+              ) : (
+                /* Clientes existem, mas filtro não retornou nada */
+                <div className="p-12 text-center">
+                  <p className="text-4xl mb-3">🔍</p>
+                  <p
+                    className="font-medium mb-1"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Nenhum cliente encontrado
+                  </p>
+                  <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                    Tente outros filtros ou{" "}
+                    <button
+                      type="button"
+                      onClick={openModal}
+                      className="underline"
+                      style={{ color: "var(--color-primary)" }}
+                    >
+                      cadastre um novo cliente
+                    </button>
+                    .
+                  </p>
+                </div>
+              )
             ) : (
               <table className="w-full">
                 <thead>

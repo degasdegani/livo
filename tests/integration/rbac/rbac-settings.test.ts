@@ -22,10 +22,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import {
-  getAcessosData as getSettingsAcessosData,
-  revogarConvite,
-  revogarMembro,
-  reenviarConvite,
   addService,
   updateService,
   deleteService,
@@ -81,13 +77,6 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-// Module-level Resend mock (settings/actions.ts instantiates Resend at load time)
-vi.mock("resend", () => ({
-  Resend: class {
-    emails = { send: vi.fn().mockResolvedValue({ id: "sent" }) };
-  },
-}));
-
 vi.mock("@/lib/email", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
 }));
@@ -119,30 +108,6 @@ function blockAll() {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("RBAC — Settings (owner-only)", () => {
-  describe("getAcessosData() from settings/actions.ts", () => {
-    it("calls requireRole with owner", async () => {
-      vi.mocked(requireRole).mockResolvedValue(ownerCtx());
-
-      await getSettingsAcessosData();
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-
-    it("blocks receptionist from reading acessos data", async () => {
-      blockAll();
-
-      await expect(getSettingsAcessosData()).rejects.toThrow();
-
-      expect(vi.mocked(db.membership.findMany)).not.toHaveBeenCalled();
-    });
-
-    it("blocks barber from reading acessos data", async () => {
-      blockAll();
-
-      await expect(getSettingsAcessosData()).rejects.toThrow();
-    });
-  });
-
   describe("addService()", () => {
     it("calls requireRole with owner", async () => {
       vi.mocked(requireRole).mockResolvedValue(ownerCtx());
@@ -245,70 +210,6 @@ describe("RBAC — Settings (owner-only)", () => {
     });
   });
 
-  describe("revogarConvite()", () => {
-    it("calls requireRole with owner", async () => {
-      vi.mocked(requireRole).mockResolvedValue(ownerCtx());
-      vi.mocked(db.invitation.updateMany).mockResolvedValue({ count: 0 });
-
-      await revogarConvite("invite-1");
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-
-    it("blocks barber from revoking invitation", async () => {
-      blockAll();
-
-      await expect(revogarConvite("invite-1")).rejects.toThrow();
-
-      expect(vi.mocked(db.invitation.updateMany)).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("reenviarConvite()", () => {
-    it("calls requireRole with owner", async () => {
-      vi.mocked(requireRole).mockResolvedValue(ownerCtx());
-      vi.mocked(db.invitation.findFirst).mockResolvedValue(null);
-
-      try {
-        await reenviarConvite("invite-1");
-      } catch {
-        // expected: not found
-      }
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-
-    it("blocks receptionist from resending invitation", async () => {
-      blockAll();
-
-      await expect(reenviarConvite("invite-1")).rejects.toThrow();
-
-      expect(vi.mocked(db.invitation.findFirst)).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("revogarMembro()", () => {
-    it("calls requireRole with owner", async () => {
-      vi.mocked(requireRole).mockResolvedValue(ownerCtx());
-      vi.mocked(db.membership.findFirst).mockResolvedValue(null);
-
-      try {
-        await revogarMembro("mem-1");
-      } catch {
-        // expected: not found
-      }
-
-      expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
-    });
-
-    it("blocks receptionist from revoking membership", async () => {
-      blockAll();
-
-      await expect(revogarMembro("mem-1")).rejects.toThrow();
-
-      expect(vi.mocked(db.membership.findFirst)).not.toHaveBeenCalled();
-    });
-  });
 });
 
 describe("RBAC — Acessos actions (owner-only)", () => {

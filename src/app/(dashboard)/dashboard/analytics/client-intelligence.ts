@@ -2,6 +2,7 @@
 // Leitura pura: somente Client (totalVisits/lastVisitAt) e Comanda (closed, totalInCents).
 // Nenhum write, nenhum auth — barbershopId deve vir de contexto já autenticado (page.tsx).
 
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ function calcularPeriodo(periodo: PeriodoAnalytics): {
 
 // ─── 1. INTELIGÊNCIA DE CLIENTE ───────────────────────────────────────────────
 
-export async function getClientIntelligence(
+async function getClientIntelligenceImpl(
   barbershopId: string,
   thresholds: { risco: number; inativo: number } = { risco: 30, inativo: 60 },
 ): Promise<ClientIntelligenceResult> {
@@ -272,9 +273,22 @@ export async function getClientIntelligence(
   };
 }
 
+const getClientIntelligenceCached = unstable_cache(
+  getClientIntelligenceImpl,
+  ["client-intelligence"],
+  { revalidate: 300 },
+);
+
+export async function getClientIntelligence(
+  barbershopId: string,
+  thresholds: { risco: number; inativo: number } = { risco: 30, inativo: 60 },
+): Promise<ClientIntelligenceResult> {
+  return getClientIntelligenceCached(barbershopId, thresholds);
+}
+
 // ─── 2. INTELIGÊNCIA DE AGENDA ────────────────────────────────────────────────
 
-export async function getAgendaIntelligence(
+async function getAgendaIntelligenceImpl(
   barbershopId: string,
   periodo: PeriodoAnalytics = "mes",
 ): Promise<AgendaIntelligenceResult> {
@@ -389,6 +403,19 @@ export async function getAgendaIntelligence(
     horariosOciosos,
     periodoLabel,
   };
+}
+
+const getAgendaIntelligenceCached = unstable_cache(
+  getAgendaIntelligenceImpl,
+  ["agenda-intelligence"],
+  { revalidate: 300 },
+);
+
+export async function getAgendaIntelligence(
+  barbershopId: string,
+  periodo: PeriodoAnalytics = "mes",
+): Promise<AgendaIntelligenceResult> {
+  return getAgendaIntelligenceCached(barbershopId, periodo);
 }
 
 // ─── 3. SUGESTÕES DE REATIVAÇÃO ───────────────────────────────────────────────
