@@ -4,8 +4,16 @@ import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+const NAV_LINKS = [
+  { label: "Produto", href: "#produto" },
+  { label: "Funcionalidades", href: "#funcionalidades" },
+  { label: "Planos", href: "#planos" },
+  { label: "Parceria", href: "#parceria" },
+] as const;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -13,72 +21,153 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
-      <div
-        className="absolute inset-0 transition-all duration-300"
-        style={{
-          background: scrolled ? "rgba(5,5,5,0.9)" : "rgba(5,5,5,0.5)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          borderBottom: scrolled
-            ? "1px solid rgba(255,255,255,0.08)"
-            : "1px solid transparent",
-        }}
-      />
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <div
+          className="absolute inset-0 transition-all duration-300"
+          style={{
+            background: scrolled || mobileOpen ? "rgba(5,5,5,0.96)" : "rgba(5,5,5,0.5)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            borderBottom: scrolled || mobileOpen
+              ? "1px solid rgba(255,255,255,0.08)"
+              : "1px solid transparent",
+          }}
+        />
 
-      <Container className="relative flex items-center justify-between h-16">
-        <a href="/" className="flex items-center gap-3">
-          <span
+        <Container className="relative flex items-center justify-between h-16">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-3">
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#FF2D55",
+                display: "inline-block",
+                boxShadow: "0 0 12px rgba(255,45,85,0.6)",
+              }}
+            />
+            <span
+              className="font-black text-white"
+              style={{ fontSize: "20px", letterSpacing: "-0.5px" }}
+            >
+              Livo
+            </span>
+          </a>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-8">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Desktop CTA */}
+          <a href="/onboarding" className="hidden md:block">
+            <Button variant="primary" size="sm">
+              Começar agora
+            </Button>
+          </a>
+
+          {/* Mobile: hamburger */}
+          <button
+            type="button"
+            className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg transition-colors"
+            style={{ color: "#A1A1AA" }}
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+          >
+            <span
+              className="block w-5 h-px transition-all duration-300"
+              style={{
+                background: "#FFFFFF",
+                transformOrigin: "center",
+                transform: mobileOpen ? "translateY(4px) rotate(45deg)" : "none",
+              }}
+            />
+            <span
+              className="block w-5 h-px transition-all duration-300"
+              style={{
+                background: "#FFFFFF",
+                opacity: mobileOpen ? 0 : 1,
+              }}
+            />
+            <span
+              className="block w-5 h-px transition-all duration-300"
+              style={{
+                background: "#FFFFFF",
+                transformOrigin: "center",
+                transform: mobileOpen ? "translateY(-8px) rotate(-45deg)" : "none",
+              }}
+            />
+          </button>
+        </Container>
+
+        {/* Mobile menu panel */}
+        {mobileOpen && (
+          <div
+            className="md:hidden border-t"
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#FF2D55",
-              display: "inline-block",
-              boxShadow: "0 0 12px rgba(255,45,85,0.6)",
+              background: "rgba(5,5,5,0.98)",
+              borderColor: "rgba(255,255,255,0.08)",
             }}
-          />
-          <span
-            className="font-black text-white"
-            style={{ fontSize: "20px", letterSpacing: "-0.5px" }}
           >
-            Livo
-          </span>
-        </a>
+            <nav className="flex flex-col px-6 py-4 gap-1">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="text-base font-medium py-3 border-b transition-colors hover:text-white"
+                  style={{
+                    color: "#A1A1AA",
+                    borderColor: "rgba(255,255,255,0.05)",
+                    textDecoration: "none",
+                  }}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <a href="/onboarding" className="mt-4" onClick={() => setMobileOpen(false)}>
+                <Button variant="primary" size="lg" className="w-full">
+                  Começar agora
+                </Button>
+              </a>
+            </nav>
+          </div>
+        )}
+      </header>
 
-        <nav className="hidden md:flex items-center gap-8">
-          <a
-            href="#produto"
-            className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
-          >
-            Produto
-          </a>
-          <a
-            href="#funcionalidades"
-            className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
-          >
-            Funcionalidades
-          </a>
-          <a
-            href="#planos"
-            className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
-          >
-            Planos
-          </a>
-          <a
-            href="#parceria"
-            className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
-          >
-            Parceria
-          </a>
-        </nav>
-
-        <a href="/onboarding">
-          <Button variant="primary" size="sm">
-            Começar agora
-          </Button>
-        </a>
-      </Container>
-    </header>
+      {/* Backdrop mobile */}
+      {mobileOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 md:hidden border-none outline-none p-0 cursor-default"
+          style={{ background: "rgba(0,0,0,0.5)", top: "64px" }}
+          onClick={() => setMobileOpen(false)}
+          aria-label="Fechar menu"
+        />
+      )}
+    </>
   );
 }

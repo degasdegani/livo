@@ -2,35 +2,35 @@ import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
 
 const CHAT = [
-  { role: "client", text: "Quero agendar um corte pra sabado de manha" },
+  { role: "client", text: "Quero agendar um corte pra sábado de manhã" },
   {
     role: "ai",
-    text: "Oi Lucas! Sabado as 09:00 com Carlos esta livre. Confirmo?",
+    text: "Oi Lucas! Sábado às 09:00 com Carlos está livre. Confirmo?",
   },
   { role: "client", text: "Prefiro o Rafael" },
-  { role: "ai", text: "Rafael tem as 09:30. Confirmo?" },
+  { role: "ai", text: "Rafael tem às 09:30. Confirmo?" },
   { role: "client", text: "Sim!" },
   {
     role: "ai",
-    text: "Confirmado! Corte Social com Rafael — Sab 22/03 as 09:30.",
+    text: "Confirmado! Corte Social com Rafael — Sáb 22/03 às 09:30.",
   },
 ] as const;
 
 const AI_FEATURES = [
   {
     icon: "✦",
-    title: "Insights automaticos",
-    desc: "Identifica horarios ociosos, clientes em risco e oportunidades de receita sem voce pedir.",
+    title: "Insights automáticos",
+    desc: "Identifica horários ociosos, clientes em risco e oportunidades de receita sem você pedir.",
   },
   {
     icon: "🔮",
-    title: "Previsao de receita",
-    desc: "Projeta o faturamento dos proximos 7 dias com base em historico e agendamentos confirmados.",
+    title: "Previsão de receita",
+    desc: "Projeta o faturamento dos próximos 7 dias com base em histórico e agendamentos confirmados.",
   },
   {
     icon: "🎯",
     title: "Campanhas inteligentes",
-    desc: "Segmenta clientes e envia mensagens personalizadas no momento certo. Totalmente automatico.",
+    desc: "Segmenta clientes e envia mensagens personalizadas no momento certo. Totalmente automático.",
   },
   {
     icon: "💬",
@@ -55,7 +55,7 @@ export function AISection() {
             style={{ fontSize: "clamp(32px,5vw,56px)", letterSpacing: "-2px" }}
           >
             A IA trabalha enquanto{" "}
-            <span style={{ color: "#7C3AED" }}>voce corta.</span>
+            <span style={{ color: "#7C3AED" }}>você corta.</span>
           </h2>
           <p
             style={{
@@ -66,8 +66,8 @@ export function AISection() {
               lineHeight: 1.7,
             }}
           >
-            Motor Claude API integrado ao nucleo do sistema. Conhece cada
-            cliente, cada padrao, cada oportunidade.
+            Motor Claude API integrado ao núcleo do sistema. Conhece cada
+            cliente, cada padrão, cada oportunidade.
           </p>
         </div>
 
@@ -209,8 +209,8 @@ export function AISection() {
             >
               <span>💡</span>
               <span>
-                <strong style={{ color: "#FFFFFF" }}>Insight:</strong> Lucas nao
-                aparecia ha 19 dias. A IA detectou e enviou sugestao no momento
+                <strong style={{ color: "#FFFFFF" }}>Insight:</strong> Lucas não
+                aparecia há 19 dias. A IA detectou e enviou sugestão no momento
                 certo.
               </span>
             </div>

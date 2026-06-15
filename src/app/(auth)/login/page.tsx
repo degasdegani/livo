@@ -196,13 +196,13 @@ export default function LoginPage() {
       </form>
 
       <p className="text-center text-xs mt-6" style={{ color: "#52525B" }}>
-        Nao tem conta?{" "}
+        Não tem conta?{" "}
         <a
           href="/register"
           className="hover:text-white transition-colors"
           style={{ color: "#A1A1AA" }}
         >
-          Criar conta gratis
+          Criar conta grátis
         </a>
       </p>
     </div>

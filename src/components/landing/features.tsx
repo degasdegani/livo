@@ -17,15 +17,15 @@ const FEATURES = [
     icon: "📅",
     title: "Agenda inteligente",
     description:
-      "Clientes agendam sozinhos 24h por dia. Sem WhatsApp, sem ligação, sem confusão. Visão semanal completa com drag-and-drop.",
+      "Clientes agendam sozinhos 24h por dia. Sem WhatsApp, sem ligação, sem confusão. Visão mensal e operacional em tempo real.",
     color: "#FF2D55",
     tag: "Core",
   },
   {
-    icon: "💬",
-    title: "WhatsApp automático",
+    icon: "✉️",
+    title: "Confirmação por e-mail",
     description:
-      "Confirmação imediata e lembrete 2 horas antes de cada agendamento. Zero no-show. Zero esquecimento. Zero trabalho manual.",
+      "Confirmação imediata no agendamento e lembrete automático antes do horário. Zero no-show. Zero esquecimento. Zero trabalho manual.",
     color: "#00D4A0",
     tag: "Automação",
   },
@@ -49,17 +49,17 @@ const FEATURES = [
     icon: "✦",
     title: "Inteligência Artificial",
     description:
-      "IA que analisa seu negócio, identifica oportunidades, envia campanhas automáticas e projeta sua receita dos próximos 7 dias.",
+      "IA que analisa seu negócio, identifica oportunidades e projeta sua receita dos próximos 7 dias. Insights automáticos sem você pedir.",
     color: "#FFB020",
     tag: "IA",
   },
   {
-    icon: "💳",
-    title: "Planos mensais",
+    icon: "🧾",
+    title: "Comandas e estoque",
     description:
-      "Seu cliente contrata pacotes de corte direto no app. PIX e cartão integrados. Receita recorrente e previsível todo mês.",
+      "PDV integrado para registrar serviços e produtos. Controle de estoque automático. Comissões por barbeiro calculadas na hora.",
     color: "#FF2D55",
-    tag: "Receita",
+    tag: "PDV",
   },
 ] as const;
 
