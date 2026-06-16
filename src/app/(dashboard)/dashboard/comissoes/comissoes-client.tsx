@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import {
   Table,
   TableBody,
@@ -81,6 +82,7 @@ export function ComissoesClient({
   const [editOnProducts, setEditOnProducts] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const { toast } = useToast();
 
   void dataInicio;
   void dataFim;
@@ -103,7 +105,7 @@ export function ComissoesClient({
     setSaving(true);
     setSaveError("");
     try {
-      await updateMembershipComissao({
+      const resultado = await updateMembershipComissao({
         membershipId: editingMembership.id,
         commissionOnServices: editOnServices,
         commissionOnProducts: editOnProducts,
@@ -115,6 +117,15 @@ export function ComissoesClient({
           : null,
       });
       fecharEdit();
+      if (resultado.atualizados > 0) {
+        toast(
+          `Comissão salva! ${resultado.atualizados} atendimento${resultado.atualizados !== 1 ? "s" : ""} anterior${resultado.atualizados !== 1 ? "es" : ""} foram recalculados.`,
+          "success",
+        );
+      } else {
+        toast("Comissão salva com sucesso.", "success");
+      }
+      buscarDados(periodo, filtroProf);
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {

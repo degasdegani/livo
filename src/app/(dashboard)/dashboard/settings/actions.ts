@@ -5,6 +5,7 @@ import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
 import { MemberRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { recalcularComissoesPendentes } from "../comissoes/actions";
 
 // ─── ATUALIZAR COMISSÃO DO MEMBRO ─────────────────────────────────────────────
 
@@ -14,7 +15,7 @@ export async function updateMembershipComissao(data: {
   commissionOnProducts: boolean;
   commissionServicePct: number | null;
   commissionProductPct: number | null;
-}) {
+}): Promise<{ atualizados: number }> {
   const membership = await requireRole("owner");
 
   const target = await db.membership.findFirst({
@@ -38,6 +39,18 @@ export async function updateMembershipComissao(data: {
 
   revalidatePath("/dashboard/settings/acessos");
   revalidatePath("/dashboard/comissoes");
+
+  // Recalcula retroativamente itens pendentes (commissionValue null) de
+  // comandas já fechadas desse profissional, agora que a comissão mudou.
+  let atualizados = 0;
+  if (target.professionalId) {
+    const resultado = await recalcularComissoesPendentes(
+      target.professionalId,
+    );
+    atualizados = resultado.atualizados;
+  }
+
+  return { atualizados };
 }
 
 // ─── SERVIÇOS ─────────────────────────────────────────────────────────────────
