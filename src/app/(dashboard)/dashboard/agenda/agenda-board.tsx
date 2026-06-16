@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -1185,18 +1186,13 @@ function EditAppointmentModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="edit-date" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
-              Data
-            </label>
-            <input
-              id="edit-date"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="livo-input"
-            />
-          </div>
+          <Input
+            label="Data"
+            id="edit-date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
           <div>
             <label htmlFor="edit-slot" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
               Horário
@@ -1215,33 +1211,23 @@ function EditAppointmentModal({
           </div>
         </div>
 
-        <div>
-          <label htmlFor="edit-client-name" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
-            Nome do cliente
-          </label>
-          <input
-            id="edit-client-name"
-            type="text"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            placeholder="Ex: João Silva"
-            className="livo-input"
-          />
-        </div>
+        <Input
+          label="Nome do cliente"
+          id="edit-client-name"
+          type="text"
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          placeholder="Ex: João Silva"
+        />
 
-        <div>
-          <label htmlFor="edit-phone" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
-            Telefone / WhatsApp
-          </label>
-          <input
-            id="edit-phone"
-            type="tel"
-            value={clientPhone}
-            onChange={(e) => setClientPhone(e.target.value)}
-            placeholder="(11) 99999-9999"
-            className="livo-input"
-          />
-        </div>
+        <Input
+          label="Telefone / WhatsApp"
+          id="edit-phone"
+          type="tel"
+          value={clientPhone}
+          onChange={(e) => setClientPhone(e.target.value)}
+          placeholder="(11) 99999-9999"
+        />
 
         <div>
           <label htmlFor="edit-notes" className="mb-1.5 block text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -1521,21 +1507,19 @@ function NewAppointmentModal({
           ) : isManualMode ? (
             /* Modo manual: nome + telefone livres */
             <div className="space-y-2">
-              <input
+              <Input
                 type="text"
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
                 placeholder="Nome do cliente"
-                className="livo-input"
                 // biome-ignore lint/a11y/noAutofocus: campo principal do modo manual
                 autoFocus
               />
-              <input
+              <Input
                 type="tel"
                 value={manualPhone}
                 onChange={(e) => setManualPhone(e.target.value)}
                 placeholder="(11) 99999-9999"
-                className="livo-input"
               />
               <button
                 type="button"

@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { abrirComanda, getClientsForComanda } from "../actions";
@@ -155,12 +156,11 @@ export default function NovaComandaForm({
         </div>
 
         {clientMode === "avulso" && (
-          <input
+          <Input
             type="text"
             placeholder="Nome do cliente (opcional)"
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
-            className="livo-input"
           />
         )}
 
@@ -214,12 +214,11 @@ export default function NovaComandaForm({
               </div>
             ) : (
               <>
-                <input
+                <Input
                   type="text"
                   placeholder="Buscar por nome ou telefone..."
                   value={clientSearch}
                   onChange={(e) => searchClients(e.target.value)}
-                  className="livo-input"
                 />
                 {searchPending && (
                   <div className="absolute right-3 top-3.5">

@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Input } from "@/components/ui/input";
 import { updatePersonalInfo } from "./actions";
 
 type PersonalInfoResult = { success?: boolean; error?: string } | null;
@@ -73,18 +74,12 @@ export function PersonalInfoForm({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
-          <label
-            className="block text-xs font-semibold mb-2"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Nome completo *
-          </label>
-          <input
+          <Input
+            label="Nome completo *"
             name="name"
             type="text"
             defaultValue={name}
             required
-            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }
@@ -95,83 +90,55 @@ export function PersonalInfoForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label
-            className="block text-xs font-semibold mb-2"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            E-mail
-          </label>
-          <input
+          <Input
+            label="E-mail"
             type="email"
             value={email}
             disabled
             readOnly
-            className="livo-input"
           />
           <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
             E-mail não pode ser alterado
           </p>
         </div>
 
-        <div>
-          <label
-            className="block text-xs font-semibold mb-2"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            CPF
-          </label>
-          <input
-            name="cpf"
-            type="text"
-            inputMode="numeric"
-            value={cpfValue}
-            onChange={(e) => setCpfValue(maskCPF(e.target.value))}
-            placeholder="000.000.000-00"
-            className="livo-input"
-            onFocus={(e) =>
-              (e.currentTarget.style.borderColor = "var(--color-primary)")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.style.borderColor = "var(--border)")
-            }
-          />
-        </div>
+        <Input
+          label="CPF"
+          name="cpf"
+          type="text"
+          inputMode="numeric"
+          value={cpfValue}
+          onChange={(e) => setCpfValue(maskCPF(e.target.value))}
+          placeholder="000.000.000-00"
+          onFocus={(e) =>
+            (e.currentTarget.style.borderColor = "var(--color-primary)")
+          }
+          onBlur={(e) =>
+            (e.currentTarget.style.borderColor = "var(--border)")
+          }
+        />
 
-        <div>
-          <label
-            className="block text-xs font-semibold mb-2"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Data de nascimento
-          </label>
-          <input
-            name="birthDate"
-            type="date"
-            defaultValue={birthDateFormatted}
-            className="livo-input"
-            onFocus={(e) =>
-              (e.currentTarget.style.borderColor = "var(--color-primary)")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.style.borderColor = "var(--border)")
-            }
-          />
-        </div>
+        <Input
+          label="Data de nascimento"
+          name="birthDate"
+          type="date"
+          defaultValue={birthDateFormatted}
+          onFocus={(e) =>
+            (e.currentTarget.style.borderColor = "var(--color-primary)")
+          }
+          onBlur={(e) =>
+            (e.currentTarget.style.borderColor = "var(--border)")
+          }
+        />
 
         <div className="sm:col-span-2">
-          <label
-            className="block text-xs font-semibold mb-2"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Celular
-          </label>
-          <input
+          <Input
+            label="Celular"
             name="phone"
             type="tel"
             value={phoneValue}
             onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
             placeholder="(16) 99999-9999"
-            className="livo-input"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")
             }
