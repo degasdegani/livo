@@ -3,8 +3,18 @@
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
+import { getComissoesData as _getComissoesData } from "../comandas/actions";
 
-export { getComissoesData } from "../comandas/actions";
+export async function getComissoesData(
+  periodo:
+    | "mes_atual"
+    | "mes_anterior"
+    | "ultimos_30"
+    | "ultimos_90" = "mes_atual",
+  professionalId?: string,
+) {
+  return _getComissoesData(periodo, professionalId);
+}
 
 // ─── RECALCULAR COMISSÕES PENDENTES ──────────────────────────────────────────
 // Recalcula commissionValue de ComandaItems de comandas já fechadas que ainda
