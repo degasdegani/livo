@@ -6,11 +6,44 @@
 
 "use server";
 
+import { headers } from "next/headers";
 import { createAppointmentCore } from "@/lib/appointment-core";
 import { generateAvailableSlots } from "@/lib/availability";
 import { db } from "@/lib/db";
 import { sendAppointmentConfirmation } from "@/lib/email";
 import { log } from "@/lib/logger";
+
+// ── Rate limit: agendamento público ──────────────────────────
+// In-memory por instância serverless — mesmo padrão de src/auth.ts.
+type BookingRateLimitEntry = { count: number; resetAt: number };
+const bookingRateLimitMap = new Map<string, BookingRateLimitEntry>();
+const BOOKING_RATE_LIMIT_MAX = 10;
+const BOOKING_RATE_LIMIT_WINDOW_MS = 60 * 60_000; // 1 hora
+
+async function getClientIp(): Promise<string> {
+  try {
+    const h = await headers();
+    const forwarded = h.get("x-forwarded-for");
+    if (forwarded) return forwarded.split(",")[0].trim();
+    const real = h.get("x-real-ip");
+    if (real) return real.trim();
+  } catch {
+    // headers() indisponível fora de contexto Next.js (ex: testes)
+  }
+  return "unknown";
+}
+
+function isBookingRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = bookingRateLimitMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    bookingRateLimitMap.set(ip, { count: 1, resetAt: now + BOOKING_RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= BOOKING_RATE_LIMIT_MAX) return true;
+  entry.count += 1;
+  return false;
+}
 
 // ── Buscar slots disponíveis ──────────────────────────────────
 interface GetSlotsParams {
@@ -105,6 +138,14 @@ export async function createAppointment(
   data: CreateAppointmentParams,
 ): Promise<AppointmentResult> {
   try {
+    const ip = await getClientIp();
+    if (ip === "unknown") {
+      log.agenda.warn("agendamento público sem IP identificável", { barbershopId: data.barbershopId });
+    } else if (isBookingRateLimited(ip)) {
+      log.agenda.warn("rate limit de agendamento público atingido", { ip, barbershopId: data.barbershopId });
+      return { error: "Muitas tentativas. Tente novamente em algumas horas." };
+    }
+
     if (!data.clientName?.trim()) return { error: "Informe seu nome." };
     if (!data.clientPhone?.trim()) return { error: "Informe seu telefone." };
     if (!data.date || !data.time) return { error: "Selecione data e horário." };

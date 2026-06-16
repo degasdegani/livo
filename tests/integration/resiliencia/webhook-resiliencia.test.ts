@@ -223,7 +223,7 @@ describe("Safe no-op — missing subscription/payment fields", () => {
   it("passes through unknown event types without touching DB", async () => {
     const res = await POST(
       makeReq({
-        body: { event: "PAYMENT_REFUNDED", payment: { id: PAY_ID, subscription: SUB_ID } },
+        body: { event: "SUBSCRIPTION_UPDATED", payment: { id: PAY_ID, subscription: SUB_ID } },
       }),
     );
 
