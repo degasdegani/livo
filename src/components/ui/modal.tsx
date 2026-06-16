@@ -8,13 +8,35 @@ const SIZES = {
   lg: 640,
 } as const;
 
+const VARIANT_COLORS = {
+  primary: "var(--color-primary)",
+  danger: "var(--status-red)",
+  success: "var(--status-green)",
+} as const;
+
+interface ModalFooterConfig {
+  cancel?: {
+    label?: string;
+    onClick?: () => void;
+  };
+  confirm: {
+    label: string;
+    onClick: () => void;
+    loading?: boolean;
+    loadingLabel?: string;
+    variant?: "primary" | "danger" | "success";
+    disabled?: boolean;
+  };
+}
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   size?: keyof typeof SIZES;
-  children: ReactNode;
+  children?: ReactNode;
+  footer?: ModalFooterConfig;
 }
 
 export function Modal({
@@ -24,6 +46,7 @@ export function Modal({
   description,
   size = "md",
   children,
+  footer,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -84,6 +107,35 @@ export function Modal({
           </button>
         </div>
         {children}
+        {footer && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={footer.cancel?.onClick ?? onClose}
+              className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              {footer.cancel?.label ?? "Cancelar"}
+            </button>
+            <button
+              type="button"
+              onClick={footer.confirm.onClick}
+              disabled={footer.confirm.loading || footer.confirm.disabled}
+              className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor:
+                  VARIANT_COLORS[footer.confirm.variant ?? "primary"],
+              }}
+            >
+              {footer.confirm.loading
+                ? (footer.confirm.loadingLabel ?? footer.confirm.label)
+                : footer.confirm.label}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

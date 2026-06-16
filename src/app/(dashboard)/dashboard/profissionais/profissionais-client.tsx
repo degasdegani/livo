@@ -106,6 +106,14 @@ function ProfessionalModal({
       onClose={onClose}
       title={professional ? "Editar Profissional" : "Novo Profissional"}
       size="sm"
+      footer={{
+        confirm: {
+          label: "Salvar",
+          loadingLabel: "Salvando...",
+          onClick: handleSubmit,
+          loading: pending,
+        },
+      }}
     >
       <div className="space-y-4">
         <Input
@@ -146,29 +154,6 @@ function ProfessionalModal({
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={pending}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          {pending ? "Salvando..." : "Salvar"}
-        </button>
-      </div>
     </Modal>
   );
 }
@@ -190,6 +175,13 @@ function ConfirmDeactivateModal({
       onClose={onClose}
       title="Desativar profissional?"
       size="sm"
+      footer={{
+        confirm: {
+          label: "Desativar mesmo assim",
+          onClick: onConfirmed,
+          variant: "danger",
+        },
+      }}
     >
       <div
         className="rounded-lg px-4 py-3"
@@ -208,28 +200,6 @@ function ConfirmDeactivateModal({
           para novos agendamentos. Os agendamentos existentes não serão
           cancelados automaticamente.
         </p>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={onConfirmed}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
-          style={{ backgroundColor: "var(--status-red)" }}
-        >
-          Desativar mesmo assim
-        </button>
       </div>
     </Modal>
   );
@@ -252,6 +222,13 @@ function ConfirmDeleteModal({
       onClose={onClose}
       title="Excluir profissional?"
       size="sm"
+      footer={{
+        confirm: {
+          label: "Excluir permanentemente",
+          onClick: onConfirmed,
+          variant: "danger",
+        },
+      }}
     >
       <div
         className="rounded-lg px-4 py-3"
@@ -265,28 +242,6 @@ function ConfirmDeleteModal({
           Esta ação é irreversível. Se o profissional possuir histórico de
           atendimentos ou comandas, a exclusão será bloqueada automaticamente.
         </p>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={onConfirmed}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors"
-          style={{ backgroundColor: "var(--status-red)" }}
-        >
-          Excluir permanentemente
-        </button>
       </div>
     </Modal>
   );
@@ -338,6 +293,14 @@ function InviteModal({
       title="Convidar por e-mail"
       description={professional.name}
       size="sm"
+      footer={{
+        confirm: {
+          label: "Enviar convite",
+          loadingLabel: "Enviando...",
+          onClick: handleSubmit,
+          loading: pending,
+        },
+      }}
     >
       <div className="space-y-4">
         <Input
@@ -405,29 +368,6 @@ function InviteModal({
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={pending}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          {pending ? "Enviando..." : "Enviar convite"}
-        </button>
       </div>
     </Modal>
   );

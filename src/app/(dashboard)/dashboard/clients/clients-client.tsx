@@ -290,6 +290,15 @@ export function ClientsClient({
         onClose={closeModal}
         title="Novo cliente"
         description="Cadastro manual na sua base"
+        footer={{
+          cancel: { onClick: closeModal },
+          confirm: {
+            label: "Cadastrar cliente",
+            loadingLabel: "Cadastrando...",
+            onClick: handleCreateClient,
+            loading: modalLoading,
+          },
+        }}
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -410,41 +419,6 @@ export function ClientsClient({
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={closeModal}
-            disabled={modalLoading}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--bg-base)",
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateClient}
-            disabled={modalLoading}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--color-primary)",
-              color: "#ffffff",
-            }}
-            onMouseEnter={(e) => {
-              if (!modalLoading)
-                e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
-            }}
-          >
-            {modalLoading ? "Cadastrando..." : "Cadastrar cliente"}
-          </button>
-        </div>
       </Modal>
 
       {/* ───── MODAL EDITAR CLIENTE ───── */}
@@ -453,6 +427,14 @@ export function ClientsClient({
         onClose={closeEditModal}
         title="Editar cliente"
         description="Atualiza os dados do cadastro"
+        footer={{
+          confirm: {
+            label: "Salvar alterações",
+            loadingLabel: "Salvando...",
+            onClick: handleUpdateClient,
+            loading: editLoading,
+          },
+        }}
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -616,41 +598,6 @@ export function ClientsClient({
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={closeEditModal}
-            disabled={editLoading}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--bg-base)",
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleUpdateClient}
-            disabled={editLoading}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--color-primary)",
-              color: "#ffffff",
-            }}
-            onMouseEnter={(e) => {
-              if (!editLoading)
-                e.currentTarget.style.backgroundColor =
-                  "var(--color-primary-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-primary)";
-            }}
-          >
-            {editLoading ? "Salvando..." : "Salvar alterações"}
-          </button>
-        </div>
       </Modal>
 
       <div className="flex h-full gap-6">

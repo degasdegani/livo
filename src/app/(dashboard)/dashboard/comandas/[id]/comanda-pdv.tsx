@@ -4,6 +4,7 @@
 import type { PaymentMethod } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
   addProductItem,
@@ -837,6 +838,16 @@ export default function ComandaPDV({
         title="Fechar Comanda"
         description="Confirme a forma de pagamento e desconto (se houver)."
         size="md"
+        footer={{
+          cancel: { label: "Voltar" },
+          confirm: {
+            label: `Confirmar · ${formatCents(totalLiquido)}`,
+            loadingLabel: "Fechando...",
+            onClick: handleClose,
+            loading: isPending,
+            variant: "success",
+          },
+        }}
       >
         <div
           className="rounded-lg p-3 text-sm"
@@ -870,20 +881,13 @@ export default function ComandaPDV({
         </div>
 
         <div className="mb-4">
-          <label
-            htmlFor="discount-input"
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Desconto (R$)
-          </label>
-          <input
+          <Input
+            label="Desconto (R$)"
             id="discount-input"
             type="text"
             placeholder="0,00"
             value={discountStr}
             onChange={(e) => setDiscountStr(e.target.value)}
-            className="livo-input"
           />
         </div>
 
@@ -934,33 +938,6 @@ export default function ComandaPDV({
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowCloseModal(false);
-              setError("");
-            }}
-            className="flex-1 rounded-lg py-3 text-sm transition-colors"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Voltar
-          </button>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isPending}
-            className="flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--status-green)" }}
-          >
-            {isPending
-              ? "Fechando..."
-              : `Confirmar · ${formatCents(totalLiquido)}`}
-          </button>
-        </div>
       </Modal>
 
       <Modal
@@ -973,30 +950,16 @@ export default function ComandaPDV({
             : "Tem certeza que deseja cancelar esta comanda? Esta ação não pode ser desfeita."
         }
         size="sm"
-      >
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => setShowCancelModal(false)}
-            className="flex-1 rounded-lg py-3 text-sm"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Voltar
-          </button>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isPending}
-            className="flex-1 rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {isPending ? "Cancelando..." : "Cancelar Comanda"}
-          </button>
-        </div>
-      </Modal>
+        footer={{
+          cancel: { label: "Voltar" },
+          confirm: {
+            label: "Cancelar Comanda",
+            loadingLabel: "Cancelando...",
+            onClick: handleCancel,
+            loading: isPending,
+          },
+        }}
+      />
     </div>
   );
 }
