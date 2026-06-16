@@ -110,6 +110,7 @@ export async function abrirComanda(data: {
   clientName: string;
   notes?: string;
   appointmentId?: string;
+  serviceId?: string;
 }) {
   const membership = await requireMembership();
 
@@ -131,18 +132,61 @@ export async function abrirComanda(data: {
     if (existing) redirect(`/dashboard/comandas/${existing.id}`);
   }
 
-  const comanda = await db.comanda.create({
-    data: {
-      barbershopId: membership.barbershopId,
-      professionalId: data.professionalId,
-      clientId: data.clientId || null,
-      clientName: data.clientName,
-      notes: data.notes || null,
-      appointmentId: data.appointmentId || null,
-      status: ComandaStatus.open,
-      totalInCents: 0,
-    },
-  });
+  const baseData = {
+    barbershopId: membership.barbershopId,
+    professionalId: data.professionalId,
+    clientId: data.clientId || null,
+    clientName: data.clientName,
+    notes: data.notes || null,
+    appointmentId: data.appointmentId || null,
+    status: ComandaStatus.open,
+  };
+
+  let service: { id: string; name: string; priceInCents: number } | null =
+    null;
+  if (data.serviceId) {
+    service = await db.service.findFirst({
+      where: {
+        id: data.serviceId,
+        barbershopId: membership.barbershopId,
+        isActive: true,
+      },
+      select: { id: true, name: true, priceInCents: true },
+    });
+    if (!service) {
+      log.comanda.warn(
+        "serviço do agendamento não encontrado ao abrir comanda — criando comanda vazia",
+        { barbershopId: membership.barbershopId, serviceId: data.serviceId },
+      );
+    }
+  }
+
+  const comanda = service
+    ? await db.$transaction(async (tx) => {
+        const created = await tx.comanda.create({
+          data: { ...baseData, totalInCents: service!.priceInCents },
+        });
+
+        await tx.comandaItem.create({
+          data: {
+            comandaId: created.id,
+            type: "service",
+            serviceId: service!.id,
+            serviceName: service!.name,
+            servicePrice: service!.priceInCents,
+            productName: "",
+            productPrice: 0,
+            quantity: 1,
+            unitPriceInCents: service!.priceInCents,
+            totalInCents: service!.priceInCents,
+          },
+        });
+
+        return created;
+      })
+    : await db.comanda.create({
+        data: { ...baseData, totalInCents: 0 },
+      });
 
   log.comanda.info("comanda aberta", {
     barbershopId: membership.barbershopId,

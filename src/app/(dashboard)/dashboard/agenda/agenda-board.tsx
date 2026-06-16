@@ -270,6 +270,7 @@ export default function AgendaBoard({
           clientName: appointment.clientName,
           notes: appointment.notes ?? undefined,
           appointmentId: appointment.id,
+          serviceId: appointment.serviceId,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
