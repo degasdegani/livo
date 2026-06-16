@@ -170,7 +170,7 @@ export async function createAppointment(
     const result = await createAppointmentCore({
       barbershopId: data.barbershopId,
       professionalId: data.professionalId,
-      serviceId: data.serviceId,
+      serviceIds: [data.serviceId],
       dateISO,
       clientName: data.clientName,
       clientPhone: data.clientPhone,

@@ -33,7 +33,7 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    service: { findFirst: vi.fn() },
+    service: { findMany: vi.fn() },
     professional: { findFirst: vi.fn() },
     client: {
       findFirst: vi.fn(),
@@ -130,7 +130,7 @@ describe("MT — Agenda / Appointment Core", () => {
       const result = await updateAppointmentCore(
         {
           appointmentId: "appt-from-shop-b",
-          serviceId: "svc-a",
+          serviceIds: ["svc-a"],
           dateISO: new Date().toISOString(),
           clientName: "Test",
           clientPhone: "11999999999",
@@ -148,7 +148,7 @@ describe("MT — Agenda / Appointment Core", () => {
       await updateAppointmentCore(
         {
           appointmentId: "appt-from-shop-b",
-          serviceId: "svc-a",
+          serviceIds: ["svc-a"],
           dateISO: new Date().toISOString(),
           clientName: "Test",
           clientPhone: "11999999999",
@@ -168,13 +168,13 @@ describe("MT — Agenda / Appointment Core", () => {
       vi.mocked(db.appointment.findFirst).mockResolvedValue(
         makeAppointment({ barbershopId: SHOP_A, status: "pending" }),
       );
-      // But service belongs to another tenant → findFirst returns null
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      // But service belongs to another tenant → findMany returns empty
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
 
       const result = await updateAppointmentCore(
         {
           appointmentId: "appt-a",
-          serviceId: "svc-from-shop-b",
+          serviceIds: ["svc-from-shop-b"],
           dateISO: new Date().toISOString(),
           clientName: "Test",
           clientPhone: "11999999999",
@@ -186,7 +186,7 @@ describe("MT — Agenda / Appointment Core", () => {
       expect(result.error).toBe("Serviço não encontrado.");
 
       // Service lookup scoped to same barbershopId as appointment
-      expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+      expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ barbershopId: SHOP_A }),
         }),
@@ -237,12 +237,12 @@ describe("MT — Agenda / Appointment Core", () => {
   describe("createAppointmentCore", () => {
     it("rejects serviceId from another tenant", async () => {
       // Service not found because barbershopId doesn't match
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
 
       const result = await createAppointmentCore({
         barbershopId: SHOP_A,
         professionalId: "prof-a",
-        serviceId: "svc-from-shop-b",
+        serviceIds: ["svc-from-shop-b"],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",
@@ -251,11 +251,11 @@ describe("MT — Agenda / Appointment Core", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("Serviço não encontrado.");
 
-      expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+      expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             barbershopId: SHOP_A,
-            id: "svc-from-shop-b",
+            id: { in: ["svc-from-shop-b"] },
           }),
         }),
       );
@@ -263,7 +263,7 @@ describe("MT — Agenda / Appointment Core", () => {
 
     it("creates appointment only when service belongs to correct tenant", async () => {
       const svc = makeService({ barbershopId: SHOP_A, durationMin: 30 });
-      vi.mocked(db.service.findFirst).mockResolvedValue(svc);
+      vi.mocked(db.service.findMany).mockResolvedValue([svc]);
       vi.mocked(db.appointment.findFirst).mockResolvedValue(null); // no conflict
       vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) => {
         const txDb = {
@@ -279,6 +279,9 @@ describe("MT — Agenda / Appointment Core", () => {
             findFirst: vi.fn().mockResolvedValue(null),
             create: vi.fn().mockResolvedValue({ id: "new-appt-id" }),
           },
+          appointmentService: {
+            createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          },
         };
         if (typeof fn === "function") return fn(txDb);
         return Promise.all(fn as Promise<unknown>[]);
@@ -287,7 +290,7 @@ describe("MT — Agenda / Appointment Core", () => {
       const result = await createAppointmentCore({
         barbershopId: SHOP_A,
         professionalId: "prof-a",
-        serviceId: svc.id,
+        serviceIds: [svc.id],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",

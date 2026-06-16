@@ -22,7 +22,7 @@ import { makeService, makeAppointment } from "../../factories";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    service: { findFirst: vi.fn() },
+    service: { findMany: vi.fn() },
     appointment: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     client: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     professional: { findFirst: vi.fn() },
@@ -65,6 +65,10 @@ function makeTxMock() {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    appointmentService: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   };
 }
 
@@ -78,8 +82,8 @@ beforeEach(() => {
 
 describe("checkConflict — WHERE clause structure (via createAppointmentCore)", () => {
   it("uses half-open interval: date < endDate AND endTime > startDate", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -91,7 +95,7 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
     await createAppointmentCore({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: "svc-a",
+      serviceIds: ["svc-a"],
       dateISO: DATE_ISO,
       clientName: "Test",
       clientPhone: "11999999999",
@@ -112,8 +116,8 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
   });
 
   it("filters by professionalId — only checks same professional's schedule", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -125,7 +129,7 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
     await createAppointmentCore({
       barbershopId: SHOP_A,
       professionalId: "prof-specific",
-      serviceId: "svc-a",
+      serviceIds: ["svc-a"],
       dateISO: DATE_ISO,
       clientName: "Test",
       clientPhone: "11999999999",
@@ -141,8 +145,8 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
   });
 
   it("excludes cancelled and no_show statuses (cancelled slot is free)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -154,7 +158,7 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
     await createAppointmentCore({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: "svc-a",
+      serviceIds: ["svc-a"],
       dateISO: DATE_ISO,
       clientName: "Test",
       clientPhone: "11999999999",
@@ -170,8 +174,8 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
   });
 
   it("conflict detected → aborts before transaction (no double booking)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(
       makeAppointment({ id: "blocking-appt" }),
@@ -180,7 +184,7 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
     const result = await createAppointmentCore({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: "svc-a",
+      serviceIds: ["svc-a"],
       dateISO: DATE_ISO,
       clientName: "Test",
       clientPhone: "11999999999",
@@ -192,8 +196,8 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
   });
 
   it("no conflict when findFirst returns null → proceeds to create", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -205,7 +209,7 @@ describe("checkConflict — WHERE clause structure (via createAppointmentCore)",
     const result = await createAppointmentCore({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: "svc-a",
+      serviceIds: ["svc-a"],
       dateISO: DATE_ISO,
       clientName: "Test",
       clientPhone: "11999999999",
@@ -230,8 +234,8 @@ describe("checkConflict — excludeId self-exclusion (via updateAppointmentCore)
       )
       .mockResolvedValueOnce(null); // self excluded → no conflict
 
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const tx = makeTxMock();
@@ -242,7 +246,7 @@ describe("checkConflict — excludeId self-exclusion (via updateAppointmentCore)
     await updateAppointmentCore(
       {
         appointmentId: "appt-self",
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: DATE_ISO,
         clientName: "Test",
         clientPhone: "11999999999",
@@ -271,14 +275,14 @@ describe("checkConflict — excludeId self-exclusion (via updateAppointmentCore)
       )
       .mockResolvedValueOnce(makeAppointment({ id: "other-conflict" }));
 
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const result = await updateAppointmentCore(
       {
         appointmentId: "appt-a",
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: DATE_ISO,
         clientName: "Test",
         clientPhone: "11999999999",

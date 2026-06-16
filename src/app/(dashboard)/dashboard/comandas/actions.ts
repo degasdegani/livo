@@ -110,7 +110,8 @@ export async function abrirComanda(data: {
   clientName: string;
   notes?: string;
   appointmentId?: string;
-  serviceId?: string;
+  // serviceId removido: quando appointmentId é fornecido, serviços são buscados
+  // diretamente da tabela appointment_services (snapshots já gravados na criação).
 }) {
   const membership = await requireMembership();
 
@@ -142,51 +143,45 @@ export async function abrirComanda(data: {
     status: ComandaStatus.open,
   };
 
-  let service: { id: string; name: string; priceInCents: number } | null =
-    null;
-  if (data.serviceId) {
-    service = await db.service.findFirst({
-      where: {
-        id: data.serviceId,
-        barbershopId: membership.barbershopId,
-        isActive: true,
-      },
-      select: { id: true, name: true, priceInCents: true },
-    });
-    if (!service) {
-      log.comanda.warn(
-        "serviço do agendamento não encontrado ao abrir comanda — criando comanda vazia",
-        { barbershopId: membership.barbershopId, serviceId: data.serviceId },
-      );
-    }
-  }
-
-  const comanda = service
-    ? await db.$transaction(async (tx) => {
-        const created = await tx.comanda.create({
-          data: { ...baseData, totalInCents: service!.priceInCents },
-        });
-
-        await tx.comandaItem.create({
-          data: {
-            comandaId: created.id,
-            type: "service",
-            serviceId: service!.id,
-            serviceName: service!.name,
-            servicePrice: service!.priceInCents,
-            productName: "",
-            productPrice: 0,
-            quantity: 1,
-            unitPriceInCents: service!.priceInCents,
-            totalInCents: service!.priceInCents,
-          },
-        });
-
-        return created;
+  // Busca todos os AppointmentService quando há appointmentId — cria um ComandaItem por serviço.
+  const appointmentServices = data.appointmentId
+    ? await db.appointmentService.findMany({
+        where: { appointmentId: data.appointmentId },
       })
-    : await db.comanda.create({
-        data: { ...baseData, totalInCents: 0 },
-      });
+    : [];
+
+  const totalInCents = appointmentServices.reduce(
+    (sum, s) => sum + s.servicePriceInCents,
+    0,
+  );
+
+  const comanda =
+    appointmentServices.length > 0
+      ? await db.$transaction(async (tx) => {
+          const created = await tx.comanda.create({
+            data: { ...baseData, totalInCents },
+          });
+
+          await tx.comandaItem.createMany({
+            data: appointmentServices.map((s) => ({
+              comandaId: created.id,
+              type: "service" as const,
+              serviceId: s.serviceId,
+              serviceName: s.serviceName,
+              servicePrice: s.servicePriceInCents,
+              productName: "",
+              productPrice: 0,
+              quantity: 1,
+              unitPriceInCents: s.servicePriceInCents,
+              totalInCents: s.servicePriceInCents,
+            })),
+          });
+
+          return created;
+        })
+      : await db.comanda.create({
+          data: { ...baseData, totalInCents: 0 },
+        });
 
   log.comanda.info("comanda aberta", {
     barbershopId: membership.barbershopId,

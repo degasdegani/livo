@@ -12,7 +12,7 @@ import { log } from "@/lib/logger";
 export interface CreateAppointmentInput {
   barbershopId: string;
   professionalId: string;
-  serviceId: string;
+  serviceIds: string[];
   /** UTC ISO string gerado pelo caller — ex: new Date(`${date}T${time}:00-03:00`).toISOString() */
   dateISO: string;
   clientName: string;
@@ -24,7 +24,7 @@ export interface CreateAppointmentInput {
 
 export interface UpdateAppointmentInput {
   appointmentId: string;
-  serviceId: string;
+  serviceIds: string[];
   /** UTC ISO string */
   dateISO: string;
   clientName: string;
@@ -42,6 +42,14 @@ export interface AppointmentCoreResult {
   success: boolean;
   appointmentId?: string;
   error?: string;
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+export function calcTotalDurationMin(
+  services: { durationMin: number }[],
+): number {
+  return services.reduce((total, s) => total + s.durationMin, 0);
 }
 
 // ─── Validação de conflito ────────────────────────────────────────────────────
@@ -72,18 +80,22 @@ async function checkConflict(
 export async function createAppointmentCore(
   input: CreateAppointmentInput,
 ): Promise<AppointmentCoreResult> {
-  const service = await db.service.findFirst({
+  const services = await db.service.findMany({
     where: {
-      id: input.serviceId,
+      id: { in: input.serviceIds },
       barbershopId: input.barbershopId,
       isActive: true,
     },
-    select: { durationMin: true },
+    select: { id: true, name: true, durationMin: true, priceInCents: true },
   });
-  if (!service) return { success: false, error: "Serviço não encontrado." };
+
+  if (services.length !== input.serviceIds.length) {
+    return { success: false, error: "Serviço não encontrado." };
+  }
 
   const startDate = new Date(input.dateISO);
-  const endDate = new Date(startDate.getTime() + service.durationMin * 60_000);
+  const totalDuration = calcTotalDurationMin(services);
+  const endDate = new Date(startDate.getTime() + totalDuration * 60_000);
 
   if (await checkConflict(input.professionalId, startDate, endDate)) {
     log.agenda.warn("conflito de horário detectado na criação", {
@@ -156,7 +168,9 @@ export async function createAppointmentCore(
         }
       }
 
-      return tx.appointment.create({
+      // serviceId (legado): primeiro serviço para compatibilidade com leitores que ainda
+      // não migraram para a tabela appointment_services.
+      const created = await tx.appointment.create({
         data: {
           date: startDate,
           endTime: endDate,
@@ -167,10 +181,22 @@ export async function createAppointmentCore(
           notes: input.notes?.trim() || null,
           barbershopId: input.barbershopId,
           professionalId: input.professionalId,
-          serviceId: input.serviceId,
+          serviceId: input.serviceIds[0],
           clientId,
         },
       });
+
+      await tx.appointmentService.createMany({
+        data: services.map((s) => ({
+          appointmentId: created.id,
+          serviceId: s.id,
+          serviceName: s.name,
+          servicePriceInCents: s.priceInCents,
+          serviceDurationMin: s.durationMin,
+        })),
+      });
+
+      return created;
     });
   } catch (err) {
     if (err && typeof err === "object" && "isConflict" in err) {
@@ -228,18 +254,22 @@ export async function updateAppointmentCore(
     };
   }
 
-  const service = await db.service.findFirst({
+  const services = await db.service.findMany({
     where: {
-      id: input.serviceId,
+      id: { in: input.serviceIds },
       barbershopId: auth.barbershopId,
       isActive: true,
     },
-    select: { durationMin: true },
+    select: { id: true, name: true, durationMin: true, priceInCents: true },
   });
-  if (!service) return { success: false, error: "Serviço não encontrado." };
+
+  if (services.length !== input.serviceIds.length) {
+    return { success: false, error: "Serviço não encontrado." };
+  }
 
   const startDate = new Date(input.dateISO);
-  const endDate = new Date(startDate.getTime() + service.durationMin * 60_000);
+  const totalDuration = calcTotalDurationMin(services);
+  const endDate = new Date(startDate.getTime() + totalDuration * 60_000);
 
   if (
     await checkConflict(
@@ -293,10 +323,26 @@ export async function updateAppointmentCore(
       }
     }
 
+    // Recriar AppointmentService: delete os registros anteriores e cria os novos
+    // dentro da mesma transação para manter consistência.
+    await tx.appointmentService.deleteMany({
+      where: { appointmentId: input.appointmentId },
+    });
+
+    await tx.appointmentService.createMany({
+      data: services.map((s) => ({
+        appointmentId: input.appointmentId,
+        serviceId: s.id,
+        serviceName: s.name,
+        servicePriceInCents: s.priceInCents,
+        serviceDurationMin: s.durationMin,
+      })),
+    });
+
     await tx.appointment.update({
       where: { id: input.appointmentId },
       data: {
-        serviceId: input.serviceId,
+        serviceId: input.serviceIds[0], // legado
         date: startDate,
         endTime: endDate,
         clientName: input.clientName.trim(),
@@ -439,9 +485,15 @@ export async function moveAppointmentCore(
     }
   }
 
-  await db.appointment.update({
-    where: { id: input.appointmentId },
-    data: { professionalId: input.newProfessionalId },
+  // Advisory lock: serializa movimentos concorrentes para o mesmo profissional destino.
+  // Resolve lacuna identificada no AGENDA_INVENTORY.md (VS-2): moveAppointmentCore
+  // anteriormente não tinha lock, ao contrário de createAppointmentCore.
+  await db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.newProfessionalId}))`;
+    await tx.appointment.update({
+      where: { id: input.appointmentId },
+      data: { professionalId: input.newProfessionalId },
+    });
   });
 
   return { success: true };

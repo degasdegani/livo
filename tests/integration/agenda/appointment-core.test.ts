@@ -26,14 +26,13 @@ import {
   makeService,
   makeAppointment,
   makeProfessional,
-  makeClient,
 } from "../../factories";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
 vi.mock("@/lib/db", () => ({
   db: {
-    service: { findFirst: vi.fn() },
+    service: { findMany: vi.fn() },
     appointment: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     client: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     professional: { findFirst: vi.fn() },
@@ -62,7 +61,7 @@ const barberAuth = { role: "barber", professionalId: PROF_A, barbershopId: SHOP_
 const baseCreateInput = {
   barbershopId: SHOP_A,
   professionalId: PROF_A,
-  serviceId: SVC_A,
+  serviceIds: [SVC_A],
   dateISO: DATE_ISO,
   clientName: "João Silva",
   clientPhone: "11999999999",
@@ -87,6 +86,10 @@ function makeTxMock() {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    appointmentService: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   };
 }
 
@@ -102,7 +105,7 @@ beforeEach(() => {
 
 describe("createAppointmentCore()", () => {
   it("returns error when service not found in barbershop", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
 
     const result = await createAppointmentCore(baseCreateInput);
 
@@ -112,11 +115,11 @@ describe("createAppointmentCore()", () => {
   });
 
   it("validates service by barbershopId to prevent cross-tenant access", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
 
     await createAppointmentCore({ ...baseCreateInput, barbershopId: "shop-other" });
 
-    expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ barbershopId: "shop-other" }),
       }),
@@ -124,8 +127,8 @@ describe("createAppointmentCore()", () => {
   });
 
   it("returns conflict error when slot is already occupied", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(
       makeAppointment({ id: "conflict-appt-id" }),
@@ -139,8 +142,8 @@ describe("createAppointmentCore()", () => {
   });
 
   it("creates appointment and returns appointmentId on success", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -155,9 +158,37 @@ describe("createAppointmentCore()", () => {
     expect(result.appointmentId).toBe("new-appt-id");
   });
 
+  it("sums durations of all services for endTime calculation", async () => {
+    vi.mocked(db.service.findMany).mockResolvedValue([
+      makeService({ id: "svc-1", durationMin: 30 }),
+      makeService({ id: "svc-2", durationMin: 45 }),
+    ]);
+    vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
+
+    const tx = makeTxMock();
+    vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) => {
+      if (typeof fn === "function") return fn(tx);
+    });
+
+    const startDate = new Date(DATE_ISO);
+    await createAppointmentCore({
+      ...baseCreateInput,
+      serviceIds: ["svc-1", "svc-2"],
+    });
+
+    const expectedEnd = new Date(startDate.getTime() + 75 * 60_000); // 30+45=75 min
+    expect(tx.appointment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          endTime: expectedEnd,
+        }),
+      }),
+    );
+  });
+
   it("auto-creates new client when phone not in database", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -180,8 +211,8 @@ describe("createAppointmentCore()", () => {
   });
 
   it("links existing client when phone already exists in database", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -202,8 +233,8 @@ describe("createAppointmentCore()", () => {
   });
 
   it("normalizes phone by stripping non-digit characters", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
     vi.mocked(db.appointment.findFirst).mockResolvedValue(null);
 
@@ -225,13 +256,13 @@ describe("createAppointmentCore()", () => {
   });
 
   it("validates service is active — inactive service returns error", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null); // isActive: false filtered by Prisma query
+    vi.mocked(db.service.findMany).mockResolvedValue([]); // isActive: false filtered by Prisma query
 
     const result = await createAppointmentCore(baseCreateInput);
 
     expect(result.success).toBe(false);
     // service query must include isActive: true filter
-    expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ isActive: true }),
       }),
@@ -246,7 +277,7 @@ describe("createAppointmentCore()", () => {
 describe("updateAppointmentCore()", () => {
   const baseUpdateInput = {
     appointmentId: "appt-a",
-    serviceId: SVC_A,
+    serviceIds: [SVC_A],
     dateISO: DATE_ISO,
     clientName: "João Silva",
     clientPhone: "11999999999",
@@ -278,7 +309,7 @@ describe("updateAppointmentCore()", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("permissão");
-    expect(vi.mocked(db.service.findFirst)).not.toHaveBeenCalled();
+    expect(vi.mocked(db.service.findMany)).not.toHaveBeenCalled();
   });
 
   it("allows owner to edit any professional's appointment", async () => {
@@ -292,8 +323,8 @@ describe("updateAppointmentCore()", () => {
         }),
       )
       .mockResolvedValueOnce(null); // checkConflict: no conflict
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const tx = makeTxMock();
@@ -319,7 +350,7 @@ describe("updateAppointmentCore()", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("pendentes ou confirmados");
-    expect(vi.mocked(db.service.findFirst)).not.toHaveBeenCalled();
+    expect(vi.mocked(db.service.findMany)).not.toHaveBeenCalled();
   });
 
   it("rejects update when appointment status is no_show", async () => {
@@ -349,8 +380,8 @@ describe("updateAppointmentCore()", () => {
         }),
       )
       .mockResolvedValueOnce(null); // no conflict after self-exclusion
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const tx = makeTxMock();
@@ -380,8 +411,8 @@ describe("updateAppointmentCore()", () => {
         }),
       )
       .mockResolvedValueOnce(null); // no conflict
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const tx = makeTxMock();
@@ -413,8 +444,8 @@ describe("updateAppointmentCore()", () => {
         }),
       )
       .mockResolvedValueOnce(null);
-    vi.mocked(db.service.findFirst).mockResolvedValue(
-      makeService({ durationMin: 30 }),
+    vi.mocked(db.service.findMany).mockResolvedValue(
+      [makeService({ durationMin: 30 })],
     );
 
     const tx = makeTxMock();
@@ -497,7 +528,7 @@ describe("moveAppointmentCore()", () => {
 
     expect(result.success).toBe(true);
     expect(vi.mocked(db.professional.findFirst)).not.toHaveBeenCalled();
-    expect(vi.mocked(db.appointment.update)).not.toHaveBeenCalled();
+    expect(vi.mocked(db.$transaction)).not.toHaveBeenCalled();
   });
 
   it("validates new professional by barbershopId (cross-tenant guard)", async () => {
@@ -537,7 +568,7 @@ describe("moveAppointmentCore()", () => {
     expect(result.error).toContain("conflito");
   });
 
-  it("updates professionalId on successful move", async () => {
+  it("updates professionalId on successful move via transaction", async () => {
     const appt = makeAppointment({
       professionalId: PROF_A,
       status: "pending",
@@ -550,17 +581,55 @@ describe("moveAppointmentCore()", () => {
     vi.mocked(db.professional.findFirst).mockResolvedValue(
       makeProfessional({ id: "prof-b" }),
     );
-    vi.mocked(db.appointment.update).mockResolvedValue({} as never);
+
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
+      appointment: {
+        update: vi.fn().mockResolvedValue({}),
+      },
+    };
+    vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) => {
+      if (typeof fn === "function") return fn(tx);
+    });
 
     const result = await moveAppointmentCore(baseMoveInput, ownerAuth);
 
     expect(result.success).toBe(true);
-    expect(vi.mocked(db.appointment.update)).toHaveBeenCalledWith(
+    expect(tx.appointment.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "appt-a" },
         data: { professionalId: "prof-b" },
       }),
     );
+  });
+
+  it("acquires advisory lock on newProfessionalId before updating", async () => {
+    const appt = makeAppointment({
+      professionalId: PROF_A,
+      status: "pending",
+      date: new Date(DATE_ISO),
+      endTime: new Date(new Date(DATE_ISO).getTime() + 30 * 60_000),
+    });
+    vi.mocked(db.appointment.findFirst)
+      .mockResolvedValueOnce(appt)
+      .mockResolvedValueOnce(null); // no conflict
+    vi.mocked(db.professional.findFirst).mockResolvedValue(
+      makeProfessional({ id: "prof-b" }),
+    );
+
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
+      appointment: {
+        update: vi.fn().mockResolvedValue({}),
+      },
+    };
+    vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) => {
+      if (typeof fn === "function") return fn(tx);
+    });
+
+    await moveAppointmentCore(baseMoveInput, ownerAuth);
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
   });
 });
 

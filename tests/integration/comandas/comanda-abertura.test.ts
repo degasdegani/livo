@@ -29,6 +29,8 @@ vi.mock("@/lib/db", () => ({
   db: {
     comanda: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     membership: { findFirst: vi.fn() },
+    appointmentService: { findMany: vi.fn() },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -85,6 +87,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.comanda.create).mockResolvedValue({ id: "comanda-nova" } as never);
   vi.mocked(db.comanda.findFirst).mockResolvedValue(null);
+  vi.mocked(db.appointmentService.findMany).mockResolvedValue([]);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────────

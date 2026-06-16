@@ -270,7 +270,6 @@ export default function AgendaBoard({
           clientName: appointment.clientName,
           notes: appointment.notes ?? undefined,
           appointmentId: appointment.id,
-          serviceId: appointment.serviceId,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
@@ -290,7 +289,13 @@ export default function AgendaBoard({
     if (modal.type !== "edit") return;
     const id = modal.appointment.id;
     startTransition(async () => {
-      const res = await updateAppointment(id, formData);
+      const res = await updateAppointment(id, {
+        serviceIds: [formData.serviceId],
+        dateISO: formData.dateISO,
+        clientName: formData.clientName,
+        clientPhone: formData.clientPhone,
+        notes: formData.notes,
+      });
       if (res.success) {
         showToast("Agendamento atualizado!", "success");
         setModal({ type: "none" });
@@ -310,7 +315,14 @@ export default function AgendaBoard({
     dateISO: string;
   }) {
     startTransition(async () => {
-      const res = await createQuickAppointment(formData);
+      const res = await createQuickAppointment({
+        serviceIds: [formData.serviceId],
+        professionalId: formData.professionalId,
+        dateISO: formData.dateISO,
+        clientName: formData.clientName,
+        clientPhone: formData.clientPhone,
+        notes: formData.notes,
+      });
       if (res.success) {
         showToast("Agendamento criado!", "success");
         setModal({ type: "none" });

@@ -81,6 +81,7 @@ function makeAppointment(i: number) {
     serviceId: "svc-1",
     service: { name: "Corte", durationMin: 30, priceInCents: 3500 },
     comanda: null,
+    services: [],
   };
 }
 

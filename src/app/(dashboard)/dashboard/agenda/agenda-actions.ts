@@ -23,6 +23,14 @@ export type AgendaProfessional = {
   avatarUrl: string | null;
 };
 
+export type AgendaAppointmentService = {
+  id: string;
+  serviceId: string | null;
+  serviceName: string;
+  servicePriceInCents: number;
+  serviceDurationMin: number;
+};
+
 export type AgendaAppointment = {
   id: string;
   date: string;
@@ -34,10 +42,13 @@ export type AgendaAppointment = {
   clientPhone: string | null;
   notes: string | null;
   professionalId: string;
+  // Campos legado (primeiro serviço) — mantidos para compatibilidade com UI ainda não migrada
   serviceId: string;
   serviceName: string;
   serviceDurationMin: number;
   servicePriceInCents: number;
+  // Todos os serviços do agendamento via AppointmentService
+  services: AgendaAppointmentService[];
 };
 
 export type AgendaDayData = {
@@ -94,6 +105,15 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       comanda: {
         select: { id: true },
       },
+      services: {
+        select: {
+          id: true,
+          serviceId: true,
+          serviceName: true,
+          servicePriceInCents: true,
+          serviceDurationMin: true,
+        },
+      },
     },
     orderBy: { date: "asc" },
   });
@@ -119,6 +139,13 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       serviceName: a.service.name,
       serviceDurationMin: a.service.durationMin,
       servicePriceInCents: a.service.priceInCents,
+      services: a.services.map((s) => ({
+        id: s.id,
+        serviceId: s.serviceId,
+        serviceName: s.serviceName,
+        servicePriceInCents: s.servicePriceInCents,
+        serviceDurationMin: s.serviceDurationMin,
+      })),
     })),
     userRole: membership.role,
     userProfessionalId: membership.professionalId,
@@ -172,7 +199,7 @@ export async function moveAppointment(
 export async function updateAppointment(
   appointmentId: string,
   data: {
-    serviceId: string;
+    serviceIds: string[];
     dateISO: string;
     clientName: string;
     clientPhone: string;
@@ -184,7 +211,7 @@ export async function updateAppointment(
     const result = await updateAppointmentCore(
       {
         appointmentId,
-        serviceId: data.serviceId,
+        serviceIds: data.serviceIds,
         dateISO: data.dateISO,
         clientName: data.clientName,
         clientPhone: data.clientPhone,
@@ -205,7 +232,7 @@ export async function updateAppointment(
 
 export async function createQuickAppointment(data: {
   professionalId: string;
-  serviceId: string;
+  serviceIds: string[];
   dateISO: string;
   clientName: string;
   clientPhone: string;
@@ -224,7 +251,7 @@ export async function createQuickAppointment(data: {
     const result = await createAppointmentCore({
       barbershopId: membership.barbershopId,
       professionalId: data.professionalId,
-      serviceId: data.serviceId,
+      serviceIds: data.serviceIds,
       dateISO: data.dateISO,
       clientName: data.clientName,
       clientPhone: data.clientPhone,

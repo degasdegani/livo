@@ -371,7 +371,7 @@ describe("createAppointment()", () => {
       expect.objectContaining({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_A,
+        serviceIds: [SVC_A],
       }),
     );
   });
