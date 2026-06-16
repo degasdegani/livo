@@ -171,6 +171,25 @@ export default function LoginPage() {
               e.target.style.borderColor = "rgba(255,255,255,0.08)";
             }}
           />
+          <a
+            href="/forgot-password"
+            style={{
+              fontSize: 13,
+              color: "#52525B",
+              textDecoration: "none",
+              display: "block",
+              textAlign: "right",
+              marginTop: 6,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#A1A1AA";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "#52525B";
+            }}
+          >
+            Esqueceu a senha?
+          </a>
         </div>
 
         {error && (
