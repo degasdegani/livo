@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   Check,
   Mail,
   Pencil,
@@ -547,6 +548,9 @@ export function ProfissionaisClient({ initialData }: Props) {
             const isToggling = togglingId === prof.id;
             const isDeleting = deletingId === prof.id;
             const isLinked = prof.membership !== null;
+            const semComissao =
+              !prof.membership?.commissionOnServices &&
+              !prof.membership?.commissionOnProducts;
 
             return (
               <div
@@ -588,6 +592,25 @@ export function ProfissionaisClient({ initialData }: Props) {
                     >
                       {prof.isActive ? "Ativo" : "Inativo"}
                     </span>
+                    {semComissao && (
+                      <span
+                        title="Configure o percentual de comissão para que os atendimentos deste profissional gerem comissão"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          backgroundColor: "var(--status-yellow)",
+                          color: "#000",
+                        }}
+                      >
+                        <AlertTriangle size={11} />
+                        Sem comissão configurada
+                      </span>
+                    )}
                   </div>
 
                   {prof.bio && (

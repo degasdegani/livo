@@ -331,10 +331,37 @@ export function ComissoesClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {resumoFiltrado.map((r) => (
+              {resumoFiltrado.map((r) => {
+                const m = memberships.find(
+                  (mb) => mb.professional?.id === r.professionalId,
+                );
+                const semComissao =
+                  !m?.commissionOnServices && !m?.commissionOnProducts;
+                return (
                 <TableRow key={r.professionalId}>
                   <TableCell style={{ padding: "16px 24px", fontWeight: 500 }}>
-                    {r.professionalName}
+                    <div className="flex items-center gap-2">
+                      <span>{r.professionalName}</span>
+                      {semComissao && (
+                        <span
+                          title="Configure o percentual de comissão para que os atendimentos deste profissional gerem comissão"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            backgroundColor: "var(--status-yellow)",
+                            color: "#000",
+                          }}
+                        >
+                          <AlertTriangle size={11} />
+                          Sem comissão configurada
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell align="right" muted style={{ padding: "16px" }}>
                     {r.totalComandas}
@@ -373,7 +400,8 @@ export function ComissoesClient({
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
             {resumoFiltrado.length > 1 && (
               <TableFooter>
