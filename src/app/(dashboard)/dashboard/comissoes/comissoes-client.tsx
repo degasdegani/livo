@@ -3,8 +3,19 @@
 
 import { MemberRole } from "@prisma/client";
 import { useState, useTransition } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { LoadingState } from "@/components/ui/loading-state";
 import { Modal } from "@/components/ui/modal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getComissoesData, type ResumoProf } from "../comandas/actions";
 import { updateMembershipComissao } from "../settings/actions";
 
@@ -280,22 +291,12 @@ export function ComissoesClient({
 
       {/* Tabela */}
       {isPending ? (
-        <div
-          className="flex items-center justify-center py-12"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Carregando...
-        </div>
+        <LoadingState />
       ) : resumoFiltrado.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-16"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <p className="text-lg">Nenhuma comissão no período</p>
-          <p className="text-sm mt-1">
-            Feche comandas com profissionais que têm comissão ativa.
-          </p>
-        </div>
+        <EmptyState
+          title="Nenhuma comissão no período"
+          description="Feche comandas com profissionais que têm comissão ativa."
+        />
       ) : (
         <div
           className="rounded-xl overflow-hidden"
@@ -304,9 +305,9 @@ export function ComissoesClient({
             border: "1px solid var(--border)",
           }}
         >
-          <table className="w-full">
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {[
                   "Profissional",
                   "Comandas",
@@ -315,49 +316,32 @@ export function ComissoesClient({
                   "Com. Produtos",
                   "Total Comissão",
                 ].map((h, i) => (
-                  <th
+                  <TableHead
                     key={h}
-                    className={`${i === 0 ? "text-left px-6" : "text-right px-4"} py-3 text-xs font-medium uppercase tracking-wider`}
-                    style={{ color: "var(--text-secondary)" }}
+                    style={
+                      i === 0
+                        ? { padding: "10px 24px" }
+                        : { textAlign: "right" }
+                    }
                   >
                     {h}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {resumoFiltrado.map((r) => (
-                <tr
-                  key={r.professionalId}
-                  className="transition-colors"
-                  style={{ borderTop: "1px solid var(--border)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      "var(--bg-card-elevated)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <td
-                    className="px-6 py-4 text-sm font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                <TableRow key={r.professionalId}>
+                  <TableCell style={{ padding: "16px 24px", fontWeight: 500 }}>
                     {r.professionalName}
-                  </td>
-                  <td
-                    className="px-4 py-4 text-sm text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  </TableCell>
+                  <TableCell align="right" muted style={{ padding: "16px" }}>
                     {r.totalComandas}
-                  </td>
-                  <td
-                    className="px-4 py-4 text-sm text-right"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  </TableCell>
+                  <TableCell align="right" style={{ padding: "16px" }}>
                     {fmt(r.totalFaturamento)}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-right">
+                  </TableCell>
+                  <TableCell align="right" style={{ padding: "16px" }}>
                     {r.totalComissaoServicos > 0 ? (
                       <span style={{ color: "var(--status-green)" }}>
                         {fmt(r.totalComissaoServicos)}
@@ -365,8 +349,8 @@ export function ComissoesClient({
                     ) : (
                       <span style={{ color: "var(--text-tertiary)" }}>—</span>
                     )}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-right">
+                  </TableCell>
+                  <TableCell align="right" style={{ padding: "16px" }}>
                     {r.totalComissaoProdutos > 0 ? (
                       <span style={{ color: "var(--status-green)" }}>
                         {fmt(r.totalComissaoProdutos)}
@@ -374,8 +358,11 @@ export function ComissoesClient({
                     ) : (
                       <span style={{ color: "var(--text-tertiary)" }}>—</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-right">
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    style={{ padding: "16px 24px", fontWeight: 700 }}
+                  >
                     {r.totalComissao > 0 ? (
                       <span style={{ color: "var(--color-gold)" }}>
                         {fmt(r.totalComissao)}
@@ -383,39 +370,33 @@ export function ComissoesClient({
                     ) : (
                       <span style={{ color: "var(--text-tertiary)" }}>—</span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
+            </TableBody>
             {resumoFiltrado.length > 1 && (
-              <tfoot>
-                <tr
+              <TableFooter>
+                <TableRow
+                  onMouseEnter={undefined}
+                  onMouseLeave={undefined}
                   style={{
                     borderTop: "1px solid var(--border)",
+                    borderBottom: "none",
                     backgroundColor: "var(--bg-card-elevated)",
                   }}
                 >
-                  <td
-                    className="px-6 py-3 text-sm font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <TableCell style={{ padding: "12px 24px", fontWeight: 700 }}>
                     Total
-                  </td>
-                  <td
-                    className="px-4 py-3 text-sm text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  </TableCell>
+                  <TableCell align="right" muted>
                     {resumoFiltrado.reduce((s, r) => s + r.totalComandas, 0)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-sm font-bold text-right"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  </TableCell>
+                  <TableCell align="right" style={{ fontWeight: 700 }}>
                     {fmt(totalFaturamento)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-sm font-bold text-right"
-                    style={{ color: "var(--status-green)" }}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    style={{ color: "var(--status-green)", fontWeight: 700 }}
                   >
                     {fmt(
                       resumoFiltrado.reduce(
@@ -423,10 +404,10 @@ export function ComissoesClient({
                         0,
                       ),
                     )}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-sm font-bold text-right"
-                    style={{ color: "var(--status-green)" }}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    style={{ color: "var(--status-green)", fontWeight: 700 }}
                   >
                     {fmt(
                       resumoFiltrado.reduce(
@@ -434,17 +415,21 @@ export function ComissoesClient({
                         0,
                       ),
                     )}
-                  </td>
-                  <td
-                    className="px-6 py-3 text-sm font-bold text-right"
-                    style={{ color: "var(--color-gold)" }}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    style={{
+                      padding: "12px 24px",
+                      color: "var(--color-gold)",
+                      fontWeight: 700,
+                    }}
                   >
                     {fmt(totalGeral)}
-                  </td>
-                </tr>
-              </tfoot>
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
             )}
-          </table>
+          </Table>
         </div>
       )}
 

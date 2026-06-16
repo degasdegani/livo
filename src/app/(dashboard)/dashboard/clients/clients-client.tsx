@@ -7,6 +7,14 @@ import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createClient,
@@ -868,9 +876,9 @@ export function ClientsClient({
                 </div>
               )
             ) : (
-              <table className="w-full">
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
                     {[
                       "Cliente",
                       "Contato",
@@ -879,29 +887,21 @@ export function ClientsClient({
                       "Última visita",
                       "",
                     ].map((h) => (
-                      <th
-                        key={h}
-                        className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        {h}
-                      </th>
+                      <TableHead key={h}>{h}</TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {clients.map((client) => {
                     const diasSumido = daysSince(client.lastVisitAt);
                     const isSelected = selectedClient?.id === client.id;
                     return (
-                      <tr
+                      <TableRow
                         key={client.id}
-                        className="transition-colors cursor-pointer"
                         style={{
-                          borderBottom: "1px solid var(--border)",
                           backgroundColor: isSelected
                             ? "var(--bg-card-elevated)"
-                            : "transparent",
+                            : undefined,
                         }}
                         onClick={() =>
                           setSelectedClient(isSelected ? null : client)
@@ -917,7 +917,7 @@ export function ClientsClient({
                               "transparent";
                         }}
                       >
-                        <td className="px-4 py-3">
+                        <TableCell>
                           <div className="flex items-center gap-3">
                             <div
                               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
@@ -958,8 +958,8 @@ export function ClientsClient({
                               )}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           <p
                             className="text-sm"
                             style={{ color: "var(--text-primary)" }}
@@ -974,8 +974,8 @@ export function ClientsClient({
                               {client.email}
                             </p>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           {client.origem ? (
                             <span
                               className={`text-xs font-medium px-2 py-1 rounded-full ${ORIGEM_COLORS[client.origem] ?? "bg-gray-500/20 text-gray-300"}`}
@@ -992,8 +992,8 @@ export function ClientsClient({
                               —
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           <span
                             className="text-sm font-medium"
                             style={{ color: "var(--text-primary)" }}
@@ -1006,8 +1006,8 @@ export function ClientsClient({
                           >
                             visitas
                           </span>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           {client.lastVisitAt ? (
                             <div>
                               <p
@@ -1030,8 +1030,8 @@ export function ClientsClient({
                               Nunca
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
+                        </TableCell>
+                        <TableCell align="right">
                           {client.bloqueado && (
                             <span
                               className="text-xs px-2 py-1 rounded-full"
@@ -1043,12 +1043,12 @@ export function ClientsClient({
                               Bloqueado
                             </span>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             )}
           </div>
 

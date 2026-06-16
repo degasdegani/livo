@@ -2,6 +2,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getRelatorioData, PeriodoFiltro } from "./actions";
 
 type RelatorioData = Awaited<ReturnType<typeof getRelatorioData>>;
@@ -455,43 +463,35 @@ function TabelaSimples({
           {vazio || "Nenhum registro"}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                {colunas.map((col, i) => (
-                  <th
-                    key={i}
-                    className="text-left text-xs font-medium pb-3 pr-4"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((linha, i) => (
-                <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
-                  {linha.map((cel, j) => (
-                    <td
-                      key={j}
-                      className="py-2.5 pr-4"
-                      style={{
-                        color:
-                          j === 0
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                      }}
-                    >
-                      {cel}
-                    </td>
-                  ))}
-                </tr>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {colunas.map((col, i) => (
+                <TableHead
+                  key={i}
+                  style={{ padding: "0 16px 12px 0" }}
+                >
+                  {col}
+                </TableHead>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {linhas.map((linha, i) => (
+              <TableRow key={i}>
+                {linha.map((cel, j) => (
+                  <TableCell
+                    key={j}
+                    muted={j !== 0}
+                    style={{ padding: "10px 16px 10px 0" }}
+                  >
+                    {cel}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );
