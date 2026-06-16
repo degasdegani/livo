@@ -5,26 +5,10 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { maskCPF, maskPhone } from "@/lib/masks";
 import { updatePersonalInfo } from "./actions";
 
 type PersonalInfoResult = { success?: boolean; error?: string } | null;
-
-function maskCPF(value: string): string {
-  const d = value.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.replace(/(\d{3})(\d{0,3})/, "$1.$2");
-  if (d.length <= 9) return d.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
-  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
-}
-
-function maskPhone(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 6) return digits.replace(/(\d{2})(\d{0,4})/, "($1) $2");
-  if (digits.length <= 10)
-    return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-  return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
-}
 
 function SaveButton() {
   const { pending } = useFormStatus();

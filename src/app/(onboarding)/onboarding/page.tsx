@@ -2,25 +2,13 @@
 "use client";
 
 import { useState } from "react";
+import { maskCPF, maskPhone } from "@/lib/masks";
 import { createBarbershop } from "./actions";
 
 // Funções de máscara
-function maskPhone(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 10)
-    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
 function maskLandline(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 10);
   return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
-function maskCPF(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  return d
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 function maskCEP(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 8);

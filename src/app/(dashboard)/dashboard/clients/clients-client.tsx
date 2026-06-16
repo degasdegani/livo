@@ -7,6 +7,7 @@ import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { maskCPF, maskPhone } from "@/lib/masks";
 import {
   Table,
   TableBody,
@@ -62,15 +63,6 @@ const ORIGEM_COLORS: Record<string, string> = {
   Fachada: "bg-amber-500/20 text-amber-300",
   Outro: "bg-gray-500/20 text-gray-300",
 };
-
-function formatPhone(phone: string) {
-  const d = phone.replace(/\D/g, "");
-  if (d.length === 11)
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10)
-    return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return phone;
-}
 
 function formatDate(date: Date | null) {
   if (!date) return "—";
@@ -214,7 +206,7 @@ export function ClientsClient({
   function openEditModal(client: Client) {
     setEditForm({
       name: client.name,
-      phone: formatPhone(client.phone),
+      phone: maskPhone(client.phone),
       email: client.email ?? "",
       cpf: client.cpf ?? "",
       birthDate: client.birthDate
@@ -325,8 +317,11 @@ export function ClientsClient({
             label="Telefone"
             required
             placeholder="(11) 99999-9999"
+            maxLength={15}
             value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))
+            }
           />
 
           <Input
@@ -342,8 +337,11 @@ export function ClientsClient({
             id="create-cpf"
             label="CPF"
             placeholder="000.000.000-00"
+            maxLength={14}
             value={form.cpf}
-            onChange={(e) => setForm((f) => ({ ...f, cpf: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, cpf: maskCPF(e.target.value) }))
+            }
           />
 
           <Input
@@ -463,9 +461,10 @@ export function ClientsClient({
             label="Telefone"
             required
             placeholder="(11) 99999-9999"
+            maxLength={15}
             value={editForm.phone}
             onChange={(e) =>
-              setEditForm((f) => ({ ...f, phone: e.target.value }))
+              setEditForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))
             }
           />
 
@@ -484,9 +483,10 @@ export function ClientsClient({
             id="edit-cpf"
             label="CPF"
             placeholder="000.000.000-00"
+            maxLength={14}
             value={editForm.cpf}
             onChange={(e) =>
-              setEditForm((f) => ({ ...f, cpf: e.target.value }))
+              setEditForm((f) => ({ ...f, cpf: maskCPF(e.target.value) }))
             }
           />
 
@@ -964,7 +964,7 @@ export function ClientsClient({
                             className="text-sm"
                             style={{ color: "var(--text-primary)" }}
                           >
-                            {formatPhone(client.phone)}
+                            {maskPhone(client.phone)}
                           </p>
                           {client.email && (
                             <p
@@ -1120,7 +1120,7 @@ export function ClientsClient({
                     Contato
                   </p>
                   <p style={{ color: "var(--text-primary)" }}>
-                    {formatPhone(selectedClient.phone)}
+                    {maskPhone(selectedClient.phone)}
                   </p>
                   {selectedClient.email && (
                     <p style={{ color: "var(--text-secondary)" }}>

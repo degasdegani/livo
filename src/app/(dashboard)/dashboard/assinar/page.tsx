@@ -5,15 +5,8 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { maskCPF } from "@/lib/masks";
 import { createSubscription } from "./actions";
-
-function maskCPF(value: string): string {
-  const d = value.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.replace(/(\d{3})(\d{0,3})/, "$1.$2");
-  if (d.length <= 9) return d.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
-  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
-}
 
 function SubmitButton({ billingType }: { billingType: "monthly" | "yearly" }) {
   const { pending } = useFormStatus();
