@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import type {
@@ -342,13 +343,13 @@ function BootstrapMode() {
           {checklistItems.map((item) => (
             <li key={item} className="flex items-center gap-3">
               <span
-                className="text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
                   backgroundColor: "rgba(0,212,160,0.12)",
                   color: "var(--status-green)",
                 }}
               >
-                ✓
+                <Check size={12} />
               </span>
               <span
                 className="text-sm"

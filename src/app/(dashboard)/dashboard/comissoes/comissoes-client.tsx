@@ -2,6 +2,7 @@
 "use client";
 
 import { MemberRole } from "@prisma/client";
+import { AlertTriangle, Settings } from "lucide-react";
 import { useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
@@ -192,7 +193,7 @@ export function ComissoesClient({
               (e.currentTarget.style.borderColor = "var(--border)")
             }
           >
-            ⚙️ Configurar percentuais
+            <Settings size={14} className="inline mr-1" />Configurar percentuais
           </button>
         )}
       </div>
@@ -582,7 +583,7 @@ export function ComissoesClient({
                   color: "var(--status-red)",
                 }}
               >
-                ⚠️ {saveError}
+                <AlertTriangle size={14} className="inline mr-1" />{saveError}
               </div>
             )}
 

@@ -1,6 +1,7 @@
 // src/app/(dashboard)/dashboard/suspenso/page.tsx
 import { PlanStatus } from "@prisma/client";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
@@ -137,9 +138,7 @@ export default async function SuspensoPage() {
             "Comandas e estoque",
           ].map((item) => (
             <div key={item} className="flex items-center gap-2">
-              <span style={{ color: "var(--color-primary)", fontSize: "12px" }}>
-                ✕
-              </span>
+              <X size={12} style={{ color: "var(--color-primary)", display: "inline" }} />
               <span
                 className="text-sm"
                 style={{ color: "var(--text-secondary)" }}

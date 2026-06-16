@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Check } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { createSubscription } from "./actions";
 
@@ -133,7 +134,7 @@ export default function AssinarPage() {
               className="text-sm font-semibold"
               style={{ color: "var(--status-green)" }}
             >
-              ✓ Após o pagamento, seu acesso será liberado automaticamente.
+              <Check size={14} className="inline mr-1" />Após o pagamento, seu acesso será liberado automaticamente.
             </p>
           </div>
           {state.invoiceUrl && (
@@ -354,11 +355,7 @@ export default function AssinarPage() {
               "Suporte via WhatsApp",
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-2">
-                <span
-                  style={{ color: "var(--status-green)", fontSize: "12px" }}
-                >
-                  ✓
-                </span>
+                <Check size={14} style={{ color: "var(--status-green)", flexShrink: 0 }} />
                 <span
                   className="text-sm"
                   style={{ color: "var(--text-secondary)" }}

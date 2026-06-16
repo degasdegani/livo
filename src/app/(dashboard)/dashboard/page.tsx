@@ -1,6 +1,8 @@
 // src/app/(dashboard)/dashboard/page.tsx
 
 import { MemberRole } from "@prisma/client";
+import { BarChart2, CalendarDays, Scissors, Settings, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -512,7 +514,7 @@ export default async function DashboardPage() {
             >
               {!hasProfessionals ? (
                 <>
-                  <div className="text-4xl mb-4">✂️</div>
+                  <Scissors size={40} style={{ color: "var(--text-tertiary)" }} className="mb-4" />
                   <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
                     Adicione um profissional primeiro
                   </p>
@@ -546,7 +548,7 @@ export default async function DashboardPage() {
                 </>
               ) : (
                 <>
-                  <div className="text-4xl mb-4">📅</div>
+                  <CalendarDays size={40} style={{ color: "var(--text-tertiary)" }} className="mb-4" />
                   <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
                     Nenhum agendamento hoje
                   </p>
@@ -677,36 +679,38 @@ export default async function DashboardPage() {
         <div
           className={`grid grid-cols-1 gap-4 ${membership.role === MemberRole.owner ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
         >
-          {[
-            {
-              icon: "📊",
-              label: "Relatórios",
-              desc: "Receita e desempenho",
-              href: "/dashboard/relatorios",
-            },
-            {
-              icon: "👥",
-              label: "Clientes",
-              desc: `${barbershop._count.clients} cadastrados`,
-              href: "/dashboard/clients",
-            },
-            {
-              icon: "⚙️",
-              label: "Configurações",
-              desc: "Serviços e horários",
-              href: "/dashboard/settings",
-            },
-            ...(membership.role === MemberRole.owner
-              ? [
-                  {
-                    icon: "✦",
-                    label: "Insights",
-                    desc: "Sugestões de crescimento",
-                    href: "/dashboard/insights",
-                  },
-                ]
-              : []),
-          ].map((action) => (
+          {(
+            [
+              {
+                icon: <BarChart2 size={20} />,
+                label: "Relatórios",
+                desc: "Receita e desempenho",
+                href: "/dashboard/relatorios",
+              },
+              {
+                icon: <Users size={20} />,
+                label: "Clientes",
+                desc: `${barbershop._count.clients} cadastrados`,
+                href: "/dashboard/clients",
+              },
+              {
+                icon: <Settings size={20} />,
+                label: "Configurações",
+                desc: "Serviços e horários",
+                href: "/dashboard/settings",
+              },
+              ...(membership.role === MemberRole.owner
+                ? [
+                    {
+                      icon: <span style={{ fontSize: 20, lineHeight: 1 }}>✦</span>,
+                      label: "Insights",
+                      desc: "Sugestões de crescimento",
+                      href: "/dashboard/insights",
+                    },
+                  ]
+                : []),
+            ] as { icon: ReactNode; label: string; desc: string; href: string }[]
+          ).map((action) => (
             <a
               key={action.label}
               href={action.href}
@@ -717,7 +721,7 @@ export default async function DashboardPage() {
                 textDecoration: "none",
               }}
             >
-              <span className="text-2xl">{action.icon}</span>
+              <span className="flex items-center justify-center" style={{ color: "var(--text-secondary)" }}>{action.icon}</span>
               <div>
                 <p
                   className="font-bold text-sm"

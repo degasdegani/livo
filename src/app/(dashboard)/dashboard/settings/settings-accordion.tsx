@@ -2,6 +2,8 @@
 "use client";
 
 import type { BusinessHour, Service } from "@prisma/client";
+import { ClipboardList, Clock, Scissors, User } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { BasicInfoForm } from "./basic-info-form";
 import { BusinessHoursForm } from "./business-hours-form";
@@ -25,14 +27,14 @@ interface AccordionProps {
   };
 }
 
-const sections = [
-  { id: "pessoal", label: "Dados Pessoais", icon: "👤" },
-  { id: "barbearia", label: "Informações da Barbearia", icon: "✂️" },
-  { id: "servicos", label: "Serviços", icon: "📋" },
-  { id: "horarios", label: "Horários de Funcionamento", icon: "🕐" },
-] as const;
+type SectionId = "pessoal" | "barbearia" | "servicos" | "horarios";
 
-type SectionId = (typeof sections)[number]["id"];
+const sections: { id: SectionId; label: string; icon: ReactNode }[] = [
+  { id: "pessoal", label: "Dados Pessoais", icon: <User size={16} /> },
+  { id: "barbearia", label: "Informações da Barbearia", icon: <Scissors size={16} /> },
+  { id: "servicos", label: "Serviços", icon: <ClipboardList size={16} /> },
+  { id: "horarios", label: "Horários de Funcionamento", icon: <Clock size={16} /> },
+];
 
 export function SettingsAccordion({ user, barbershop }: AccordionProps) {
   const [open, setOpen] = useState<SectionId>("pessoal");
@@ -65,7 +67,7 @@ export function SettingsAccordion({ user, barbershop }: AccordionProps) {
               }}
             >
               <div className="flex items-center gap-3">
-                <span style={{ fontSize: 16 }}>{section.icon}</span>
+                <span className="flex items-center" style={{ color: "var(--text-tertiary)" }}>{section.icon}</span>
                 <div>
                   <p
                     className="text-sm font-bold"

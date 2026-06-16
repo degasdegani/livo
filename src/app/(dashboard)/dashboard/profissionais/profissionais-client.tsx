@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Check,
   Mail,
   Pencil,
   Plus,
@@ -8,6 +9,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Trash2,
+  X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -506,7 +508,7 @@ export function ProfissionaisClient({ initialData }: Props) {
           }`}
           style={{ backgroundColor: "var(--bg-card)" }}
         >
-          {toast.type === "success" ? "✓ " : "✕ "}
+          {toast.type === "success" ? <Check size={14} className="inline mr-1" /> : <X size={14} className="inline mr-1" />}
           {toast.msg}
         </div>
       )}

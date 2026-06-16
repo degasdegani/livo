@@ -5,6 +5,7 @@
 
 "use client";
 
+import { Users, X } from "lucide-react";
 import { useState } from "react";
 
 interface Client {
@@ -86,10 +87,10 @@ export function ClientList({ clients }: { clients: Client[] }) {
           <button
             type="button"
             onClick={() => setSearch("")}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs hover:opacity-70"
+            className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-70"
             style={{ color: "#52525B" }}
           >
-            ✕
+            <X size={14} />
           </button>
         )}
       </div>
@@ -111,7 +112,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <div className="text-4xl mb-3">👥</div>
+          <Users size={40} style={{ color: "var(--text-tertiary)" }} className="mb-3" />
           <p className="font-bold text-white mb-1">
             {search ? "Nenhum cliente encontrado" : "Nenhum cliente ainda"}
           </p>

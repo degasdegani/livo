@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { updatePersonalInfo } from "./actions";
 
@@ -168,7 +169,7 @@ export function PersonalInfoForm({
             backgroundColor: "rgba(0,212,160,0.08)",
           }}
         >
-          ✓ Dados pessoais salvos com sucesso.
+          <Check size={14} className="inline mr-1" />Dados pessoais salvos com sucesso.
         </p>
       )}
 

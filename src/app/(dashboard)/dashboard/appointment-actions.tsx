@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { updateAppointmentStatus } from "./actions";
@@ -95,7 +96,7 @@ export function AppointmentActions({ appointmentId }: Props) {
             border: "1px solid rgba(0,212,160,0.2)",
           }}
         >
-          ✓
+          <Check size={16} />
         </button>
 
         {/* ✕ Cancelar */}
@@ -120,7 +121,7 @@ export function AppointmentActions({ appointmentId }: Props) {
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          ✕
+          <X size={16} />
         </button>
 
         {/* ! Faltou */}
@@ -168,13 +169,13 @@ export function AppointmentActions({ appointmentId }: Props) {
                 border: `1.5px solid ${modal.color}30`,
               }}
             >
-              <span style={{ fontSize: "22px" }}>
-                {modal.status === "completed"
-                  ? "✓"
-                  : modal.status === "cancelled"
-                    ? "✕"
-                    : "!"}
-              </span>
+              {modal.status === "completed" ? (
+                <Check size={22} />
+              ) : modal.status === "cancelled" ? (
+                <X size={22} />
+              ) : (
+                <span style={{ fontSize: "22px", fontWeight: 700 }}>!</span>
+              )}
             </div>
 
             {/* Botões */}

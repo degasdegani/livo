@@ -1,6 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 
 export default function DashboardError({
@@ -20,7 +21,7 @@ export default function DashboardError({
       style={{ backgroundColor: "var(--bg-base)" }}
     >
       <div className="w-full max-w-md text-center">
-        <div className="text-5xl mb-6">⚠️</div>
+        <AlertTriangle size={48} style={{ color: "var(--status-red)" }} className="mb-6" />
 
         <h1
           className="font-bold text-xl mb-3"

@@ -37,14 +37,14 @@ type Props = {
 };
 
 const PAYMENT_OPTS: { value: PaymentMethod; label: string }[] = [
-  { value: "cash", label: "💵 Dinheiro" },
-  { value: "pix", label: "📲 PIX" },
-  { value: "credit_card", label: "💳 Crédito" },
-  { value: "debit_card", label: "💳 Débito" },
-  { value: "voucher", label: "🎟️ Voucher" },
-  { value: "cortesia", label: "🎁 Cortesia" },
-  { value: "convenio", label: "🤝 Convênio" },
-  { value: "outros", label: "📋 Outros" },
+  { value: "cash", label: "Dinheiro" },
+  { value: "pix", label: "PIX" },
+  { value: "credit_card", label: "Crédito" },
+  { value: "debit_card", label: "Débito" },
+  { value: "voucher", label: "Voucher" },
+  { value: "cortesia", label: "Cortesia" },
+  { value: "convenio", label: "Convênio" },
+  { value: "outros", label: "Outros" },
 ];
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "Dinheiro",

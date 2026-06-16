@@ -2,7 +2,7 @@
 "use client";
 
 import type { ClientOrigem } from "@prisma/client";
-import { Pencil } from "lucide-react";
+import { Cake, Check, Pencil, Users, X } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -746,9 +746,9 @@ export function ClientsClient({
             <div className="flex items-center gap-2 flex-wrap">
               {[
                 { key: "todos", label: "Todos" },
-                { key: "aniversariantes", label: "🎂 Aniversariantes do mês" },
-                { key: "sumidos", label: "👻 Sumidos" },
-                { key: "bloqueados", label: "🚫 Bloqueados" },
+                { key: "aniversariantes", label: "Aniversariantes do mês" },
+                { key: "sumidos", label: "Sumidos" },
+                { key: "bloqueados", label: "Bloqueados" },
               ].map((f) => (
                 <button
                   type="button"
@@ -829,7 +829,7 @@ export function ClientsClient({
               stats.total === 0 ? (
                 /* Nunca houve clientes — estado de primeiro uso */
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                  <div className="text-5xl mb-4">👥</div>
+                  <Users size={40} style={{ color: "var(--text-tertiary)" }} className="mb-4" />
                   <p
                     className="font-bold text-base mb-2"
                     style={{ color: "var(--text-primary)" }}
@@ -947,7 +947,7 @@ export function ClientsClient({
                                   className="text-xs"
                                   style={{ color: "var(--color-gold)" }}
                                 >
-                                  🎂{" "}
+                                  <Cake size={14} className="inline mr-1" style={{ color: "var(--text-tertiary)" }} />
                                   {new Date(
                                     client.birthDate,
                                   ).toLocaleDateString("pt-BR", {
@@ -1107,7 +1107,7 @@ export function ClientsClient({
                     e.currentTarget.style.color = "var(--text-tertiary)";
                   }}
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
 
@@ -1158,7 +1158,7 @@ export function ClientsClient({
                       Nascimento
                     </p>
                     <p style={{ color: "var(--text-primary)" }}>
-                      {formatDate(selectedClient.birthDate)} 🎂
+                      {formatDate(selectedClient.birthDate)} <Cake size={14} className="inline ml-1" style={{ color: "var(--color-primary)" }} />
                     </p>
                   </div>
                 )}
@@ -1278,9 +1278,11 @@ export function ClientsClient({
                         }
                   }
                 >
-                  {selectedClient.bloqueado
-                    ? "✓ Desbloquear cliente"
-                    : "🚫 Bloquear cliente"}
+                  {selectedClient.bloqueado ? (
+                    <><Check size={14} className="inline mr-1" />Desbloquear cliente</>
+                  ) : (
+                    "Bloquear cliente"
+                  )}
                 </button>
               </div>
             </div>

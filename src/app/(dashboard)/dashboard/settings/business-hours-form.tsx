@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Check } from "lucide-react";
 import { updateBusinessHours } from "./actions";
 
 const DAYS = [
@@ -259,7 +260,7 @@ export function BusinessHoursForm({
                 backgroundColor: "rgba(0,212,160,0.08)",
               }}
             >
-              ✓ Horários salvos com sucesso.
+              <Check size={14} className="inline mr-1" />Horários salvos com sucesso.
             </p>
           )}
 

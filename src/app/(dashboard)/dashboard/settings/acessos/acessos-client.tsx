@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check, X } from "lucide-react";
 import {
   createInvitationAction,
   getAcessosData,
@@ -216,7 +217,7 @@ export default function AcessosClient({
               : "bg-[#17171C] border-red-500/40 text-red-400"
           }`}
         >
-          {toast.type === "success" ? "✓ " : "✕ "}
+          {toast.type === "success" ? <Check size={14} className="inline mr-1" /> : <X size={14} className="inline mr-1" />}
           {toast.msg}
         </div>
       )}
@@ -503,7 +504,7 @@ function CommissionTag({ active, label }: { active: boolean; label: string }) {
   if (!active) return null;
   return (
     <span className="inline-flex items-center gap-1 text-xs text-[#C8A24C] bg-[#C8A24C]/10 border border-[#C8A24C]/20 rounded px-1.5 py-0.5">
-      <span className="text-[10px]">✓</span> {label}
+      <Check size={10} className="inline" /> {label}
     </span>
   );
 }

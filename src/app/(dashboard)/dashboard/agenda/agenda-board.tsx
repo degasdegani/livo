@@ -894,7 +894,7 @@ function AppointmentModal({
                   onClick={() => onStatusChange(appointment.id, "confirmed")}
                   className="w-full py-2.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50"
                 >
-                  ✓ Confirmar agendamento
+                  <Check size={14} className="inline mr-1" />Confirmar agendamento
                 </button>
               )}
               {(appointment.status === "pending" ||

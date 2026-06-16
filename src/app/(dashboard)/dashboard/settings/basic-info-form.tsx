@@ -3,6 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { updateBasicInfo } from "./actions";
 
@@ -115,7 +116,7 @@ export function BasicInfoForm({ name, phone, city }: Props) {
                 backgroundColor: "rgba(0,212,160,0.08)",
               }}
             >
-              ✓ Informações salvas com sucesso.
+              <Check size={14} className="inline mr-1" />Informações salvas com sucesso.
             </p>
           )}
 

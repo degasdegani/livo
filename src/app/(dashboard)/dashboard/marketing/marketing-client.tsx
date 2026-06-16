@@ -1,6 +1,8 @@
 // src/app/(dashboard)/dashboard/marketing/marketing-client.tsx
 "use client";
 
+import { CalendarDays, Cake, PartyPopper } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import {
   getClientesSumidos,
@@ -186,7 +188,7 @@ export function MarketingClient({
             transition: "all 0.15s",
           }}
         >
-          🎂 Aniversariantes
+          <Cake size={14} className="inline mr-1" />Aniversariantes
           <span
             style={{
               marginLeft: "8px",
@@ -264,7 +266,7 @@ export function MarketingClient({
 
             {sumidos.length === 0 ? (
               <EstadoVazio
-                icone="🎉"
+                icone={<PartyPopper size={40} />}
                 titulo="Nenhum cliente sumido!"
                 descricao={`Todos os seus clientes visitaram a barbearia nos últimos ${diasSumido} dias.`}
               />
@@ -454,7 +456,7 @@ export function MarketingClient({
                 gap: "12px",
               }}
             >
-              <span style={{ fontSize: "24px" }}>🎂</span>
+              <Cake size={24} style={{ color: "var(--color-primary)" }} />
               <div>
                 <p
                   style={{
@@ -483,7 +485,7 @@ export function MarketingClient({
 
             {aniversariantes.length === 0 ? (
               <EstadoVazio
-                icone="📅"
+                icone={<CalendarDays size={40} />}
                 titulo="Nenhum aniversariante este mês"
                 descricao="Clientes precisam ter a data de nascimento cadastrada no CRM para aparecer aqui."
               />
@@ -594,7 +596,7 @@ export function MarketingClient({
                               : "var(--text-primary)",
                           }}
                         >
-                          {eHoje && "🎉 "}
+                          {eHoje && <PartyPopper size={14} className="inline mr-1" style={{ color: "var(--status-green)" }} />}
                           {cliente.name}
                         </p>
                         <p
@@ -676,7 +678,7 @@ function EstadoVazio({
   titulo,
   descricao,
 }: {
-  icone: string;
+  icone: ReactNode;
   titulo: string;
   descricao: string;
 }) {
@@ -694,7 +696,7 @@ function EstadoVazio({
         textAlign: "center",
       }}
     >
-      <span style={{ fontSize: "40px", marginBottom: "16px" }}>{icone}</span>
+      <span style={{ marginBottom: "16px", color: "var(--text-tertiary)" }}>{icone}</span>
       <p
         style={{
           margin: 0,
