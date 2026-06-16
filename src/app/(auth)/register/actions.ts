@@ -42,7 +42,7 @@ export async function registerUser(
   await signIn("credentials", {
     email,
     password,
-    redirectTo: "/dashboard",
+    redirectTo: "/onboarding",
   });
 
   return null;
