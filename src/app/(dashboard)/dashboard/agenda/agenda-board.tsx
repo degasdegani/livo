@@ -18,7 +18,9 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { LoadingState } from "@/components/ui/loading-state";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -427,30 +429,13 @@ export default function AgendaBoard({
       {/* Grade */}
       <div className="flex-1 overflow-auto min-h-0">
         {loadingNav ? (
-          <div
-            className="flex items-center justify-center h-64"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-                style={{
-                  borderColor: "var(--color-primary)",
-                  borderTopColor: "transparent",
-                }}
-              />
-              <span className="text-sm">Carregando...</span>
-            </div>
-          </div>
+          <LoadingState />
         ) : visibleProfessionals.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center h-64 gap-3"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            <Scissors size={32} className="opacity-40" />
-            <p className="text-sm">Nenhum profissional ativo cadastrado.</p>
-            <p className="text-xs">Adicione profissionais em Configurações.</p>
-          </div>
+          <EmptyState
+            icon={<Scissors size={24} />}
+            title="Nenhum profissional ativo cadastrado."
+            description="Adicione profissionais em Configurações."
+          />
         ) : (
           <div className="flex min-w-max">
             <TimeColumn />

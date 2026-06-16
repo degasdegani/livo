@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -811,30 +812,22 @@ export function ProdutosClient({ products, categories, role }: Props) {
           </div>
 
           {filtered.length === 0 ? (
-            <div
-              className="flex flex-col items-center justify-center rounded-2xl border-dashed py-20 text-center"
-              style={{ border: "2px dashed var(--border)" }}
-            >
-              <PackagePlus
-                size={40}
-                className="mb-4"
-                style={{ color: "var(--text-tertiary)" }}
+            <div className="rounded-2xl" style={{ border: "2px dashed var(--border)" }}>
+              <EmptyState
+                icon={<PackagePlus size={24} />}
+                title="Nenhum produto encontrado."
+                action={
+                  canEdit
+                    ? {
+                        label: "Cadastrar primeiro produto",
+                        onClick: () => {
+                          setEditingProduct(undefined);
+                          setShowProductModal(true);
+                        },
+                      }
+                    : undefined
+                }
               />
-              <p style={{ color: "var(--text-secondary)" }}>
-                Nenhum produto encontrado.
-              </p>
-              {canEdit && (
-                <button
-                  onClick={() => {
-                    setEditingProduct(undefined);
-                    setShowProductModal(true);
-                  }}
-                  className="mt-4 text-sm hover:underline"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  Cadastrar primeiro produto
-                </button>
-              )}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1021,18 +1014,11 @@ export function ProdutosClient({ products, categories, role }: Props) {
             )}
           </div>
           {categories.length === 0 ? (
-            <div
-              className="flex flex-col items-center justify-center rounded-2xl border-dashed py-20 text-center"
-              style={{ border: "2px dashed var(--border)" }}
-            >
-              <Tag
-                size={40}
-                className="mb-4"
-                style={{ color: "var(--text-tertiary)" }}
+            <div className="rounded-2xl" style={{ border: "2px dashed var(--border)" }}>
+              <EmptyState
+                icon={<Tag size={24} />}
+                title="Nenhuma categoria criada ainda."
               />
-              <p style={{ color: "var(--text-secondary)" }}>
-                Nenhuma categoria criada ainda.
-              </p>
             </div>
           ) : (
             <div className="space-y-2">

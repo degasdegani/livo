@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getComandas } from "./actions";
 
 type ComandaListItem = {
@@ -196,14 +197,10 @@ export default function ComandasClient({
         )}
 
         {!isPending && comandas.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div
-              className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-              style={{ backgroundColor: "var(--bg-card)" }}
-            >
+          <EmptyState
+            icon={
               <svg
-                className="h-8 w-8"
-                style={{ color: "var(--text-tertiary)" }}
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -215,17 +212,10 @@ export default function ComandasClient({
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-            </div>
-            <p style={{ color: "var(--text-secondary)" }}>
-              Nenhuma comanda encontrada.
-            </p>
-            <p
-              className="mt-1 text-sm"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Abra uma nova comanda para começar.
-            </p>
-          </div>
+            }
+            title="Nenhuma comanda encontrada."
+            description="Abra uma nova comanda para começar."
+          />
         )}
 
         {!isPending && comandas.length > 0 && (

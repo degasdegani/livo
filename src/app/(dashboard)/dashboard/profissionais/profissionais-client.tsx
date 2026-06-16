@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { createInvitationAction } from "../settings/acessos/actions";
@@ -528,26 +529,12 @@ export function ProfissionaisClient({ initialData }: Props) {
 
       {/* Lista */}
       {data.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl py-20 text-center"
-          style={{ border: "2px dashed var(--border)" }}
-        >
-          <Scissors
-            size={40}
-            className="mb-4"
-            style={{ color: "var(--text-tertiary)" }}
+        <div className="rounded-2xl" style={{ border: "2px dashed var(--border)" }}>
+          <EmptyState
+            icon={<Scissors size={24} />}
+            title="Nenhum profissional cadastrado ainda."
+            action={{ label: "+ Adicionar primeiro profissional", onClick: openCreate }}
           />
-          <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
-            Nenhum profissional cadastrado ainda.
-          </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="mt-3 text-sm hover:underline"
-            style={{ color: "var(--color-primary)" }}
-          >
-            + Adicionar primeiro profissional
-          </button>
         </div>
       ) : (
         <div className="space-y-2">
