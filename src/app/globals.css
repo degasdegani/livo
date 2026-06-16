@@ -7,6 +7,31 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ── Satoshi — fonte primária do LIVO ───────────────────── */
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── Dark mode via classe .dark ─────────────────────────── */
 @custom-variant dark (&:is(.dark *));
 

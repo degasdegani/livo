@@ -1,10 +1,7 @@
 // src/app/layout.tsx
 import { ToastProvider } from "@/components/ui/toast";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "LIVO — O sistema operacional da barbearia moderna",
@@ -25,7 +22,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={inter.className}
         style={{ transition: "background-color 150ms ease, color 150ms ease" }}
       >
         <ToastProvider>{children}</ToastProvider>
