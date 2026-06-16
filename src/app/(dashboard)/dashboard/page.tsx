@@ -531,7 +531,7 @@ export default async function DashboardPage() {
                 </>
               ) : !hasServices ? (
                 <>
-                  <div className="text-4xl mb-4">💈</div>
+                  <Scissors size={40} style={{ color: "var(--text-tertiary)" }} className="mb-4" />
                   <p className="font-bold mb-2" style={{ color: "var(--text-primary)" }}>
                     Crie seus serviços primeiro
                   </p>

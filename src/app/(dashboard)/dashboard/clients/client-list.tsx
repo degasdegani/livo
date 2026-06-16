@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Users, X } from "lucide-react";
+import { Search, Users, X } from "lucide-react";
 import { useState } from "react";
 
 interface Client {
@@ -66,11 +66,8 @@ export function ClientList({ clients }: { clients: Client[] }) {
     <div className="flex flex-col gap-4">
       {/* Campo de busca */}
       <div className="relative">
-        <span
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-sm"
-          style={{ color: "#3F3F46" }}
-        >
-          🔍
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
+          <Search size={16} style={{ color: "#3F3F46" }} />
         </span>
         <input
           type="text"

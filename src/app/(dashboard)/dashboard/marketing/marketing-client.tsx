@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/marketing/marketing-client.tsx
 "use client";
 
-import { CalendarDays, Cake, PartyPopper } from "lucide-react";
+import { CalendarDays, Cake, PartyPopper, UserX } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import {
@@ -149,7 +149,7 @@ export function MarketingClient({
             transition: "all 0.15s",
           }}
         >
-          😴 Clientes Sumidos
+          <UserX size={16} className="inline mr-1" />Clientes Sumidos
           <span
             style={{
               marginLeft: "8px",
