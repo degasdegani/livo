@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { MemberRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
+import { CopyUrlButton } from "./copy-url-button";
 import { SettingsAccordion } from "./settings-accordion";
 
 export default async function SettingsPage() {
@@ -80,22 +81,27 @@ export default async function SettingsPage() {
             border: "1px solid var(--border)",
           }}
         >
-          <div>
-            <p
-              className="text-xs font-semibold mb-1"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              ENDEREÇO PÚBLICO
-            </p>
-            <p
-              className="text-sm font-bold"
-              style={{
-                color: "var(--text-secondary)",
-                fontFamily: "monospace",
-              }}
-            >
-              livobarber.com.br/{barbershop.slug}
-            </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="min-w-0">
+              <p
+                className="text-xs font-semibold mb-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                ENDEREÇO PÚBLICO
+              </p>
+              <p
+                className="text-sm font-bold truncate"
+                style={{
+                  color: "var(--text-secondary)",
+                  fontFamily: "monospace",
+                }}
+              >
+                livobarber.com.br/{barbershop.slug}
+              </p>
+            </div>
+            <CopyUrlButton
+              url={`https://livobarber.com.br/${barbershop.slug}`}
+            />
           </div>
           <span
             className="text-xs px-2 py-1 rounded-full"
