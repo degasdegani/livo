@@ -234,9 +234,9 @@ function buildWelcomeHtml(name: string): string {
           <td style="padding:40px 32px;">
             <h1 style="color:#fff;font-size:24px;margin:0 0 16px;">Bem-vindo, ${name}! 🎉</h1>
             <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
-              Sua barbearia está configurada e pronta para decolar. Acesse o painel e comece a usar o sistema operacional da barbearia moderna.
+              Falta só um passo: complete a configuração da sua barbearia para começar a receber agendamentos.
             </p>
-            <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">
+            <a href="${BASE_URL}/login" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">
               Acessar o LIVO →
             </a>
           </td>
