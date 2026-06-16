@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import type {
@@ -108,44 +109,26 @@ function CategoryModal({
       onClose={onClose}
       title={category ? "Editar Categoria" : "Nova Categoria"}
       size="sm"
+      footer={{
+        confirm: {
+          label: "Salvar",
+          loadingLabel: "Salvando...",
+          onClick: handleSubmit,
+          loading: pending,
+        },
+      }}
     >
       <div>
-        <label
-          className="mb-1.5 block text-sm"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Nome
-        </label>
-        <input
+        <Input
+          label="Nome"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ex: Pomadas, Shampoos..."
-          className="livo-input"
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           autoFocus
+          error={error || undefined}
         />
-        {error && <p className="mt-1.5 text-sm text-red-400">{error}</p>}
-      </div>
-      <div className="flex gap-3">
-        <button
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={pending}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          {pending ? "Salvando..." : "Salvar"}
-        </button>
       </div>
     </Modal>
   );
@@ -226,39 +209,31 @@ function ProductModal({
       onClose={onClose}
       title={product ? "Editar Produto" : "Novo Produto"}
       size="md"
+      footer={{
+        confirm: {
+          label: "Salvar",
+          loadingLabel: "Salvando...",
+          onClick: handleSubmit,
+          loading: pending,
+        },
+      }}
     >
       <div className="space-y-4">
-        <div>
-          <label
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Nome *
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Pomada Matte Black"
-            className="livo-input"
-            autoFocus
-          />
-        </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Descrição
-          </label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Opcional"
-            className="livo-input"
-          />
-        </div>
+        <Input
+          label="Nome *"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Pomada Matte Black"
+          autoFocus
+        />
+        <Input
+          label="Descrição"
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Opcional"
+        />
         <div>
           <label
             className="mb-1.5 block text-sm"
@@ -279,85 +254,47 @@ function ProductModal({
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Custo (R$)
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={costStr}
-              onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
-              className="livo-input"
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Venda (R$) *
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={priceStr}
-              onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
-              className="livo-input"
-            />
-          </div>
+          <Input
+            label="Custo (R$)"
+            type="text"
+            inputMode="numeric"
+            value={costStr}
+            onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
+          />
+          <Input
+            label="Venda (R$) *"
+            type="text"
+            inputMode="numeric"
+            value={priceStr}
+            onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
+          />
         </div>
         {!product && (
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label
-                className="mb-1.5 block text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Estoque inicial
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                className="livo-input"
-              />
-            </div>
-            <div>
-              <label
-                className="mb-1.5 block text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Alerta mínimo
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={minAlert}
-                onChange={(e) => setMinAlert(e.target.value)}
-                className="livo-input"
-              />
-            </div>
-          </div>
-        )}
-        {product && (
-          <div>
-            <label
-              className="mb-1.5 block text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Alerta mínimo de estoque
-            </label>
-            <input
+            <Input
+              label="Estoque inicial"
+              type="number"
+              min="0"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+            />
+            <Input
+              label="Alerta mínimo"
               type="number"
               min="0"
               value={minAlert}
               onChange={(e) => setMinAlert(e.target.value)}
-              className="livo-input"
+            />
+          </div>
+        )}
+        {product && (
+          <div>
+            <Input
+              label="Alerta mínimo de estoque"
+              type="number"
+              min="0"
+              value={minAlert}
+              onChange={(e) => setMinAlert(e.target.value)}
             />
             <p
               className="mt-1 text-xs"
@@ -395,26 +332,6 @@ function ProductModal({
           </div>
         )}
         {error && <p className="text-sm text-red-400">{error}</p>}
-      </div>
-      <div className="flex gap-3">
-        <button
-          onClick={onClose}
-          className="flex-1 rounded-lg py-2.5 text-sm transition-colors"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={pending}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          {pending ? "Salvando..." : "Salvar"}
-        </button>
       </div>
     </Modal>
   );
@@ -531,23 +448,15 @@ function StockModal({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Quantidade
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="0"
-            className="livo-input"
-            autoFocus
-          />
-        </div>
+        <Input
+          label="Quantidade"
+          type="number"
+          min="1"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          placeholder="0"
+          autoFocus
+        />
         <div>
           <label
             className="mb-1.5 block text-sm"
@@ -566,21 +475,13 @@ function StockModal({
             ))}
           </Select>
         </div>
-        <div>
-          <label
-            className="mb-1.5 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Observação (opcional)
-          </label>
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ex: NF 1234, lote B..."
-            className="livo-input"
-          />
-        </div>
+        <Input
+          label="Observação (opcional)"
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Ex: NF 1234, lote B..."
+        />
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
 

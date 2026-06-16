@@ -3,6 +3,7 @@
 
 import { MemberRole } from "@prisma/client";
 import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { getComissoesData, type ResumoProf } from "../comandas/actions";
 import { updateMembershipComissao } from "../settings/actions";
@@ -540,13 +541,8 @@ export function ComissoesClient({
               </label>
               {editOnServices && (
                 <div className="ml-7">
-                  <label
-                    className="block text-xs mb-1"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Percentual (%)
-                  </label>
-                  <input
+                  <Input
+                    label="Percentual (%)"
                     type="number"
                     min="0"
                     max="100"
@@ -554,7 +550,6 @@ export function ComissoesClient({
                     value={editServicePct}
                     onChange={(e) => setEditServicePct(e.target.value)}
                     placeholder="ex: 40"
-                    className="livo-input"
                     style={{ width: 128 }}
                   />
                 </div>
@@ -578,13 +573,8 @@ export function ComissoesClient({
               </label>
               {editOnProducts && (
                 <div className="ml-7">
-                  <label
-                    className="block text-xs mb-1"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Percentual (%)
-                  </label>
-                  <input
+                  <Input
+                    label="Percentual (%)"
                     type="number"
                     min="0"
                     max="100"
@@ -592,7 +582,6 @@ export function ComissoesClient({
                     value={editProductPct}
                     onChange={(e) => setEditProductPct(e.target.value)}
                     placeholder="ex: 10"
-                    className="livo-input"
                     style={{ width: 128 }}
                   />
                 </div>
