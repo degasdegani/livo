@@ -8,14 +8,9 @@ export function makeMembership(overrides: Partial<Membership> = {}): Membership 
     userId: faker.string.uuid(),
     barbershopId: faker.string.uuid(),
     professionalId: null,
-    commissionOnServices: false,
-    commissionOnProducts: false,
     isActive: true,
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
     updatedAt: new Date("2024-01-01T00:00:00.000Z"),
-    // Decimal fields — null satisfies Decimal | null
-    commissionServicePct: null,
-    commissionProductPct: null,
     ...overrides,
   };
 }

@@ -28,10 +28,10 @@ export async function recalcularComissoesPendentes(
 ): Promise<{ atualizados: number }> {
   const membership = await requireRole("owner");
 
-  const targetMembership = await db.membership.findFirst({
-    where: { professionalId, barbershopId: membership.barbershopId },
+  const targetProfessional = await db.professional.findFirst({
+    where: { id: professionalId, barbershopId: membership.barbershopId },
   });
-  if (!targetMembership) throw new Error("Profissional não encontrado.");
+  if (!targetProfessional) throw new Error("Profissional não encontrado.");
 
   const itemsParaRecalcular = await db.comandaItem.findMany({
     where: {
@@ -53,17 +53,17 @@ export async function recalcularComissoesPendentes(
 
       if (
         item.type === "service" &&
-        targetMembership.commissionOnServices &&
-        targetMembership.commissionServicePct !== null
+        targetProfessional.commissionOnServices &&
+        targetProfessional.commissionServicePct !== null
       ) {
-        pct = Number(targetMembership.commissionServicePct);
+        pct = Number(targetProfessional.commissionServicePct);
         value = Math.round((item.totalInCents * pct) / 100);
       } else if (
         item.type === "product" &&
-        targetMembership.commissionOnProducts &&
-        targetMembership.commissionProductPct !== null
+        targetProfessional.commissionOnProducts &&
+        targetProfessional.commissionProductPct !== null
       ) {
-        pct = Number(targetMembership.commissionProductPct);
+        pct = Number(targetProfessional.commissionProductPct);
         value = Math.round((item.totalInCents * pct) / 100);
       }
 

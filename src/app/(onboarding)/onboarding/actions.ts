@@ -139,8 +139,6 @@ export async function createBarbershop(formData: FormData) {
           userId,
           barbershopId: barbershop.id,
           professionalId: professional.id,
-          commissionOnServices: true,
-          commissionOnProducts: false,
           isActive: true,
         },
       });

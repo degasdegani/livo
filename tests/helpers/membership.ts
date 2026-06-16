@@ -11,8 +11,6 @@ export function makeMembershipContext(
     role: MemberRole.owner,
     barbershopId: "shop-test-id-001",
     professionalId: "prof-test-id-001",
-    commissionOnServices: false,
-    commissionOnProducts: false,
     ...overrides,
   };
 }

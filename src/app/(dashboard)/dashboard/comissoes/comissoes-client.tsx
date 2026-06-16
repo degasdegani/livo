@@ -22,19 +22,21 @@ import { getComissoesData, type ResumoProf } from "../comandas/actions";
 import { updateMembershipComissao } from "../settings/actions";
 
 type Profissional = { id: string; name: string };
-type MembershipPct = {
+// Comissão agora vive em Professional — membershipRole indica se essa pessoa
+// é a dona da barbearia (sem comissão configurável) ou null (sem login ainda).
+type ProfessionalCommission = {
   id: string;
-  role: MemberRole;
+  name: string;
+  membershipRole: MemberRole | null;
   commissionOnServices: boolean;
   commissionOnProducts: boolean;
   commissionServicePct: unknown;
   commissionProductPct: unknown;
-  professional: { id: string; name: string } | null;
 };
 type Props = {
   resumoInicial: ResumoProf[];
   profissionais: Profissional[];
-  memberships: MembershipPct[];
+  professionalsComPct: ProfessionalCommission[];
   dataInicio: Date;
   dataFim: Date;
   role: MemberRole;
@@ -64,7 +66,7 @@ function toNumber(val: unknown): number {
 export function ComissoesClient({
   resumoInicial,
   profissionais,
-  memberships,
+  professionalsComPct,
   dataInicio,
   dataFim,
   role,
@@ -74,8 +76,8 @@ export function ComissoesClient({
   const [filtroProf, setFiltroProf] = useState<string>("todos");
   const [resumo, setResumo] = useState<ResumoProf[]>(resumoInicial);
   const [isPending, startTransition] = useTransition();
-  const [editingMembership, setEditingMembership] =
-    useState<MembershipPct | null>(null);
+  const [editingProfessional, setEditingProfessional] =
+    useState<ProfessionalCommission | null>(null);
   const [editServicePct, setEditServicePct] = useState("");
   const [editProductPct, setEditProductPct] = useState("");
   const [editOnServices, setEditOnServices] = useState(false);
@@ -87,26 +89,26 @@ export function ComissoesClient({
   void dataInicio;
   void dataFim;
 
-  function abrirEdit(m: MembershipPct) {
-    setEditingMembership(m);
-    setEditOnServices(m.commissionOnServices);
-    setEditOnProducts(m.commissionOnProducts);
-    setEditServicePct(toNumber(m.commissionServicePct).toString() || "");
-    setEditProductPct(toNumber(m.commissionProductPct).toString() || "");
+  function abrirEdit(p: ProfessionalCommission) {
+    setEditingProfessional(p);
+    setEditOnServices(p.commissionOnServices);
+    setEditOnProducts(p.commissionOnProducts);
+    setEditServicePct(toNumber(p.commissionServicePct).toString() || "");
+    setEditProductPct(toNumber(p.commissionProductPct).toString() || "");
     setSaveError("");
   }
   function fecharEdit() {
-    setEditingMembership(null);
+    setEditingProfessional(null);
     setSaveError("");
   }
 
   async function salvarPct() {
-    if (!editingMembership) return;
+    if (!editingProfessional) return;
     setSaving(true);
     setSaveError("");
     try {
       const resultado = await updateMembershipComissao({
-        membershipId: editingMembership.id,
+        professionalId: editingProfessional.id,
         commissionOnServices: editOnServices,
         commissionOnProducts: editOnProducts,
         commissionServicePct: editOnServices
@@ -163,9 +165,9 @@ export function ComissoesClient({
     (s, r) => s + r.totalFaturamento,
     0,
   );
-  // Owner nunca aparece na lista de comissões — mesmo que tenha professional vinculado
-  const membershipsComProf = memberships.filter(
-    (m) => m.professional !== null && m.role !== MemberRole.owner,
+  // Owner nunca aparece na lista de comissões
+  const profissionaisComissionaveis = professionalsComPct.filter(
+    (p) => p.membershipRole !== MemberRole.owner,
   );
 
   return (
@@ -188,9 +190,9 @@ export function ComissoesClient({
               : "Comissões por profissional"}
           </p>
         </div>
-        {role === MemberRole.owner && membershipsComProf.length > 0 && (
+        {role === MemberRole.owner && profissionaisComissionaveis.length > 0 && (
           <button
-            onClick={() => abrirEdit(membershipsComProf[0])}
+            onClick={() => abrirEdit(profissionaisComissionaveis[0])}
             className="px-4 py-2 rounded-lg text-sm transition-colors"
             style={{
               backgroundColor: "var(--bg-card)",
@@ -343,11 +345,11 @@ export function ComissoesClient({
             </TableHeader>
             <TableBody>
               {resumoFiltrado.map((r) => {
-                const m = memberships.find(
-                  (mb) => mb.professional?.id === r.professionalId,
+                const p = professionalsComPct.find(
+                  (pc) => pc.id === r.professionalId,
                 );
                 const semComissao =
-                  !m?.commissionOnServices && !m?.commissionOnProducts;
+                  !p?.commissionOnServices && !p?.commissionOnProducts;
                 return (
                 <TableRow key={r.professionalId}>
                   <TableCell style={{ padding: "16px 24px", fontWeight: 500 }}>
@@ -474,7 +476,7 @@ export function ComissoesClient({
       )}
 
       {/* Configurar percentuais */}
-      {role === MemberRole.owner && membershipsComProf.length > 0 && (
+      {role === MemberRole.owner && profissionaisComissionaveis.length > 0 && (
         <div
           className="rounded-xl p-6"
           style={{
@@ -489,9 +491,9 @@ export function ComissoesClient({
             Configuração de Comissões por Barbeiro
           </h2>
           <div className="space-y-3">
-            {membershipsComProf.map((m) => (
+            {profissionaisComissionaveis.map((p) => (
               <div
-                key={m.id}
+                key={p.id}
                 className="flex items-center justify-between py-3"
                 style={{ borderBottom: "1px solid var(--border)" }}
               >
@@ -500,23 +502,23 @@ export function ComissoesClient({
                     className="text-sm font-medium"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {m.professional?.name}
+                    {p.name}
                   </p>
                   <p
                     className="text-xs mt-0.5"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {m.commissionOnServices
-                      ? `Serviços: ${toNumber(m.commissionServicePct)}%`
+                    {p.commissionOnServices
+                      ? `Serviços: ${toNumber(p.commissionServicePct)}%`
                       : "Serviços: sem comissão"}
                     {" · "}
-                    {m.commissionOnProducts
-                      ? `Produtos: ${toNumber(m.commissionProductPct)}%`
+                    {p.commissionOnProducts
+                      ? `Produtos: ${toNumber(p.commissionProductPct)}%`
                       : "Produtos: sem comissão"}
                   </p>
                 </div>
                 <button
-                  onClick={() => abrirEdit(m)}
+                  onClick={() => abrirEdit(p)}
                   className="px-3 py-1.5 rounded-lg text-xs transition-colors"
                   style={{
                     backgroundColor: "var(--bg-card-elevated)",
@@ -541,13 +543,13 @@ export function ComissoesClient({
       )}
 
       <Modal
-        open={!!editingMembership}
+        open={!!editingProfessional}
         onClose={fecharEdit}
-        title={`Comissão — ${editingMembership?.professional?.name ?? ""}`}
+        title={`Comissão — ${editingProfessional?.name ?? ""}`}
         description="Configure o percentual de comissão para cada tipo de item."
         size="sm"
       >
-        {editingMembership && (
+        {editingProfessional && (
           <>
             <div className="mb-5">
               <label className="flex items-center gap-3 mb-3 cursor-pointer">

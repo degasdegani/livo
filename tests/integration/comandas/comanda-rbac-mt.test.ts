@@ -42,7 +42,7 @@ vi.mock("@/lib/db", () => ({
     service: { findFirst: vi.fn() },
     product: { findFirst: vi.fn() },
     membership: { findFirst: vi.fn() },
-    professional: { findMany: vi.fn() },
+    professional: { findFirst: vi.fn(), findMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -301,7 +301,7 @@ describe("Observabilidade — log.comanda", () => {
       clientId: null,
       items: [],
     } as never);
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+    vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
     await expect(fecharComanda("comanda-a", "pix")).rejects.toThrow(
       "NEXT_REDIRECT",

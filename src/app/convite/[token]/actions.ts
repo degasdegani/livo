@@ -83,8 +83,6 @@ export async function acceptInvitationAction(
           userId,
           barbershopId: invitation.barbershopId,
           professionalId: invitation.professionalId ?? null,
-          commissionOnServices: invitation.commissionOnServices,
-          commissionOnProducts: invitation.commissionOnProducts,
           isActive: true,
         },
       });
@@ -135,8 +133,6 @@ export async function acceptInvitationAction(
           userId: newUser.id,
           barbershopId: invitation.barbershopId,
           professionalId: invitation.professionalId ?? null,
-          commissionOnServices: invitation.commissionOnServices,
-          commissionOnProducts: invitation.commissionOnProducts,
           isActive: true,
         },
       });

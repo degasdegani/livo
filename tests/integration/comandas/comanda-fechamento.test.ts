@@ -31,7 +31,7 @@ import { makeMembershipContext } from "../../helpers/membership";
 vi.mock("@/lib/db", () => ({
   db: {
     comanda: { findFirst: vi.fn() },
-    membership: { findFirst: vi.fn() },
+    professional: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -103,7 +103,7 @@ let tx: ReturnType<typeof makeFechamentoTx>;
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireMembership).mockResolvedValue(ownerCtx());
-  vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+  vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
   tx = makeFechamentoTx();
   vi.mocked(db.$transaction).mockImplementation(
@@ -156,7 +156,7 @@ describe("fecharComanda()", () => {
         { id: "item-1", type: "service", totalInCents: 5000, productId: null, quantity: 1 },
       ],
     });
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       commissionOnServices: true,
       commissionServicePct: 20,
       commissionOnProducts: false,
@@ -182,7 +182,7 @@ describe("fecharComanda()", () => {
         { id: "item-2", type: "product", totalInCents: 6000, productId: "prod-1", quantity: 2 },
       ],
     });
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       commissionOnServices: false,
       commissionServicePct: null,
       commissionOnProducts: true,
@@ -208,7 +208,7 @@ describe("fecharComanda()", () => {
         { id: "item-1", type: "service", totalInCents: 5000, productId: null, quantity: 1 },
       ],
     });
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       commissionOnServices: false,
       commissionServicePct: null,
       commissionOnProducts: false,
@@ -230,7 +230,7 @@ describe("fecharComanda()", () => {
         { id: "item-1", type: "service", totalInCents: 4000, productId: null, quantity: 1 },
       ],
     });
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+    vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
     await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
 

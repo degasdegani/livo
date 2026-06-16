@@ -65,8 +65,6 @@ function mockMembership() {
     role: "owner" as never,
     barbershopId: SHOP_A,
     professionalId: null,
-    commissionOnServices: false,
-    commissionOnProducts: false,
   });
 }
 

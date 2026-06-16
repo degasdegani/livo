@@ -16,8 +16,6 @@ export type MembershipContext = {
   role: MemberRole;
   barbershopId: string;
   professionalId: string | null;
-  commissionOnServices: boolean;
-  commissionOnProducts: boolean;
 };
 
 export async function getCurrentUser() {
@@ -41,8 +39,6 @@ export async function getCurrentMembership(): Promise<MembershipContext | null> 
     role: membership.role,
     barbershopId: membership.barbershopId,
     professionalId: membership.professionalId,
-    commissionOnServices: membership.commissionOnServices,
-    commissionOnProducts: membership.commissionOnProducts,
   };
 }
 

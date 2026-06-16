@@ -101,18 +101,22 @@ model Barbershop {
 }
 
 model Professional {
-  id           String        @id @default(cuid())
-  name         String
-  bio          String?
-  avatarUrl    String?
-  isActive     Boolean       @default(true)
-  barbershopId String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  comandas     Comanda[]
-  membership   Membership?
-  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(cuid())
+  name                 String
+  bio                  String?
+  avatarUrl            String?
+  isActive             Boolean       @default(true)
+  barbershopId         String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  commissionOnServices Boolean       @default(false)
+  commissionOnProducts Boolean       @default(false)
+  commissionServicePct Decimal?      @db.Decimal(5, 2)
+  commissionProductPct Decimal?      @db.Decimal(5, 2)
+  appointments         Appointment[]
+  comandas             Comanda[]
+  membership           Membership?
+  barbershop           Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
   @@map("professionals")
@@ -210,13 +214,9 @@ model Membership {
   userId               String
   barbershopId         String
   professionalId       String?       @unique(map: "Membership_professionalId_key")
-  commissionOnServices Boolean       @default(false)
-  commissionOnProducts Boolean       @default(false)
   isActive             Boolean       @default(true)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
-  commissionServicePct Decimal?      @db.Decimal(5, 2)
-  commissionProductPct Decimal?      @db.Decimal(5, 2)
   barbershop           Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   professional         Professional? @relation(fields: [professionalId], references: [id])
   user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)

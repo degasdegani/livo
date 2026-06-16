@@ -14,8 +14,6 @@ export type CreateInvitationInput = {
   email: string;
   role: "reception" | "barber";
   professionalId?: string;
-  commissionOnServices: boolean;
-  commissionOnProducts: boolean;
 };
 
 export type ActionResult =
@@ -120,8 +118,6 @@ export async function createInvitationAction(
       status: InvitationStatus.pending,
       expiresAt,
       professionalId: input.professionalId ?? null,
-      commissionOnServices: input.commissionOnServices,
-      commissionOnProducts: input.commissionOnProducts,
       barbershopId,
       invitedById: membership.userId,
     },

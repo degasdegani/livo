@@ -355,11 +355,11 @@ export async function fecharComanda(
 
   if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
 
-  // Buscar Membership do profissional para calcular comissão
-  const profMembership = await db.membership.findFirst({
+  // Buscar Professional para calcular comissão (campos vivem em Professional)
+  const profissional = await db.professional.findFirst({
     where: {
+      id: comanda.professionalId,
       barbershopId: comanda.barbershopId,
-      professionalId: comanda.professionalId,
       isActive: true,
     },
   });
@@ -373,20 +373,20 @@ export async function fecharComanda(
       let pct: number | null = null;
       let value: number | null = null;
 
-      if (profMembership) {
+      if (profissional) {
         if (
           item.type === "service" &&
-          profMembership.commissionOnServices &&
-          profMembership.commissionServicePct !== null
+          profissional.commissionOnServices &&
+          profissional.commissionServicePct !== null
         ) {
-          pct = Number(profMembership.commissionServicePct);
+          pct = Number(profissional.commissionServicePct);
           value = Math.round((item.totalInCents * pct) / 100);
         } else if (
           item.type === "product" &&
-          profMembership.commissionOnProducts &&
-          profMembership.commissionProductPct !== null
+          profissional.commissionOnProducts &&
+          profissional.commissionProductPct !== null
         ) {
-          pct = Number(profMembership.commissionProductPct);
+          pct = Number(profissional.commissionProductPct);
           value = Math.round((item.totalInCents * pct) / 100);
         }
       }

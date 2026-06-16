@@ -222,8 +222,6 @@ describe("RBAC — Acessos actions (owner-only)", () => {
         email: "new@example.com",
         role: "barber",
         professionalId: "prof-1",
-        commissionOnServices: false,
-        commissionOnProducts: false,
       });
 
       expect(vi.mocked(requireRole)).toHaveBeenCalledWith("owner");
@@ -237,8 +235,6 @@ describe("RBAC — Acessos actions (owner-only)", () => {
           email: "new@example.com",
           role: "barber",
           professionalId: "prof-1",
-          commissionOnServices: false,
-          commissionOnProducts: false,
         }),
       ).rejects.toThrow();
     });
@@ -251,8 +247,6 @@ describe("RBAC — Acessos actions (owner-only)", () => {
           email: "new@example.com",
           role: "barber",
           professionalId: "prof-1",
-          commissionOnServices: false,
-          commissionOnProducts: false,
         }),
       ).rejects.toThrow();
     });

@@ -263,8 +263,6 @@ function InviteModal({
   onSaved: (message: string) => void;
 }) {
   const [email, setEmail] = useState("");
-  const [commissionServices, setCommissionServices] = useState(true);
-  const [commissionProducts, setCommissionProducts] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -278,8 +276,6 @@ function InviteModal({
         email: email.trim(),
         role: "barber",
         professionalId: professional.id,
-        commissionOnServices: commissionServices,
-        commissionOnProducts: commissionProducts,
       });
       if (result.success) {
         onSaved(result.message);
@@ -318,58 +314,10 @@ function InviteModal({
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
 
-        <div
-          className="rounded-lg px-4 py-3 space-y-3"
-          style={{
-            backgroundColor: "var(--bg-card-elevated)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <p
-            className="text-xs font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Comissões
-          </p>
-
-          <label
-            htmlFor="invite-commission-services"
-            className="flex cursor-pointer items-center justify-between"
-          >
-            <span
-              className="text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Comissão em serviços
-            </span>
-            <input
-              id="invite-commission-services"
-              type="checkbox"
-              checked={commissionServices}
-              onChange={(e) => setCommissionServices(e.target.checked)}
-              className="h-4 w-4 accent-[var(--color-primary)]"
-            />
-          </label>
-
-          <label
-            htmlFor="invite-commission-products"
-            className="flex cursor-pointer items-center justify-between"
-          >
-            <span
-              className="text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Comissão em produtos
-            </span>
-            <input
-              id="invite-commission-products"
-              type="checkbox"
-              checked={commissionProducts}
-              onChange={(e) => setCommissionProducts(e.target.checked)}
-              className="h-4 w-4 accent-[var(--color-primary)]"
-            />
-          </label>
-        </div>
+        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+          A comissão deste profissional é configurada no painel de
+          Profissionais ou Comissões, independente do convite.
+        </p>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
@@ -549,8 +497,7 @@ export function ProfissionaisClient({ initialData }: Props) {
             const isDeleting = deletingId === prof.id;
             const isLinked = prof.membership !== null;
             const semComissao =
-              !prof.membership?.commissionOnServices &&
-              !prof.membership?.commissionOnProducts;
+              !prof.commissionOnServices && !prof.commissionOnProducts;
 
             return (
               <div

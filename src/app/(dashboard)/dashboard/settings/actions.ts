@@ -7,10 +7,12 @@ import { MemberRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { recalcularComissoesPendentes } from "../comissoes/actions";
 
-// ─── ATUALIZAR COMISSÃO DO MEMBRO ─────────────────────────────────────────────
+// ─── ATUALIZAR COMISSÃO DO PROFISSIONAL ───────────────────────────────────────
+// Campos de comissão vivem em Professional (não em Membership) — um
+// profissional pode ter comissão configurada mesmo sem login/convite aceito.
 
 export async function updateMembershipComissao(data: {
-  membershipId: string;
+  professionalId: string;
   commissionOnServices: boolean;
   commissionOnProducts: boolean;
   commissionServicePct: number | null;
@@ -18,17 +20,18 @@ export async function updateMembershipComissao(data: {
 }): Promise<{ atualizados: number }> {
   const membership = await requireRole("owner");
 
-  const target = await db.membership.findFirst({
-    where: { id: data.membershipId, barbershopId: membership.barbershopId },
+  const target = await db.professional.findFirst({
+    where: { id: data.professionalId, barbershopId: membership.barbershopId },
+    include: { membership: { select: { role: true } } },
   });
 
-  if (!target) throw new Error("Membro não encontrado.");
-  if (target.role === MemberRole.owner) {
+  if (!target) throw new Error("Profissional não encontrado.");
+  if (target.membership?.role === MemberRole.owner) {
     throw new Error("Owner não tem comissão configurável.");
   }
 
-  await db.membership.update({
-    where: { id: data.membershipId },
+  await db.professional.update({
+    where: { id: data.professionalId },
     data: {
       commissionOnServices: data.commissionOnServices,
       commissionOnProducts: data.commissionOnProducts,
@@ -39,18 +42,13 @@ export async function updateMembershipComissao(data: {
 
   revalidatePath("/dashboard/settings/acessos");
   revalidatePath("/dashboard/comissoes");
+  revalidatePath("/dashboard/profissionais");
 
   // Recalcula retroativamente itens pendentes (commissionValue null) de
   // comandas já fechadas desse profissional, agora que a comissão mudou.
-  let atualizados = 0;
-  if (target.professionalId) {
-    const resultado = await recalcularComissoesPendentes(
-      target.professionalId,
-    );
-    atualizados = resultado.atualizados;
-  }
+  const resultado = await recalcularComissoesPendentes(data.professionalId);
 
-  return { atualizados };
+  return { atualizados: resultado.atualizados };
 }
 
 // ─── SERVIÇOS ─────────────────────────────────────────────────────────────────

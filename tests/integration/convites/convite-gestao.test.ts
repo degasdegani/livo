@@ -39,6 +39,10 @@ vi.mock("@/lib/db", () => ({
       findFirst: vi.fn(),
       update: vi.fn(),
     },
+    professional: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
     barbershop: { findUnique: vi.fn() },
   },
 }));
@@ -49,6 +53,10 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/app/(dashboard)/dashboard/comissoes/actions", () => ({
+  recalcularComissoesPendentes: vi.fn().mockResolvedValue({ atualizados: 0 }),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -296,25 +304,26 @@ describe("resendInvitationAction() — acessos", () => {
 // ── updateMembershipComissao (settings) ───────────────────────────────────────
 
 describe("updateMembershipComissao() — settings", () => {
+  const PROF_ID = "prof-1";
   const comissaoData = {
-    membershipId: MEMBER_ID,
+    professionalId: PROF_ID,
     commissionOnServices: true,
     commissionOnProducts: false,
     commissionServicePct: 20,
     commissionProductPct: null,
   };
 
-  it("throws when membership not found in tenant", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+  it("throws when professional not found in tenant", async () => {
+    vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
     await expect(updateMembershipComissao(comissaoData)).rejects.toThrow(
-      "Membro não encontrado.",
+      "Profissional não encontrado.",
     );
   });
 
-  it("throws when target is the owner (owner has no configurable commission)", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(
-      { id: MEMBER_ID, role: MemberRole.owner } as never,
+  it("throws when target professional belongs to the owner (owner has no configurable commission)", async () => {
+    vi.mocked(db.professional.findFirst).mockResolvedValue(
+      { id: PROF_ID, membership: { role: MemberRole.owner } } as never,
     );
 
     await expect(updateMembershipComissao(comissaoData)).rejects.toThrow(
@@ -323,15 +332,15 @@ describe("updateMembershipComissao() — settings", () => {
   });
 
   it("updates all commission fields correctly", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(
-      { id: MEMBER_ID, role: MemberRole.barber } as never,
+    vi.mocked(db.professional.findFirst).mockResolvedValue(
+      { id: PROF_ID, membership: { role: MemberRole.barber } } as never,
     );
 
     await updateMembershipComissao(comissaoData);
 
-    expect(vi.mocked(db.membership.update)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.professional.update)).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: MEMBER_ID },
+        where: { id: PROF_ID },
         data: expect.objectContaining({
           commissionOnServices: true,
           commissionOnProducts: false,
@@ -342,8 +351,8 @@ describe("updateMembershipComissao() — settings", () => {
     );
   });
 
-  it("queries membership by id AND barbershopId (tenant isolation)", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+  it("queries professional by id AND barbershopId (tenant isolation)", async () => {
+    vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
     try {
       await updateMembershipComissao(comissaoData);
@@ -351,10 +360,10 @@ describe("updateMembershipComissao() — settings", () => {
       /* expected */
     }
 
-    expect(vi.mocked(db.membership.findFirst)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.professional.findFirst)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          id: MEMBER_ID,
+          id: PROF_ID,
           barbershopId: SHOP_A,
         }),
       }),

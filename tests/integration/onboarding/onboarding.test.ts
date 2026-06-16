@@ -545,16 +545,12 @@ describe("Transaction — owner membership creation", () => {
     );
   });
 
-  it("owner membership has commissionOnServices=true, commissionOnProducts=false, isActive=true", async () => {
+  it("owner membership has isActive=true (commission lives on Professional now, not Membership)", async () => {
     await expect(createBarbershop(makeFormData())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.membership.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          commissionOnServices: true,
-          commissionOnProducts: false,
-          isActive: true,
-        }),
+        data: expect.objectContaining({ isActive: true }),
       }),
     );
   });

@@ -10,20 +10,31 @@ export default async function ComissoesPage() {
   const { resumo, profissionais, dataInicio, dataFim } =
     await getComissoesData("mes_atual");
 
-  // Buscar memberships com percentuais configurados (só owner vê isso)
-  const membershipsComPct =
+  // Comissão vive em Professional agora — busca todos os profissionais ativos
+  // da barbearia (não só os que têm Membership/login vinculado).
+  const professionalsComPct =
     membership.role === MemberRole.owner
-      ? await db.membership.findMany({
-          where: { barbershopId: membership.barbershopId, isActive: true },
-          include: { professional: { select: { id: true, name: true } } },
-        })
+      ? (
+          await db.professional.findMany({
+            where: { barbershopId: membership.barbershopId, isActive: true },
+            include: { membership: { select: { role: true } } },
+          })
+        ).map((p) => ({
+          id: p.id,
+          name: p.name,
+          membershipRole: p.membership?.role ?? null,
+          commissionOnServices: p.commissionOnServices,
+          commissionOnProducts: p.commissionOnProducts,
+          commissionServicePct: p.commissionServicePct,
+          commissionProductPct: p.commissionProductPct,
+        }))
       : [];
 
   return (
     <ComissoesClient
       resumoInicial={resumo}
       profissionais={profissionais}
-      memberships={membershipsComPct}
+      professionalsComPct={professionalsComPct}
       dataInicio={dataInicio}
       dataFim={dataFim}
       role={membership.role}

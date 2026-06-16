@@ -21,7 +21,7 @@ import { makeMembershipContext } from "../../helpers/membership";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    membership: { findFirst: vi.fn() },
+    professional: { findFirst: vi.fn() },
     comandaItem: { findMany: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -71,7 +71,7 @@ beforeEach(() => {
 
 describe("recalcularComissoesPendentes()", () => {
   it("throws when professional membership not found", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue(null);
+    vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
     await expect(recalcularComissoesPendentes(PROF_A)).rejects.toThrow(
       "Profissional não encontrado.",
@@ -79,7 +79,7 @@ describe("recalcularComissoesPendentes()", () => {
   });
 
   it("recalculates a pending service item using membership's commissionServicePct", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       id: "mem-a",
       professionalId: PROF_A,
       barbershopId: SHOP_A,
@@ -103,7 +103,7 @@ describe("recalcularComissoesPendentes()", () => {
   });
 
   it("does not count item when commission is off for that item type", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       id: "mem-a",
       professionalId: PROF_A,
       barbershopId: SHOP_A,
@@ -124,7 +124,7 @@ describe("recalcularComissoesPendentes()", () => {
   });
 
   it("only queries items with commissionValue null (never touches already-calculated items)", async () => {
-    vi.mocked(db.membership.findFirst).mockResolvedValue({
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
       id: "mem-a",
       professionalId: PROF_A,
       barbershopId: SHOP_A,

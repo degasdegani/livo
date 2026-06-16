@@ -391,8 +391,8 @@ describe("acceptInvitationAction() — membership creation", () => {
     );
   });
 
-  it("creates membership with commissionOnServices from invitation", async () => {
-    setupSuccess({ commissionOnServices: true, commissionOnProducts: true });
+  it("creates membership with isActive=true (commission lives on Professional, not copied from invitation)", async () => {
+    setupSuccess();
     const tx = makeAcceptTx();
     vi.mocked(db.$transaction).mockImplementation(async (fn: unknown) =>
       (fn as (t: typeof tx) => unknown)(tx),
@@ -404,11 +404,7 @@ describe("acceptInvitationAction() — membership creation", () => {
 
     expect(tx.membership.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          commissionOnServices: true,
-          commissionOnProducts: true,
-          isActive: true,
-        }),
+        data: expect.objectContaining({ isActive: true }),
       }),
     );
   });

@@ -17,8 +17,6 @@ type Member = {
   id: string;
   role: string;
   isActive: boolean;
-  commissionOnServices: boolean;
-  commissionOnProducts: boolean;
   createdAt: Date;
   user: {
     id: string;
@@ -117,8 +115,6 @@ export default function AcessosClient({
   const [formEmail, setFormEmail] = useState("");
   const [formRole, setFormRole] = useState<"reception" | "barber">("reception");
   const [formProfessionalId, setFormProfessionalId] = useState("");
-  const [formCommissionServices, setFormCommissionServices] = useState(true);
-  const [formCommissionProducts, setFormCommissionProducts] = useState(false);
 
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
@@ -134,8 +130,6 @@ export default function AcessosClient({
     setFormEmail("");
     setFormRole("reception");
     setFormProfessionalId("");
-    setFormCommissionServices(true);
-    setFormCommissionProducts(false);
     setShowForm(false);
   }
 
@@ -144,8 +138,6 @@ export default function AcessosClient({
       email: formEmail,
       role: formRole,
       professionalId: formRole === "barber" ? formProfessionalId : undefined,
-      commissionOnServices: formCommissionServices,
-      commissionOnProducts: formCommissionProducts,
     };
 
     startTransition(async () => {
@@ -284,19 +276,6 @@ export default function AcessosClient({
                       </span>
                     )}
                   </div>
-                  {/* Comissões */}
-                  {member.role !== "owner" && (
-                    <div className="flex gap-2 mt-1.5">
-                      <CommissionTag
-                        active={member.commissionOnServices}
-                        label="Serviços"
-                      />
-                      <CommissionTag
-                        active={member.commissionOnProducts}
-                        label="Produtos"
-                      />
-                    </div>
-                  )}
                 </div>
                 {/* Revogar (apenas não-dono) */}
                 {member.role !== "owner" && (
@@ -447,27 +426,6 @@ export default function AcessosClient({
                   )}
                 </div>
               )}
-
-              {/* Comissões */}
-              <div>
-                <label className="block text-xs font-medium text-[#9A9AA6] mb-2 uppercase tracking-wide">
-                  Comissionamento
-                </label>
-                <div className="space-y-2">
-                  <Toggle
-                    checked={formCommissionServices}
-                    onChange={setFormCommissionServices}
-                    label="Comissão em serviços"
-                    description="Recebe % sobre serviços que realizar/vender"
-                  />
-                  <Toggle
-                    checked={formCommissionProducts}
-                    onChange={setFormCommissionProducts}
-                    label="Comissão em produtos"
-                    description="Recebe % sobre produtos que vender"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Botões */}
@@ -498,48 +456,3 @@ export default function AcessosClient({
   );
 }
 
-// ─── Sub-componentes ───────────────────────────────────────────────────────────
-
-function CommissionTag({ active, label }: { active: boolean; label: string }) {
-  if (!active) return null;
-  return (
-    <span className="inline-flex items-center gap-1 text-xs text-[#C8A24C] bg-[#C8A24C]/10 border border-[#C8A24C]/20 rounded px-1.5 py-0.5">
-      <Check size={10} className="inline" /> {label}
-    </span>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-  label,
-  description,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  description: string;
-}) {
-  return (
-    <div
-      className="flex items-center justify-between bg-[#0B0B0D] border border-[#2A2A33] rounded-lg px-4 py-3 cursor-pointer"
-      onClick={() => onChange(!checked)}
-    >
-      <div>
-        <p className="text-sm text-white">{label}</p>
-        <p className="text-xs text-[#6E6E78] mt-0.5">{description}</p>
-      </div>
-      <div
-        className={`relative w-10 h-6 rounded-full transition-colors ${
-          checked ? "bg-[#C8102E]" : "bg-[#2A2A33]"
-        }`}
-      >
-        <div
-          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-            checked ? "translate-x-5" : "translate-x-1"
-          }`}
-        />
-      </div>
-    </div>
-  );
-}
