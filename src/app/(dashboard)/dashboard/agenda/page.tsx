@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
 import { getAgendaDay, getServicesForAgenda } from "./agenda-actions";
 import AgendaBoard from "./agenda-board";
+import DayView from "./day-view";
 
 export const metadata = { title: "Agenda | LIVO" };
 
@@ -59,7 +60,7 @@ export default async function AgendaPage({
           <ViewToggle current="operacional" />
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <AgendaBoard
+          <DayView
             initialData={dayData}
             initialDateKey={dateKey}
             services={services}

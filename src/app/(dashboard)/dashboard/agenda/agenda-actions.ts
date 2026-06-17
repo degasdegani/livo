@@ -51,11 +51,19 @@ export type AgendaAppointment = {
   services: AgendaAppointmentService[];
 };
 
+export type AgendaBusinessHour = {
+  openTime: string; // "HH:MM"
+  closeTime: string; // "HH:MM"
+  isOpen: boolean;
+};
+
 export type AgendaDayData = {
   professionals: AgendaProfessional[];
   appointments: AgendaAppointment[];
   userRole: string;
   userProfessionalId: string | null;
+  // Null when barbershop has no BusinessHour row for this weekday — caller falls back to defaults.
+  businessHour: AgendaBusinessHour | null;
 };
 
 export type AgendaService = {
@@ -73,50 +81,44 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
   const date = new Date(`${dateStr}T00:00:00-03:00`);
   const nextDay = new Date(`${dateStr}T23:59:59.999-03:00`);
 
-  const professionals = await db.professional.findMany({
-    where: {
-      barbershopId: membership.barbershopId,
-      isActive: true,
-    },
-    orderBy: { name: "asc" },
-  });
+  // Day-of-week from the date string (0=Sunday … 6=Saturday) resolved in UTC
+  // using the BRT date, which is reliable on any server timezone.
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, mo - 1, d)).getDay();
 
-  const scope = appointmentScope(membership);
-
-  const appointments = await db.appointment.findMany({
-    where: {
-      ...scope,
-      date: {
-        gte: date,
-        lte: nextDay,
+  const [professionals, appointments, businessHourRow] = await Promise.all([
+    db.professional.findMany({
+      where: { barbershopId: membership.barbershopId, isActive: true },
+      orderBy: { name: "asc" },
+    }),
+    db.appointment.findMany({
+      where: {
+        ...appointmentScope(membership),
+        date: { gte: date, lte: nextDay },
+        status: { notIn: ["cancelled"] },
       },
-      status: {
-        notIn: ["cancelled"],
-      },
-    },
-    include: {
-      service: {
-        select: {
-          name: true,
-          durationMin: true,
-          priceInCents: true,
+      include: {
+        service: {
+          select: { name: true, durationMin: true, priceInCents: true },
+        },
+        comanda: { select: { id: true } },
+        services: {
+          select: {
+            id: true,
+            serviceId: true,
+            serviceName: true,
+            servicePriceInCents: true,
+            serviceDurationMin: true,
+          },
         },
       },
-      comanda: {
-        select: { id: true },
-      },
-      services: {
-        select: {
-          id: true,
-          serviceId: true,
-          serviceName: true,
-          servicePriceInCents: true,
-          serviceDurationMin: true,
-        },
-      },
-    },
-    orderBy: { date: "asc" },
-  });
+      orderBy: { date: "asc" },
+    }),
+    db.businessHour.findFirst({
+      where: { barbershopId: membership.barbershopId, dayOfWeek },
+      select: { openTime: true, closeTime: true, isOpen: true },
+    }),
+  ]);
 
   return {
     professionals: professionals.map((p) => ({
@@ -149,6 +151,13 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
     })),
     userRole: membership.role,
     userProfessionalId: membership.professionalId,
+    businessHour: businessHourRow
+      ? {
+          openTime: businessHourRow.openTime,
+          closeTime: businessHourRow.closeTime,
+          isOpen: businessHourRow.isOpen,
+        }
+      : null,
   };
 }
 

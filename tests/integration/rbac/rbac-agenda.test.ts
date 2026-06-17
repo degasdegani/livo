@@ -29,6 +29,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     professional: { findMany: vi.fn() },
     appointment: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    businessHour: { findFirst: vi.fn() },
     service: { findFirst: vi.fn(), findMany: vi.fn() },
     client: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     comanda: { updateMany: vi.fn(), findFirst: vi.fn() },
@@ -76,6 +77,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.professional.findMany).mockResolvedValue([]);
   vi.mocked(db.appointment.findMany).mockResolvedValue([]);
+  vi.mocked(db.businessHour.findFirst).mockResolvedValue(null);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ describe("RBAC — Agenda", () => {
 
       const result = await createQuickAppointment({
         professionalId: "prof-own", // matches barberCtx().professionalId
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",
@@ -192,7 +194,7 @@ describe("RBAC — Agenda", () => {
 
       const result = await createQuickAppointment({
         professionalId: "prof-someone-else", // different from barberCtx().professionalId
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",
@@ -212,7 +214,7 @@ describe("RBAC — Agenda", () => {
 
       const result = await createQuickAppointment({
         professionalId: "prof-anyone",
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",
@@ -226,7 +228,7 @@ describe("RBAC — Agenda", () => {
 
       const result = await createQuickAppointment({
         professionalId: "prof-a",
-        serviceId: "svc-a",
+        serviceIds: ["svc-a"],
         dateISO: new Date().toISOString(),
         clientName: "Test",
         clientPhone: "11999999999",
