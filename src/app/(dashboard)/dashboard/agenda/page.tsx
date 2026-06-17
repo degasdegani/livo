@@ -1,15 +1,13 @@
 // src/app/(dashboard)/dashboard/agenda/page.tsx
 import Link from "next/link";
-import type { AppointmentForCalendar } from "@/components/day-panel";
-import { MonthlyCalendar } from "@/components/monthly-calendar";
-import { db } from "@/lib/db";
-import { requireMembership } from "@/lib/permissions";
 import {
   getAgendaDay,
+  getAgendaMonthSummary,
   getAgendaWeek,
   getServicesForAgenda,
 } from "./agenda-actions";
 import DayView from "./day-view";
+import MonthView from "./month-view";
 import WeekView from "./week-view";
 
 export const metadata = { title: "Agenda | LIVO" };
@@ -129,43 +127,15 @@ export default async function AgendaPage({
     );
   }
 
-  // ── Visão mensal (default) ───────────────────────────────────────────────────
-  const membership = await requireMembership();
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1));
-  const end   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 0, 23, 59, 59, 999));
+  // ── Visão mensal (padrão) ────────────────────────────────────────────────────
+  // Use `date` param when present (e.g., navigating from DayView) to show
+  // the correct month; fall back to today's BRT month.
+  const dateKey = date ?? todayBRT();
+  const [brtYear, brtMonthStr] = dateKey.split("-").map(Number);
+  const brtMonth = brtMonthStr - 1; // 0-indexed for JS
+  const monthStart = `${brtYear}-${String(brtMonthStr).padStart(2, "0")}-01`;
 
-  const rawAppointments = await db.appointment.findMany({
-    where:
-      membership.role === "barber" && membership.professionalId
-        ? {
-            barbershopId: membership.barbershopId,
-            date: { gte: start, lte: end },
-            professionalId: membership.professionalId,
-          }
-        : {
-            barbershopId: membership.barbershopId,
-            date: { gte: start, lte: end },
-          },
-    orderBy: { date: "asc" },
-    include: {
-      client:       { select: { name: true, phone: true } },
-      professional: { select: { name: true } },
-      service:      { select: { name: true, priceInCents: true } },
-    },
-  });
-
-  const appointments: AppointmentForCalendar[] = rawAppointments.map((a) => ({
-    id: a.id,
-    startTime: a.date,
-    endTime: a.endTime ?? null,
-    status: a.status as AppointmentForCalendar["status"],
-    clientName: a.client?.name ?? a.clientName,
-    clientPhone: a.client?.phone ?? a.clientPhone ?? null,
-    professionalName: a.professional.name,
-    serviceName: a.service.name,
-    priceInCents: a.service.priceInCents,
-  }));
+  const monthData = await getAgendaMonthSummary(monthStart);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -180,10 +150,10 @@ export default async function AgendaPage({
         </div>
         <ViewToggle current="mensal" />
       </div>
-      <MonthlyCalendar
-        initialYear={now.getFullYear()}
-        initialMonth={now.getMonth()}
-        appointments={appointments}
+      <MonthView
+        initialCountByDay={monthData.countByDay}
+        initialYear={brtYear}
+        initialMonth={brtMonth}
       />
     </div>
   );

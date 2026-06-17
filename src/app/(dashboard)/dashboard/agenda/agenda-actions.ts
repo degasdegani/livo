@@ -409,6 +409,46 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
   };
 }
 
+// ─── Resumo mensal (contagem de agendamentos por dia, sem detalhes) ──────────
+
+export type AgendaMonthSummary = {
+  /** dateKey (YYYY-MM-DD BRT) → quantidade de agendamentos ativos naquele dia. */
+  countByDay: Record<string, number>;
+};
+
+export async function getAgendaMonthSummary(
+  monthStartDate: string, // "YYYY-MM-01"
+): Promise<AgendaMonthSummary> {
+  const membership = await requireMembership();
+
+  const [y, mo] = monthStartDate.split("-").map(Number); // mo is 1-indexed
+
+  const rangeStart = new Date(`${monthStartDate}T00:00:00-03:00`);
+
+  // Last day of the month: day 0 of the NEXT month (UTC-safe arithmetic).
+  const lastDayDate = new Date(Date.UTC(y, mo, 0));
+  const lastDayStr = `${y}-${String(mo).padStart(2, "0")}-${String(lastDayDate.getUTCDate()).padStart(2, "0")}`;
+  const rangeEnd = new Date(`${lastDayStr}T23:59:59.999-03:00`);
+
+  // Minimal projection: only the date field is needed to build the count map.
+  const rows = await db.appointment.findMany({
+    where: {
+      ...appointmentScope(membership),
+      date: { gte: rangeStart, lte: rangeEnd },
+      status: { notIn: ["cancelled", "no_show"] },
+    },
+    select: { date: true },
+  });
+
+  const countByDay: Record<string, number> = {};
+  for (const row of rows) {
+    const dk = _isoToDateKeyBRT(row.date.toISOString());
+    countByDay[dk] = (countByDay[dk] ?? 0) + 1;
+  }
+
+  return { countByDay };
+}
+
 // ─── Reagendar via drag-and-drop (muda data + profissional em uma operação) ───
 
 export async function rescheduleAppointment(
