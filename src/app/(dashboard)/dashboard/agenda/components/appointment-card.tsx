@@ -1,7 +1,14 @@
 "use client";
 
+import { useDraggable } from "@dnd-kit/core";
 import type { AgendaAppointment } from "../agenda-actions";
 import { STATUS_CONFIG } from "./shared";
+
+export type DragData = {
+  appointmentId: string;
+  professionalId: string;
+  durationMin: number;
+};
 
 export function AppointmentCard({
   appointment,
@@ -10,6 +17,8 @@ export function AppointmentCard({
   topPx,
   heightPx,
   onClick,
+  draggable = false,
+  durationMin = 30,
 }: {
   appointment: AgendaAppointment;
   columnIndex: number;
@@ -17,7 +26,19 @@ export function AppointmentCard({
   topPx: number;
   heightPx: number;
   onClick: () => void;
+  draggable?: boolean;
+  durationMin?: number;
 }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: appointment.id,
+    disabled: !draggable,
+    data: {
+      appointmentId: appointment.id,
+      professionalId: appointment.professionalId,
+      durationMin,
+    } satisfies DragData,
+  });
+
   const config = STATUS_CONFIG[appointment.status];
   const isInactive =
     appointment.status === "cancelled" || appointment.status === "no_show";
@@ -40,16 +61,20 @@ export function AppointmentCard({
 
   return (
     <div
+      ref={setNodeRef}
       role="button"
       tabIndex={0}
-      className={`absolute rounded border overflow-hidden cursor-pointer transition-opacity ${config.bg} ${config.border}`}
+      className={`absolute rounded border overflow-hidden transition-opacity ${config.bg} ${config.border}`}
       style={{
         top: topPx + 1,
         height: Math.max(20, heightPx - 2),
         left: leftCalc,
         width: widthCalc,
-        opacity: isInactive ? 0.4 : 1,
+        // Ghost while dragging — DragOverlay renders the moving clone.
+        opacity: isInactive ? 0.4 : isDragging ? 0.25 : 1,
         zIndex: isInactive ? 0 : 1,
+        cursor: draggable ? (isDragging ? "grabbing" : "grab") : "pointer",
+        touchAction: draggable ? "none" : undefined,
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -61,8 +86,13 @@ export function AppointmentCard({
           onClick();
         }
       }}
+      // Spread dnd-kit listeners/attributes only when dragging is enabled.
+      // {…undefined} === {} in JS, so it's safe when disabled returns undefined.
+      {...(draggable ? listeners : undefined)}
+      {...(draggable ? attributes : undefined)}
     >
-      <div className="px-1.5 py-1 h-full overflow-hidden">
+      {/* pointer-events-none prevents child text nodes from intercepting drag */}
+      <div className="px-1.5 py-1 h-full overflow-hidden pointer-events-none">
         <p
           className="text-xs font-semibold leading-tight truncate"
           style={{ color: "var(--text-primary)" }}

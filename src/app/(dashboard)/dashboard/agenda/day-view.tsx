@@ -1,7 +1,19 @@
 "use client";
 
+import {
+  DndContext,
+  DragOverlay,
+  MeasuringStrategy,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { useEffect, useState, useTransition } from "react";
 import { layoutAppointments } from "@/lib/agenda-layout";
+import { calcDropMinute, checkClientConflict } from "@/lib/agenda-drag";
 import { updateAppointmentStatus } from "../actions";
 import { abrirComanda } from "../comandas/actions";
 import type { AgendaAppointment, AgendaDayData, AgendaService } from "./agenda-actions";
@@ -9,9 +21,10 @@ import {
   createQuickAppointment,
   getAgendaDay,
   moveAppointment,
+  rescheduleAppointment,
   updateAppointment,
 } from "./agenda-actions";
-import { AppointmentCard } from "./components/appointment-card";
+import { AppointmentCard, type DragData } from "./components/appointment-card";
 import { CreateModal } from "./components/create-modal";
 import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
@@ -20,9 +33,12 @@ import {
   MIN_COL_WIDTH,
   PX_PER_MINUTE,
   RULER_WIDTH,
+  STATUS_CONFIG,
+  dateTimeToISO,
   formatDateKey,
   formatDateLabel,
   isTodayKey,
+  minToTimeStr,
   timeStrToMin,
 } from "./components/shared";
 import { TimeRuler } from "./components/time-ruler";
@@ -46,6 +62,12 @@ interface DayViewProps {
   services: AgendaService[];
 }
 
+// ── DnD configuration ─────────────────────────────────────────────────────────
+
+const DND_MEASURING = {
+  droppable: { strategy: MeasuringStrategy.WhileDragging },
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ProfessionalColumn — coluna por profissional (específica do DayView)
 // ══════════════════════════════════════════════════════════════════════════════
@@ -57,6 +79,8 @@ function ProfessionalColumn({
   closingMin,
   onGridClick,
   onCardClick,
+  userRole,
+  userProfessionalId,
 }: {
   professional: { id: string; name: string; avatarUrl: string | null };
   appointments: AgendaAppointment[];
@@ -64,7 +88,19 @@ function ProfessionalColumn({
   closingMin: number;
   onGridClick: (clickY: number) => void;
   onCardClick: (appt: AgendaAppointment) => void;
+  userRole: string;
+  userProfessionalId: string | null;
 }) {
+  // Barbers can only drop on their own column.
+  const isOwnColumn =
+    userRole !== "barber" || professional.id === userProfessionalId;
+
+  const { setNodeRef, isOver } = useDroppable({
+    id: `day-prof-${professional.id}`,
+    data: { professionalId: professional.id },
+    disabled: !isOwnColumn,
+  });
+
   const positioned = layoutAppointments(appointments, openingMin, PX_PER_MINUTE);
   const totalMin = closingMin - openingMin;
   const gridHeight = totalMin * PX_PER_MINUTE;
@@ -83,12 +119,17 @@ function ProfessionalColumn({
 
   return (
     <div
+      ref={setNodeRef}
       className="flex-1 relative border-l"
       style={{
         minWidth: MIN_COL_WIDTH,
         height: gridHeight,
         borderColor: "var(--border)",
         cursor: "crosshair",
+        // Highlight the column when a card is dragged over it.
+        backgroundColor: isOver ? "rgba(99, 102, 241, 0.06)" : undefined,
+        boxShadow: isOver ? "inset 0 0 0 2px var(--color-primary)" : undefined,
+        transition: "background-color 0.1s, box-shadow 0.1s",
       }}
       onClick={handleClick}
     >
@@ -104,17 +145,28 @@ function ProfessionalColumn({
           }}
         />
       ))}
-      {positioned.map((pos) => (
-        <AppointmentCard
-          key={pos.appointment.id}
-          appointment={pos.appointment}
-          columnIndex={pos.columnIndex}
-          columnCount={pos.columnCount}
-          topPx={pos.topPx}
-          heightPx={pos.heightPx}
-          onClick={() => onCardClick(pos.appointment)}
-        />
-      ))}
+      {positioned.map((pos) => {
+        const durationMin = Math.round(pos.heightPx / PX_PER_MINUTE);
+        const canDrag =
+          pos.appointment.status !== "cancelled" &&
+          pos.appointment.status !== "no_show" &&
+          (userRole !== "barber" ||
+            pos.appointment.professionalId === userProfessionalId);
+
+        return (
+          <AppointmentCard
+            key={pos.appointment.id}
+            appointment={pos.appointment}
+            columnIndex={pos.columnIndex}
+            columnCount={pos.columnCount}
+            topPx={pos.topPx}
+            heightPx={pos.heightPx}
+            onClick={() => onCardClick(pos.appointment)}
+            draggable={canDrag}
+            durationMin={durationMin}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -129,6 +181,14 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
   const [modal, setModal] = useState<ModalState>({ type: "none" });
   const [toast, setToast] = useState<Toast>(null);
   const [isPending, startTransition] = useTransition();
+  const [draggingAppt, setDraggingAppt] = useState<AgendaAppointment | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      // 8px threshold: distinguishes a click from a drag intent.
+      activationConstraint: { distance: 8 },
+    }),
+  );
 
   const openingMin = timeStrToMin(data.businessHour?.openTime ?? "08:00");
   const closingMin = timeStrToMin(data.businessHour?.closeTime ?? "20:00");
@@ -174,6 +234,66 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
     const clamped = Math.max(openingMin, Math.min(closingMin - 10, rounded));
     setModal({ type: "create", professionalId, suggestedMinute: clamped, dateKey });
   }
+
+  // ── DnD handlers ────────────────────────────────────────────────────────────
+
+  function handleDragStart(event: DragStartEvent) {
+    const appt = data.appointments.find((a) => a.id === event.active.id);
+    setDraggingAppt(appt ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingAppt(null);
+    const { active, over } = event;
+    if (!over || !active.rect.current.translated) return;
+
+    const dragData = active.data.current as DragData | undefined;
+    if (!dragData) return;
+
+    const dropData = over.data.current as { professionalId: string } | undefined;
+    if (!dropData) return;
+
+    // Compute Y of card midpoint within the droppable zone (viewport coords cancel out).
+    const translated = active.rect.current.translated;
+    const cardMidY = translated.top + translated.height / 2;
+    const offsetY = cardMidY - over.rect.top;
+
+    const newMin = calcDropMinute(offsetY, openingMin, PX_PER_MINUTE, closingMin);
+    const newProfessionalId = dropData.professionalId;
+    const newDateISO = dateTimeToISO(dateKey, minToTimeStr(newMin));
+
+    // Optimistic client-side conflict check for immediate UX feedback.
+    if (
+      checkClientConflict(
+        data.appointments,
+        newProfessionalId,
+        newDateISO,
+        dragData.durationMin,
+        dragData.appointmentId,
+      )
+    ) {
+      showToast("Horário em conflito com outro agendamento.", "error");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await rescheduleAppointment(
+        dragData.appointmentId,
+        newDateISO,
+        newProfessionalId,
+      );
+      if (res.success) {
+        showToast("Agendamento reagendado!", "success");
+        await refreshData(dateKey);
+      } else {
+        // Server is the authority — reload to restore original card positions.
+        showToast(res.error ?? "Erro ao reagendar.", "error");
+        await refreshData(dateKey);
+      }
+    });
+  }
+
+  // ── Create / Edit / Move / Status handlers ───────────────────────────────────
 
   function handleCreate(formData: {
     professionalId: string;
@@ -278,185 +398,217 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
   const isToday = isTodayKey(dateKey);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* ── Day navigation header ─────────── */}
-      <div
-        className="shrink-0 flex items-center gap-3 px-4 py-3"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          disabled={isPending}
-          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
-          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          aria-label="Dia anterior"
+    <DndContext
+      sensors={sensors}
+      measuring={DND_MEASURING}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex flex-col h-full min-h-0">
+        {/* ── Day navigation header ─────────── */}
+        <div
+          className="shrink-0 flex items-center gap-3 px-4 py-3"
+          style={{ borderBottom: "1px solid var(--border)" }}
         >
-          ◀
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate(1)}
-          disabled={isPending}
-          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
-          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          aria-label="Próximo dia"
-        >
-          ▶
-        </button>
-
-        <h2
-          className="flex-1 text-sm font-semibold capitalize"
-          style={{ color: isToday ? "var(--color-primary)" : "var(--text-primary)" }}
-        >
-          {dateLabel}
-          {isToday && (
-            <span className="ml-2 text-xs font-normal" style={{ color: "var(--color-primary)" }}>
-              Hoje
-            </span>
-          )}
-        </h2>
-
-        {!isToday && (
           <button
             type="button"
-            onClick={goToday}
+            onClick={() => navigate(-1)}
             disabled={isPending}
-            className="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
             style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            aria-label="Dia anterior"
           >
-            Hoje
+            ◀
           </button>
-        )}
-
-        {isPending && (
-          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            Carregando…
-          </span>
-        )}
-
-        {data.businessHour && !data.businessHour.isOpen && (
-          <span
-            className="text-xs px-2 py-1 rounded"
-            style={{ backgroundColor: "var(--status-red-faint, #fee2e2)", color: "var(--status-red)" }}
+          <button
+            type="button"
+            onClick={() => navigate(1)}
+            disabled={isPending}
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            aria-label="Próximo dia"
           >
-            Fechado
-          </span>
-        )}
-      </div>
+            ▶
+          </button>
 
-      {/* ── Grid body ─────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        <div style={{ minWidth: RULER_WIDTH + visibleProfessionals.length * MIN_COL_WIDTH }}>
-          {/* Professional name header (sticky) */}
-          <div
-            className="flex sticky top-0 z-10"
-            style={{ backgroundColor: "var(--bg-card)" }}
+          <h2
+            className="flex-1 text-sm font-semibold capitalize"
+            style={{ color: isToday ? "var(--color-primary)" : "var(--text-primary)" }}
           >
-            <div
-              className="shrink-0 border-r border-b"
-              style={{ width: RULER_WIDTH, borderColor: "var(--border)" }}
-            />
-            {visibleProfessionals.map((prof) => (
-              <div
-                key={prof.id}
-                className="flex-1 border-l border-b px-2 py-2 text-center text-xs font-semibold truncate"
-                style={{
-                  minWidth: MIN_COL_WIDTH,
-                  borderColor: "var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {prof.name}
-              </div>
-            ))}
-          </div>
-
-          {/* Time ruler + professional columns */}
-          <div className="flex">
-            <TimeRuler openingMin={openingMin} closingMin={closingMin} />
-            {visibleProfessionals.length === 0 ? (
-              <div
-                className="flex-1 flex items-center justify-center text-sm"
-                style={{ color: "var(--text-tertiary)", minHeight: 200 }}
-              >
-                Nenhum profissional ativo.
-              </div>
-            ) : (
-              visibleProfessionals.map((prof) => (
-                <ProfessionalColumn
-                  key={prof.id}
-                  professional={prof}
-                  appointments={data.appointments.filter((a) => a.professionalId === prof.id)}
-                  openingMin={openingMin}
-                  closingMin={closingMin}
-                  onGridClick={(y) => handleGridClick(prof.id, y)}
-                  onCardClick={(appt) => setModal({ type: "detail", appointment: appt })}
-                />
-              ))
+            {dateLabel}
+            {isToday && (
+              <span className="ml-2 text-xs font-normal" style={{ color: "var(--color-primary)" }}>
+                Hoje
+              </span>
             )}
+          </h2>
+
+          {!isToday && (
+            <button
+              type="button"
+              onClick={goToday}
+              disabled={isPending}
+              className="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              Hoje
+            </button>
+          )}
+
+          {isPending && (
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+              Carregando…
+            </span>
+          )}
+
+          {data.businessHour && !data.businessHour.isOpen && (
+            <span
+              className="text-xs px-2 py-1 rounded"
+              style={{ backgroundColor: "var(--status-red-faint, #fee2e2)", color: "var(--status-red)" }}
+            >
+              Fechado
+            </span>
+          )}
+        </div>
+
+        {/* ── Grid body ─────────────────────── */}
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div style={{ minWidth: RULER_WIDTH + visibleProfessionals.length * MIN_COL_WIDTH }}>
+            {/* Professional name header (sticky) */}
+            <div
+              className="flex sticky top-0 z-10"
+              style={{ backgroundColor: "var(--bg-card)" }}
+            >
+              <div
+                className="shrink-0 border-r border-b"
+                style={{ width: RULER_WIDTH, borderColor: "var(--border)" }}
+              />
+              {visibleProfessionals.map((prof) => (
+                <div
+                  key={prof.id}
+                  className="flex-1 border-l border-b px-2 py-2 text-center text-xs font-semibold truncate"
+                  style={{
+                    minWidth: MIN_COL_WIDTH,
+                    borderColor: "var(--border)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {prof.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Time ruler + professional columns */}
+            <div className="flex">
+              <TimeRuler openingMin={openingMin} closingMin={closingMin} />
+              {visibleProfessionals.length === 0 ? (
+                <div
+                  className="flex-1 flex items-center justify-center text-sm"
+                  style={{ color: "var(--text-tertiary)", minHeight: 200 }}
+                >
+                  Nenhum profissional ativo.
+                </div>
+              ) : (
+                visibleProfessionals.map((prof) => (
+                  <ProfessionalColumn
+                    key={prof.id}
+                    professional={prof}
+                    appointments={data.appointments.filter((a) => a.professionalId === prof.id)}
+                    openingMin={openingMin}
+                    closingMin={closingMin}
+                    onGridClick={(y) => handleGridClick(prof.id, y)}
+                    onCardClick={(appt) => setModal({ type: "detail", appointment: appt })}
+                    userRole={data.userRole}
+                    userProfessionalId={data.userProfessionalId}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
+
+        {/* ── Toast ─────────────────────────── */}
+        {toast && (
+          <div
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-lg text-sm font-medium text-white shadow-lg z-50"
+            style={{
+              backgroundColor:
+                toast.kind === "success" ? "var(--status-green)" : "var(--status-red)",
+            }}
+          >
+            {toast.msg}
+          </div>
+        )}
+
+        {/* ── DragOverlay — floating card clone that follows the pointer ── */}
+        <DragOverlay dropAnimation={null}>
+          {draggingAppt ? (
+            <div
+              className={`rounded border px-1.5 py-1 shadow-xl ${STATUS_CONFIG[draggingAppt.status].bg} ${STATUS_CONFIG[draggingAppt.status].border}`}
+              style={{ width: 150, minHeight: 38, opacity: 0.95, cursor: "grabbing" }}
+            >
+              <p
+                className="text-xs font-semibold leading-tight truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {draggingAppt.clientName}
+              </p>
+              <p
+                className="text-xs leading-tight truncate mt-0.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {draggingAppt.serviceName}
+              </p>
+            </div>
+          ) : null}
+        </DragOverlay>
+
+        {/* ── Modals ────────────────────────── */}
+        {modal.type === "detail" && (
+          <DetailModal
+            appointment={modal.appointment}
+            userRole={data.userRole}
+            isPending={isPending}
+            onClose={() => setModal({ type: "none" })}
+            onEdit={() => setModal({ type: "edit", appointment: modal.appointment })}
+            onMove={() => setModal({ type: "move", appointment: modal.appointment })}
+            onStatusChange={(status) => handleStatusChange(modal.appointment, status)}
+            onAbrirComanda={() => handleAbrirComanda(modal.appointment)}
+          />
+        )}
+        {modal.type === "edit" && (
+          <EditModal
+            appointment={modal.appointment}
+            services={services}
+            isPending={isPending}
+            onClose={() => setModal({ type: "none" })}
+            onEdit={handleEdit}
+          />
+        )}
+        {modal.type === "move" && (
+          <MoveModal
+            appointment={modal.appointment}
+            professionals={data.professionals}
+            isPending={isPending}
+            onClose={() => setModal({ type: "none" })}
+            onMove={(newProfId) => handleMove(modal.appointment, newProfId)}
+          />
+        )}
+        {modal.type === "create" && (
+          <CreateModal
+            professionalId={modal.professionalId}
+            suggestedMinute={modal.suggestedMinute}
+            dateKey={modal.dateKey}
+            services={services}
+            professionals={data.professionals}
+            userRole={data.userRole}
+            userProfessionalId={data.userProfessionalId}
+            isPending={isPending}
+            onClose={() => setModal({ type: "none" })}
+            onCreate={handleCreate}
+          />
+        )}
       </div>
-
-      {/* ── Toast ─────────────────────────── */}
-      {toast && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-lg text-sm font-medium text-white shadow-lg z-50"
-          style={{
-            backgroundColor:
-              toast.kind === "success" ? "var(--status-green)" : "var(--status-red)",
-          }}
-        >
-          {toast.msg}
-        </div>
-      )}
-
-      {/* ── Modals ────────────────────────── */}
-      {modal.type === "detail" && (
-        <DetailModal
-          appointment={modal.appointment}
-          userRole={data.userRole}
-          isPending={isPending}
-          onClose={() => setModal({ type: "none" })}
-          onEdit={() => setModal({ type: "edit", appointment: modal.appointment })}
-          onMove={() => setModal({ type: "move", appointment: modal.appointment })}
-          onStatusChange={(status) => handleStatusChange(modal.appointment, status)}
-          onAbrirComanda={() => handleAbrirComanda(modal.appointment)}
-        />
-      )}
-      {modal.type === "edit" && (
-        <EditModal
-          appointment={modal.appointment}
-          services={services}
-          isPending={isPending}
-          onClose={() => setModal({ type: "none" })}
-          onEdit={handleEdit}
-        />
-      )}
-      {modal.type === "move" && (
-        <MoveModal
-          appointment={modal.appointment}
-          professionals={data.professionals}
-          isPending={isPending}
-          onClose={() => setModal({ type: "none" })}
-          onMove={(newProfId) => handleMove(modal.appointment, newProfId)}
-        />
-      )}
-      {modal.type === "create" && (
-        <CreateModal
-          professionalId={modal.professionalId}
-          suggestedMinute={modal.suggestedMinute}
-          dateKey={modal.dateKey}
-          services={services}
-          professionals={data.professionals}
-          userRole={data.userRole}
-          userProfessionalId={data.userProfessionalId}
-          isPending={isPending}
-          onClose={() => setModal({ type: "none" })}
-          onCreate={handleCreate}
-        />
-      )}
-    </div>
+    </DndContext>
   );
 }

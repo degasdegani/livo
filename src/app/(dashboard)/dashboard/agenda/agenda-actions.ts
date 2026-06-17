@@ -409,6 +409,86 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
   };
 }
 
+// ─── Reagendar via drag-and-drop (muda data + profissional em uma operação) ───
+
+export async function rescheduleAppointment(
+  appointmentId: string,
+  /** UTC ISO string for the new start time. */
+  newDateISO: string,
+  newProfessionalId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    const existing = await db.appointment.findFirst({
+      where: { id: appointmentId, barbershopId: membership.barbershopId },
+      select: { professionalId: true, date: true, endTime: true, status: true },
+    });
+
+    if (!existing) return { success: false, error: "Agendamento não encontrado." };
+
+    // RBAC: barber can only reschedule own appointments.
+    if (
+      membership.role === "barber" &&
+      existing.professionalId !== membership.professionalId
+    ) {
+      return { success: false, error: "Sem permissão para este agendamento." };
+    }
+
+    if (
+      existing.status === "completed" ||
+      existing.status === "cancelled" ||
+      existing.status === "no_show"
+    ) {
+      return {
+        success: false,
+        error: "Apenas agendamentos pendentes ou confirmados podem ser reagendados.",
+      };
+    }
+
+    const startDate = new Date(newDateISO);
+    // Preserve original duration; fall back to 30 min if endTime is missing.
+    const durationMs = existing.endTime
+      ? existing.endTime.getTime() - existing.date.getTime()
+      : 30 * 60_000;
+    const endDate = new Date(startDate.getTime() + durationMs);
+
+    await db.$transaction(async (tx) => {
+      // Advisory lock on the destination professional — same pattern as createAppointmentCore.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${newProfessionalId}))`;
+
+      const conflict = await tx.appointment.findFirst({
+        where: {
+          professionalId: newProfessionalId,
+          status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
+          date: { lt: endDate },
+          endTime: { gt: startDate },
+          NOT: { id: appointmentId },
+        },
+        select: { id: true },
+      });
+
+      if (conflict) {
+        throw Object.assign(new Error("conflict"), { isConflict: true });
+      }
+
+      await tx.appointment.update({
+        where: { id: appointmentId },
+        data: { date: startDate, endTime: endDate, professionalId: newProfessionalId },
+      });
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch (err) {
+    if (err && typeof err === "object" && "isConflict" in err) {
+      return { success: false, error: "Horário em conflito com outro agendamento." };
+    }
+    return { success: false, error: "Erro ao reagendar agendamento." };
+  }
+}
+
 // ─── Busca de clientes para autocomplete ─────────────────────────────────────
 
 export type AgendaClientResult = {
