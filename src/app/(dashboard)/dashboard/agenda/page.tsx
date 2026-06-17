@@ -4,11 +4,44 @@ import type { AppointmentForCalendar } from "@/components/day-panel";
 import { MonthlyCalendar } from "@/components/monthly-calendar";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
-import { getAgendaDay, getServicesForAgenda } from "./agenda-actions";
-import AgendaBoard from "./agenda-board";
+import {
+  getAgendaDay,
+  getAgendaWeek,
+  getServicesForAgenda,
+} from "./agenda-actions";
 import DayView from "./day-view";
+import WeekView from "./week-view";
 
 export const metadata = { title: "Agenda | LIVO" };
+
+// ─── Helper: Monday of the week containing a given dateKey ───────────────────
+
+function getMondayOf(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00`);
+  const dow = d.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function todayBRT(): string {
+  const now = new Date();
+  return now
+    .toLocaleDateString("pt-BR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    })
+    .split("/")
+    .reverse()
+    .join("-");
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function AgendaPage({
   searchParams,
@@ -17,20 +50,49 @@ export default async function AgendaPage({
 }) {
   const { view, date } = await searchParams;
 
-  // ── Visão operacional ────────────────────────────────────────────────────────
+  // ── Visão semanal ────────────────────────────────────────────────────────────
+  if (view === "semana") {
+    const dateKey = date ?? todayBRT();
+    const weekStart = getMondayOf(dateKey);
+
+    const [weekData, services] = await Promise.all([
+      getAgendaWeek(weekStart),
+      getServicesForAgenda(),
+    ]);
+
+    return (
+      <div className="h-full flex flex-col min-h-0">
+        <div
+          className="flex items-center justify-between px-6 py-4 shrink-0"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+          <div>
+            <h1
+              className="text-xl font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Agenda
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+              Visão semanal — 7 dias lado a lado
+            </p>
+          </div>
+          <ViewToggle current="semana" />
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <WeekView
+            initialData={weekData}
+            initialWeekStart={weekStart}
+            services={services}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Visão operacional (dia) ───────────────────────────────────────────────────
   if (view === "operacional") {
-    const dateKey =
-      date ??
-      new Date()
-        .toLocaleDateString("pt-BR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          timeZone: "America/Sao_Paulo",
-        })
-        .split("/")
-        .reverse()
-        .join("-");
+    const dateKey = date ?? todayBRT();
 
     const [dayData, services] = await Promise.all([
       getAgendaDay(dateKey),
@@ -50,10 +112,7 @@ export default async function AgendaPage({
             >
               Agenda
             </h1>
-            <p
-              className="text-xs mt-0.5"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
               Visão operacional — gerenciamento em tempo real
             </p>
           </div>
@@ -73,12 +132,8 @@ export default async function AgendaPage({
   // ── Visão mensal (default) ───────────────────────────────────────────────────
   const membership = await requireMembership();
   const now = new Date();
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1, 0, 0, 0, 0),
-  );
-  const end = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 0, 23, 59, 59, 999),
-  );
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1));
+  const end   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 0, 23, 59, 59, 999));
 
   const rawAppointments = await db.appointment.findMany({
     where:
@@ -94,9 +149,9 @@ export default async function AgendaPage({
           },
     orderBy: { date: "asc" },
     include: {
-      client: { select: { name: true, phone: true } },
+      client:       { select: { name: true, phone: true } },
       professional: { select: { name: true } },
-      service: { select: { name: true, priceInCents: true } },
+      service:      { select: { name: true, priceInCents: true } },
     },
   });
 
@@ -116,16 +171,10 @@ export default async function AgendaPage({
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
             Agenda
           </h1>
-          <p
-            className="text-sm mt-1"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             Alterne entre visão por mês, semana ou dia
           </p>
         </div>
@@ -142,7 +191,7 @@ export default async function AgendaPage({
 
 // ─── Toggle de visualização ──────────────────────────────────────────────────
 
-function ViewToggle({ current }: { current: "mensal" | "operacional" }) {
+function ViewToggle({ current }: { current: "mensal" | "semana" | "operacional" }) {
   return (
     <div
       className="flex items-center rounded-lg p-0.5 gap-0.5"
@@ -163,6 +212,17 @@ function ViewToggle({ current }: { current: "mensal" | "operacional" }) {
         Mensal
       </Link>
       <Link
+        href="/dashboard/agenda?view=semana"
+        className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+        style={
+          current === "semana"
+            ? { backgroundColor: "var(--color-primary)", color: "#fff" }
+            : { color: "var(--text-secondary)" }
+        }
+      >
+        Semana
+      </Link>
+      <Link
         href="/dashboard/agenda?view=operacional"
         className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
         style={
@@ -171,7 +231,7 @@ function ViewToggle({ current }: { current: "mensal" | "operacional" }) {
             : { color: "var(--text-secondary)" }
         }
       >
-        Operacional
+        Dia
       </Link>
     </div>
   );

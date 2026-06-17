@@ -277,6 +277,138 @@ export async function createQuickAppointment(data: {
   }
 }
 
+// ─── Helpers de data (inline — agenda-actions é "use server", sem deps de UI) ──
+
+function _formatDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function _isoToDateKeyBRT(isoStr: string): string {
+  const utcMs = new Date(isoStr).getTime();
+  const brtMs = utcMs - 3 * 60 * 60 * 1_000;
+  const d = new Date(brtMs);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+// ─── Tipos da visão semanal ───────────────────────────────────────────────────
+
+export type AgendaWeekData = {
+  professionals: AgendaProfessional[];
+  /** dateKey → appointments for that day (todos os profissionais). */
+  appointmentsByDay: Record<string, AgendaAppointment[]>;
+  userRole: string;
+  userProfessionalId: string | null;
+  /** dayOfWeek (0=Dom … 6=Sab) → BusinessHour, para grades de abertura por dia. */
+  businessHours: Record<number, AgendaBusinessHour>;
+  /** 7 dateKeys ordenados (segunda → domingo, formato ISO). */
+  weekDates: string[];
+};
+
+// ─── Buscar dados da semana (1 query de appointments, sem N+1) ────────────────
+
+export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekData> {
+  const membership = await requireMembership();
+
+  // Build the 7 dateKeys starting from weekStartDate (expected to be a Monday).
+  const weekDates: string[] = [];
+  const pivot = new Date(`${weekStartDate}T12:00:00`);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(pivot);
+    d.setDate(pivot.getDate() + i);
+    weekDates.push(_formatDateKey(d));
+  }
+
+  const rangeStart = new Date(`${weekDates[0]}T00:00:00-03:00`);
+  const rangeEnd   = new Date(`${weekDates[6]}T23:59:59.999-03:00`);
+
+  const [professionals, appointments, businessHourRows] = await Promise.all([
+    db.professional.findMany({
+      where: { barbershopId: membership.barbershopId, isActive: true },
+      orderBy: { name: "asc" },
+    }),
+    db.appointment.findMany({
+      where: {
+        ...appointmentScope(membership),
+        date: { gte: rangeStart, lte: rangeEnd },
+        status: { notIn: ["cancelled"] },
+      },
+      include: {
+        service: { select: { name: true, durationMin: true, priceInCents: true } },
+        comanda: { select: { id: true } },
+        services: {
+          select: {
+            id: true,
+            serviceId: true,
+            serviceName: true,
+            servicePriceInCents: true,
+            serviceDurationMin: true,
+          },
+        },
+      },
+      orderBy: { date: "asc" },
+    }),
+    db.businessHour.findMany({
+      where: { barbershopId: membership.barbershopId },
+      select: { dayOfWeek: true, openTime: true, closeTime: true, isOpen: true },
+    }),
+  ]);
+
+  // Group appointments by BRT dateKey.
+  const appointmentsByDay: Record<string, AgendaAppointment[]> = {};
+  for (const dk of weekDates) {
+    appointmentsByDay[dk] = [];
+  }
+  for (const a of appointments) {
+    const dk = _isoToDateKeyBRT(a.date.toISOString());
+    if (appointmentsByDay[dk]) {
+      appointmentsByDay[dk].push({
+        id: a.id,
+        date: a.date.toISOString(),
+        endTime: a.endTime ? a.endTime.toISOString() : null,
+        status: a.status,
+        clientId: a.clientId,
+        comandaId: a.comanda?.id ?? null,
+        clientName: a.clientName,
+        clientPhone: a.clientPhone,
+        notes: a.notes,
+        professionalId: a.professionalId,
+        serviceId: a.serviceId,
+        serviceName: a.service.name,
+        serviceDurationMin: a.service.durationMin,
+        servicePriceInCents: a.service.priceInCents,
+        services: a.services.map((s) => ({
+          id: s.id,
+          serviceId: s.serviceId,
+          serviceName: s.serviceName,
+          servicePriceInCents: s.servicePriceInCents,
+          serviceDurationMin: s.serviceDurationMin,
+        })),
+      });
+    }
+  }
+
+  const businessHours: Record<number, AgendaBusinessHour> = {};
+  for (const row of businessHourRows) {
+    businessHours[row.dayOfWeek] = {
+      openTime: row.openTime,
+      closeTime: row.closeTime,
+      isOpen: row.isOpen,
+    };
+  }
+
+  return {
+    professionals: professionals.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
+    appointmentsByDay,
+    userRole: membership.role,
+    userProfessionalId: membership.professionalId,
+    businessHours,
+    weekDates,
+  };
+}
+
 // ─── Busca de clientes para autocomplete ─────────────────────────────────────
 
 export type AgendaClientResult = {

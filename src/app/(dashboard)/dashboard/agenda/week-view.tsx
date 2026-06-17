@@ -4,10 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 import { layoutAppointments } from "@/lib/agenda-layout";
 import { updateAppointmentStatus } from "../actions";
 import { abrirComanda } from "../comandas/actions";
-import type { AgendaAppointment, AgendaDayData, AgendaService } from "./agenda-actions";
+import type {
+  AgendaAppointment,
+  AgendaService,
+  AgendaWeekData,
+} from "./agenda-actions";
 import {
   createQuickAppointment,
-  getAgendaDay,
+  getAgendaWeek,
   moveAppointment,
   updateAppointment,
 } from "./agenda-actions";
@@ -17,15 +21,20 @@ import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
 import {
-  MIN_COL_WIDTH,
   PX_PER_MINUTE,
   RULER_WIDTH,
   formatDateKey,
-  formatDateLabel,
   isTodayKey,
+  isoToDateKeyBRT,
   timeStrToMin,
 } from "./components/shared";
 import { TimeRuler } from "./components/time-ruler";
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
+const DAY_MIN_WIDTH = 120; // px — minimum width per day column
+const DEFAULT_OPEN = "08:00";
+const DEFAULT_CLOSE = "20:00";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -40,25 +49,88 @@ type Toast = { msg: string; kind: "success" | "error" } | null;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-interface DayViewProps {
-  initialData: AgendaDayData;
-  initialDateKey: string;
+interface WeekViewProps {
+  initialData: AgendaWeekData;
+  initialWeekStart: string; // YYYY-MM-DD (Monday)
   services: AgendaService[];
 }
 
+// ── Helpers locais ────────────────────────────────────────────────────────────
+
+/** "2026-06-16" → "Mon, 16" label. */
+function dayColumnLabel(dateKey: string): { weekday: string; day: string } {
+  const d = new Date(`${dateKey}T12:00:00`);
+  return {
+    weekday: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").toUpperCase(),
+    day: String(d.getDate()).padStart(2, "0"),
+  };
+}
+
+/** "2026-06-16" → "2026-06-22" range label → "16–22 jun". */
+function weekRangeLabel(weekDates: string[]): string {
+  if (weekDates.length < 7) return "";
+  const first = new Date(`${weekDates[0]}T12:00:00`);
+  const last  = new Date(`${weekDates[6]}T12:00:00`);
+  const sameMonth = first.getMonth() === last.getMonth();
+  const month = last.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  if (sameMonth) {
+    return `${first.getDate()}–${last.getDate()} ${month}`;
+  }
+  const firstMonth = first.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  return `${first.getDate()} ${firstMonth} – ${last.getDate()} ${month}`;
+}
+
+/** Return the Monday of the week that contains `dateKey`. */
+function getMondayOf(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00`);
+  const dow = d.getDay(); // 0=Sun … 6=Sat
+  const offset = dow === 0 ? -6 : 1 - dow; // Mon=0 offset
+  d.setDate(d.getDate() + offset);
+  return formatDateKey(d);
+}
+
+/** Compute global opening/closing from businessHours across the 7 days,
+ *  falling back to defaults. Used so all 7 columns share the same grid height. */
+function globalHours(
+  weekDates: string[],
+  businessHours: AgendaWeekData["businessHours"],
+): { openingMin: number; closingMin: number } {
+  let openingMin = timeStrToMin(DEFAULT_OPEN);
+  let closingMin = timeStrToMin(DEFAULT_CLOSE);
+  let found = false;
+
+  for (const dk of weekDates) {
+    const d = new Date(`${dk}T12:00:00`);
+    const dow = d.getDay();
+    const bh = businessHours[dow];
+    if (!bh) continue;
+    const o = timeStrToMin(bh.openTime);
+    const c = timeStrToMin(bh.closeTime);
+    if (!found) {
+      openingMin = o;
+      closingMin = c;
+      found = true;
+    } else {
+      if (o < openingMin) openingMin = o;
+      if (c > closingMin) closingMin = c;
+    }
+  }
+  return { openingMin, closingMin };
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
-// ProfessionalColumn — coluna por profissional (específica do DayView)
+// DayColumn — one day's column inside WeekView
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ProfessionalColumn({
-  professional,
+function DayColumn({
+  dateKey,
   appointments,
   openingMin,
   closingMin,
   onGridClick,
   onCardClick,
 }: {
-  professional: { id: string; name: string; avatarUrl: string | null };
+  dateKey: string;
   appointments: AgendaAppointment[];
   openingMin: number;
   closingMin: number;
@@ -75,6 +147,8 @@ function ProfessionalColumn({
     lines.push({ offset: i, isHour: absMin % 60 === 0, isHalf: absMin % 30 === 0 });
   }
 
+  const isToday = isTodayKey(dateKey);
+
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -85,10 +159,11 @@ function ProfessionalColumn({
     <div
       className="flex-1 relative border-l"
       style={{
-        minWidth: MIN_COL_WIDTH,
+        minWidth: DAY_MIN_WIDTH,
         height: gridHeight,
         borderColor: "var(--border)",
         cursor: "crosshair",
+        backgroundColor: isToday ? "rgba(var(--color-primary-rgb, 99,102,241), 0.03)" : undefined,
       }}
       onClick={handleClick}
     >
@@ -120,23 +195,20 @@ function ProfessionalColumn({
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DayView — componente principal
+// WeekView — componente principal
 // ══════════════════════════════════════════════════════════════════════════════
 
-export default function DayView({ initialData, initialDateKey, services }: DayViewProps) {
+export default function WeekView({ initialData, initialWeekStart, services }: WeekViewProps) {
   const [data, setData] = useState(initialData);
-  const [dateKey, setDateKey] = useState(initialDateKey);
+  const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [modal, setModal] = useState<ModalState>({ type: "none" });
   const [toast, setToast] = useState<Toast>(null);
   const [isPending, startTransition] = useTransition();
 
-  const openingMin = timeStrToMin(data.businessHour?.openTime ?? "08:00");
-  const closingMin = timeStrToMin(data.businessHour?.closeTime ?? "20:00");
+  const { openingMin, closingMin } = globalHours(data.weekDates, data.businessHours);
 
-  const visibleProfessionals =
-    data.userRole === "barber"
-      ? data.professionals.filter((p) => p.id === data.userProfessionalId)
-      : data.professionals;
+  // RBAC: barber sees only own appointments (server already scoped)
+  // but the grid still shows all 7 day columns.
 
   useEffect(() => {
     if (!toast) return;
@@ -148,31 +220,33 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
     setToast({ msg, kind });
   }
 
-  async function refreshData(dk: string) {
-    const newData = await getAgendaDay(dk);
+  async function refreshWeek(ws: string) {
+    const newData = await getAgendaWeek(ws);
     setData(newData);
   }
 
-  function navigate(delta: number) {
-    const d = new Date(`${dateKey}T12:00:00`);
-    d.setDate(d.getDate() + delta);
-    const newKey = formatDateKey(d);
-    setDateKey(newKey);
-    startTransition(async () => { await refreshData(newKey); });
+  function navigate(deltaDays: number) {
+    const d = new Date(`${weekStart}T12:00:00`);
+    d.setDate(d.getDate() + deltaDays);
+    const newStart = formatDateKey(d);
+    setWeekStart(newStart);
+    startTransition(async () => { await refreshWeek(newStart); });
   }
 
   function goToday() {
-    const newKey = formatDateKey(new Date());
-    setDateKey(newKey);
-    startTransition(async () => { await refreshData(newKey); });
+    const newStart = getMondayOf(formatDateKey(new Date()));
+    setWeekStart(newStart);
+    startTransition(async () => { await refreshWeek(newStart); });
   }
 
-  function handleGridClick(professionalId: string, clickY: number) {
-    if (data.userRole === "barber" && professionalId !== data.userProfessionalId) return;
+  function handleGridClick(dateKey: string, clickY: number) {
+    // Barbers can only create in any day (server enforces their professional scope)
     const rawMin = openingMin + clickY / PX_PER_MINUTE;
     const rounded = Math.round(rawMin / 10) * 10;
     const clamped = Math.max(openingMin, Math.min(closingMin - 10, rounded));
-    setModal({ type: "create", professionalId, suggestedMinute: clamped, dateKey });
+    // Default to first professional if any
+    const defaultProfId = data.professionals[0]?.id ?? "";
+    setModal({ type: "create", professionalId: defaultProfId, suggestedMinute: clamped, dateKey });
   }
 
   function handleCreate(formData: {
@@ -195,7 +269,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
       if (res.success) {
         showToast("Agendamento criado!", "success");
         setModal({ type: "none" });
-        await refreshData(dateKey);
+        await refreshWeek(weekStart);
       } else {
         showToast(res.error ?? "Erro ao criar agendamento.", "error");
       }
@@ -222,7 +296,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
       if (res.success) {
         showToast("Agendamento atualizado!", "success");
         setModal({ type: "none" });
-        await refreshData(dateKey);
+        await refreshWeek(weekStart);
       } else {
         showToast(res.error ?? "Erro ao editar.", "error");
       }
@@ -238,7 +312,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
       if (res.success) {
         showToast("Status atualizado!", "success");
         setModal({ type: "none" });
-        await refreshData(dateKey);
+        await refreshWeek(weekStart);
       } else {
         showToast("Erro ao atualizar status.", "error");
       }
@@ -251,7 +325,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
       if (res.success) {
         showToast("Agendamento movido!", "success");
         setModal({ type: "none" });
-        await refreshData(dateKey);
+        await refreshWeek(weekStart);
       } else {
         showToast(res.error ?? "Erro ao mover.", "error");
       }
@@ -274,50 +348,60 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
     });
   }
 
-  const dateLabel = formatDateLabel(dateKey);
-  const isToday = isTodayKey(dateKey);
+  // Derive the modal's dateKey for CreateModal from the appointment's date
+  // (needed when editing — must reconstruct dateKey from ISO date)
+  function getDateKeyForModal(): string {
+    if (modal.type === "create") return modal.dateKey;
+    if (modal.type === "detail" || modal.type === "edit" || modal.type === "move") {
+      return isoToDateKeyBRT(modal.appointment.date);
+    }
+    return weekStart;
+  }
+
+  const rangeLabel = weekRangeLabel(data.weekDates);
+  const isCurrentWeek = getMondayOf(formatDateKey(new Date())) === weekStart;
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* ── Day navigation header ─────────── */}
+      {/* ── Week navigation header ─────────────────────────────────── */}
       <div
         className="shrink-0 flex items-center gap-3 px-4 py-3"
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(-7)}
           disabled={isPending}
           className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
           style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          aria-label="Dia anterior"
+          aria-label="Semana anterior"
         >
           ◀
         </button>
         <button
           type="button"
-          onClick={() => navigate(1)}
+          onClick={() => navigate(7)}
           disabled={isPending}
           className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
           style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          aria-label="Próximo dia"
+          aria-label="Próxima semana"
         >
           ▶
         </button>
 
         <h2
-          className="flex-1 text-sm font-semibold capitalize"
-          style={{ color: isToday ? "var(--color-primary)" : "var(--text-primary)" }}
+          className="flex-1 text-sm font-semibold"
+          style={{ color: isCurrentWeek ? "var(--color-primary)" : "var(--text-primary)" }}
         >
-          {dateLabel}
-          {isToday && (
+          {rangeLabel}
+          {isCurrentWeek && (
             <span className="ml-2 text-xs font-normal" style={{ color: "var(--color-primary)" }}>
-              Hoje
+              Esta semana
             </span>
           )}
         </h2>
 
-        {!isToday && (
+        {!isCurrentWeek && (
           <button
             type="button"
             onClick={goToday}
@@ -334,72 +418,85 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
             Carregando…
           </span>
         )}
-
-        {data.businessHour && !data.businessHour.isOpen && (
-          <span
-            className="text-xs px-2 py-1 rounded"
-            style={{ backgroundColor: "var(--status-red-faint, #fee2e2)", color: "var(--status-red)" }}
-          >
-            Fechado
-          </span>
-        )}
       </div>
 
-      {/* ── Grid body ─────────────────────── */}
+      {/* ── Grid body ─────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div style={{ minWidth: RULER_WIDTH + visibleProfessionals.length * MIN_COL_WIDTH }}>
-          {/* Professional name header (sticky) */}
+        <div style={{ minWidth: RULER_WIDTH + data.weekDates.length * DAY_MIN_WIDTH }}>
+          {/* Day name header (sticky) */}
           <div
             className="flex sticky top-0 z-10"
             style={{ backgroundColor: "var(--bg-card)" }}
           >
+            {/* Ruler spacer */}
             <div
               className="shrink-0 border-r border-b"
               style={{ width: RULER_WIDTH, borderColor: "var(--border)" }}
             />
-            {visibleProfessionals.map((prof) => (
-              <div
-                key={prof.id}
-                className="flex-1 border-l border-b px-2 py-2 text-center text-xs font-semibold truncate"
-                style={{
-                  minWidth: MIN_COL_WIDTH,
-                  borderColor: "var(--border)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                {prof.name}
-              </div>
-            ))}
+            {data.weekDates.map((dk) => {
+              const { weekday, day } = dayColumnLabel(dk);
+              const isToday = isTodayKey(dk);
+              const dow = new Date(`${dk}T12:00:00`).getDay();
+              const bh = data.businessHours[dow];
+              const isClosed = bh ? !bh.isOpen : false;
+
+              return (
+                <div
+                  key={dk}
+                  className="flex-1 border-l border-b px-1 py-1.5 text-center"
+                  style={{
+                    minWidth: DAY_MIN_WIDTH,
+                    borderColor: "var(--border)",
+                    opacity: isClosed ? 0.5 : 1,
+                  }}
+                >
+                  <p
+                    className="text-xs font-medium"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {weekday}
+                  </p>
+                  <p
+                    className={`text-sm font-bold ${isToday ? "w-7 h-7 flex items-center justify-center rounded-full mx-auto text-white" : ""}`}
+                    style={{
+                      color: isToday ? "#fff" : "var(--text-primary)",
+                      backgroundColor: isToday ? "var(--color-primary)" : undefined,
+                    }}
+                  >
+                    {day}
+                  </p>
+                  {isClosed && (
+                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      fechado
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Time ruler + professional columns */}
+          {/* Time ruler + day columns */}
           <div className="flex">
             <TimeRuler openingMin={openingMin} closingMin={closingMin} />
-            {visibleProfessionals.length === 0 ? (
-              <div
-                className="flex-1 flex items-center justify-center text-sm"
-                style={{ color: "var(--text-tertiary)", minHeight: 200 }}
-              >
-                Nenhum profissional ativo.
-              </div>
-            ) : (
-              visibleProfessionals.map((prof) => (
-                <ProfessionalColumn
-                  key={prof.id}
-                  professional={prof}
-                  appointments={data.appointments.filter((a) => a.professionalId === prof.id)}
+            {data.weekDates.map((dk) => {
+              const appts = data.appointmentsByDay[dk] ?? [];
+              return (
+                <DayColumn
+                  key={dk}
+                  dateKey={dk}
+                  appointments={appts}
                   openingMin={openingMin}
                   closingMin={closingMin}
-                  onGridClick={(y) => handleGridClick(prof.id, y)}
+                  onGridClick={(y) => handleGridClick(dk, y)}
                   onCardClick={(appt) => setModal({ type: "detail", appointment: appt })}
                 />
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* ── Toast ─────────────────────────── */}
+      {/* ── Toast ─────────────────────────────────────────────────── */}
       {toast && (
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-lg text-sm font-medium text-white shadow-lg z-50"
@@ -412,7 +509,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
         </div>
       )}
 
-      {/* ── Modals ────────────────────────── */}
+      {/* ── Modals ────────────────────────────────────────────────── */}
       {modal.type === "detail" && (
         <DetailModal
           appointment={modal.appointment}
@@ -447,7 +544,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
         <CreateModal
           professionalId={modal.professionalId}
           suggestedMinute={modal.suggestedMinute}
-          dateKey={modal.dateKey}
+          dateKey={getDateKeyForModal()}
           services={services}
           professionals={data.professionals}
           userRole={data.userRole}

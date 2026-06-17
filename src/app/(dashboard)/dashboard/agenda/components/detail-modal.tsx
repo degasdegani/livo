@@ -1,0 +1,180 @@
+"use client";
+
+import { Modal } from "@/components/ui/modal";
+import type { AgendaAppointment } from "../agenda-actions";
+import { STATUS_CONFIG, formatCurrency, isoToTimeBRT } from "./shared";
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2 text-sm">
+      <span className="shrink-0 w-20 text-right" style={{ color: "var(--text-tertiary)" }}>
+        {label}
+      </span>
+      <span style={{ color: "var(--text-primary)" }}>{value}</span>
+    </div>
+  );
+}
+
+export function DetailModal({
+  appointment,
+  userRole,
+  onClose,
+  onEdit,
+  onMove,
+  onStatusChange,
+  onAbrirComanda,
+  isPending,
+}: {
+  appointment: AgendaAppointment;
+  userRole: string;
+  onClose: () => void;
+  onEdit: () => void;
+  onMove: () => void;
+  onStatusChange: (status: "confirmed" | "completed" | "cancelled" | "no_show") => void;
+  onAbrirComanda: () => void;
+  isPending: boolean;
+}) {
+  const config = STATUS_CONFIG[appointment.status];
+  const canManage = userRole !== "barber";
+  const isEditable =
+    appointment.status === "pending" || appointment.status === "confirmed";
+
+  const totalPrice =
+    appointment.services.length > 0
+      ? appointment.services.reduce((s, sv) => s + sv.servicePriceInCents, 0)
+      : appointment.servicePriceInCents;
+
+  return (
+    <Modal open onClose={onClose} title="Agendamento" size="sm">
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+        <span className={`text-sm font-medium ${config.text}`}>{config.label}</span>
+      </div>
+
+      <div className="space-y-2 mt-3">
+        <InfoRow label="Cliente" value={appointment.clientName} />
+        {appointment.clientPhone && (
+          <InfoRow label="Telefone" value={appointment.clientPhone} />
+        )}
+        <InfoRow label="Horário" value={isoToTimeBRT(appointment.date)} />
+        {appointment.endTime && (
+          <InfoRow label="Término" value={isoToTimeBRT(appointment.endTime)} />
+        )}
+        {appointment.services.length > 0 ? (
+          <div>
+            <span
+              className="text-xs uppercase tracking-wide"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Serviços
+            </span>
+            <ul className="mt-1 space-y-0.5">
+              {appointment.services.map((s) => (
+                <li
+                  key={s.id}
+                  className="text-sm flex justify-between"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  <span>{s.serviceName}</span>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {formatCurrency(s.servicePriceInCents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <InfoRow
+            label="Serviço"
+            value={`${appointment.serviceName} — ${formatCurrency(appointment.servicePriceInCents)}`}
+          />
+        )}
+        {appointment.services.length > 1 && (
+          <InfoRow label="Total" value={formatCurrency(totalPrice)} />
+        )}
+        {appointment.notes && <InfoRow label="Obs." value={appointment.notes} />}
+      </div>
+
+      {canManage && isEditable && (
+        <div className="space-y-2 mt-4 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+          {appointment.comandaId ? (
+            <a
+              href={`/dashboard/comandas/${appointment.comandaId}`}
+              className="block w-full text-center rounded-lg py-2 text-sm font-medium transition-colors"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              Ver Comanda
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={onAbrirComanda}
+              disabled={isPending}
+              className="w-full rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              Abrir Comanda
+            </button>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex-1 rounded-lg py-2 text-sm transition-colors"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              Editar
+            </button>
+            {(userRole === "owner" || userRole === "reception") && (
+              <button
+                type="button"
+                onClick={onMove}
+                className="flex-1 rounded-lg py-2 text-sm transition-colors"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              >
+                Mover
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {appointment.status === "pending" && (
+              <button
+                type="button"
+                onClick={() => onStatusChange("confirmed")}
+                disabled={isPending}
+                className="rounded-lg py-2 text-xs font-medium text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--status-green)" }}
+              >
+                Confirmar
+              </button>
+            )}
+            {isEditable && (
+              <button
+                type="button"
+                onClick={() => onStatusChange("no_show")}
+                disabled={isPending}
+                className="rounded-lg py-2 text-xs font-medium text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--status-gray, #6b7280)" }}
+              >
+                Não compareceu
+              </button>
+            )}
+            {isEditable && (
+              <button
+                type="button"
+                onClick={() => onStatusChange("cancelled")}
+                disabled={isPending}
+                className="rounded-lg py-2 text-xs font-medium text-white disabled:opacity-50 col-span-2"
+                style={{ backgroundColor: "var(--status-red)" }}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
