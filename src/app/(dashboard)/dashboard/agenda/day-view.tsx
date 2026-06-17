@@ -29,6 +29,7 @@ import { CreateModal } from "./components/create-modal";
 import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
+import { ProfessionalFilter } from "./components/professional-filter";
 import {
   MIN_COL_WIDTH,
   PX_PER_MINUTE,
@@ -182,6 +183,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
   const [toast, setToast] = useState<Toast>(null);
   const [isPending, startTransition] = useTransition();
   const [draggingAppt, setDraggingAppt] = useState<AgendaAppointment | null>(null);
+  const [selectedProfIds, setSelectedProfIds] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,10 +195,17 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
   const openingMin = timeStrToMin(data.businessHour?.openTime ?? "08:00");
   const closingMin = timeStrToMin(data.businessHour?.closeTime ?? "20:00");
 
-  const visibleProfessionals =
+  // RBAC: barbers see only their own column
+  const rbacProfessionals =
     data.userRole === "barber"
       ? data.professionals.filter((p) => p.id === data.userProfessionalId)
       : data.professionals;
+
+  // Filter overlay (no-op for barbers — rbacProfessionals already has 1 entry)
+  const visibleProfessionals =
+    selectedProfIds.length === 0
+      ? rbacProfessionals
+      : rbacProfessionals.filter((p) => selectedProfIds.includes(p.id));
 
   useEffect(() => {
     if (!toast) return;
@@ -469,6 +478,12 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
               Fechado
             </span>
           )}
+
+          <ProfessionalFilter
+            professionals={rbacProfessionals}
+            selectedIds={selectedProfIds}
+            onChange={setSelectedProfIds}
+          />
         </div>
 
         {/* ── Grid body ─────────────────────── */}

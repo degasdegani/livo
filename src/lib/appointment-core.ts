@@ -1,6 +1,6 @@
 // src/lib/appointment-core.ts
 // Única fonte de verdade para criação, edição e atualização de status de Appointments.
-// Todos os writers (book, AgendaBoard) devem usar estas funções.
+// Todos os writers (book, agenda) devem usar estas funções.
 // Nenhum outro arquivo deve conter lógica de criação direta de Appointment.
 
 import { type AppointmentStatus, ComandaStatus } from "@prisma/client";

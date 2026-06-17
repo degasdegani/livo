@@ -29,6 +29,7 @@ import {
   updateAppointment,
 } from "./agenda-actions";
 import { AppointmentCard, type DragData } from "./components/appointment-card";
+import { ProfessionalFilter } from "./components/professional-filter";
 import { CreateModal } from "./components/create-modal";
 import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
@@ -246,6 +247,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
   const [toast, setToast] = useState<Toast>(null);
   const [isPending, startTransition] = useTransition();
   const [draggingAppt, setDraggingAppt] = useState<AgendaAppointment | null>(null);
+  const [selectedProfIds, setSelectedProfIds] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -531,6 +533,12 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
               Carregando…
             </span>
           )}
+
+          <ProfessionalFilter
+            professionals={data.professionals}
+            selectedIds={selectedProfIds}
+            onChange={setSelectedProfIds}
+          />
         </div>
 
         {/* ── Grid body ─────────────────────────────────────────────── */}
@@ -588,7 +596,9 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
             <div className="flex">
               <TimeRuler openingMin={openingMin} closingMin={closingMin} />
               {data.weekDates.map((dk) => {
-                const appts = data.appointmentsByDay[dk] ?? [];
+                const appts = (data.appointmentsByDay[dk] ?? []).filter(
+                  (a) => selectedProfIds.length === 0 || selectedProfIds.includes(a.professionalId),
+                );
                 return (
                   <DayColumn
                     key={dk}
