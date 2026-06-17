@@ -48,10 +48,10 @@ import { TimeRuler } from "./components/time-ruler";
 
 type ModalState =
   | { type: "none" }
-  | { type: "detail"; appointment: AgendaAppointment }
+  | { type: "detail"; appointment: AgendaAppointment; anchorX: number; anchorY: number }
   | { type: "edit"; appointment: AgendaAppointment }
   | { type: "move"; appointment: AgendaAppointment }
-  | { type: "create"; professionalId: string; suggestedMinute: number; dateKey: string };
+  | { type: "create"; professionalId: string; suggestedMinute: number; dateKey: string; anchorX: number; anchorY: number };
 
 type Toast = { msg: string; kind: "success" | "error" } | null;
 
@@ -87,8 +87,8 @@ function ProfessionalColumn({
   appointments: AgendaAppointment[];
   openingMin: number;
   closingMin: number;
-  onGridClick: (clickY: number) => void;
-  onCardClick: (appt: AgendaAppointment) => void;
+  onGridClick: (clickY: number, clientX: number, clientY: number) => void;
+  onCardClick: (appt: AgendaAppointment, clientX: number, clientY: number) => void;
   userRole: string;
   userProfessionalId: string | null;
 }) {
@@ -115,7 +115,7 @@ function ProfessionalColumn({
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    onGridClick(e.clientY - rect.top);
+    onGridClick(e.clientY - rect.top, e.clientX, e.clientY);
   }
 
   return (
@@ -162,7 +162,7 @@ function ProfessionalColumn({
             columnCount={pos.columnCount}
             topPx={pos.topPx}
             heightPx={pos.heightPx}
-            onClick={() => onCardClick(pos.appointment)}
+            onClick={(cx, cy) => onCardClick(pos.appointment, cx, cy)}
             draggable={canDrag}
             durationMin={durationMin}
           />
@@ -236,12 +236,12 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
     startTransition(async () => { await refreshData(newKey); });
   }
 
-  function handleGridClick(professionalId: string, clickY: number) {
+  function handleGridClick(professionalId: string, clickY: number, clientX: number, clientY: number) {
     if (data.userRole === "barber" && professionalId !== data.userProfessionalId) return;
     const rawMin = openingMin + clickY / PX_PER_MINUTE;
     const rounded = Math.round(rawMin / 10) * 10;
     const clamped = Math.max(openingMin, Math.min(closingMin - 10, rounded));
-    setModal({ type: "create", professionalId, suggestedMinute: clamped, dateKey });
+    setModal({ type: "create", professionalId, suggestedMinute: clamped, dateKey, anchorX: clientX, anchorY: clientY });
   }
 
   // ── DnD handlers ────────────────────────────────────────────────────────────
@@ -531,8 +531,8 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
                     appointments={data.appointments.filter((a) => a.professionalId === prof.id)}
                     openingMin={openingMin}
                     closingMin={closingMin}
-                    onGridClick={(y) => handleGridClick(prof.id, y)}
-                    onCardClick={(appt) => setModal({ type: "detail", appointment: appt })}
+                    onGridClick={(y, cx, cy) => handleGridClick(prof.id, y, cx, cy)}
+                    onCardClick={(appt, cx, cy) => setModal({ type: "detail", appointment: appt, anchorX: cx, anchorY: cy })}
                     userRole={data.userRole}
                     userProfessionalId={data.userProfessionalId}
                   />
@@ -583,6 +583,8 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
           <DetailModal
             appointment={modal.appointment}
             userRole={data.userRole}
+            anchorX={modal.anchorX}
+            anchorY={modal.anchorY}
             isPending={isPending}
             onClose={() => setModal({ type: "none" })}
             onEdit={() => setModal({ type: "edit", appointment: modal.appointment })}
@@ -618,6 +620,8 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
             professionals={data.professionals}
             userRole={data.userRole}
             userProfessionalId={data.userProfessionalId}
+            anchorX={modal.anchorX}
+            anchorY={modal.anchorY}
             isPending={isPending}
             onClose={() => setModal({ type: "none" })}
             onCreate={handleCreate}

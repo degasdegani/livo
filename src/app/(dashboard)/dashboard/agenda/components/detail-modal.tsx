@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal } from "@/components/ui/modal";
+import { Popover } from "@/components/ui/popover";
 import type { AgendaAppointment } from "../agenda-actions";
 import { STATUS_CONFIG, formatCurrency, isoToTimeBRT } from "./shared";
 
@@ -18,6 +18,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function DetailModal({
   appointment,
   userRole,
+  anchorX,
+  anchorY,
   onClose,
   onEdit,
   onMove,
@@ -27,6 +29,8 @@ export function DetailModal({
 }: {
   appointment: AgendaAppointment;
   userRole: string;
+  anchorX: number;
+  anchorY: number;
   onClose: () => void;
   onEdit: () => void;
   onMove: () => void;
@@ -45,13 +49,25 @@ export function DetailModal({
       : appointment.servicePriceInCents;
 
   return (
-    <Modal open onClose={onClose} title="Agendamento" size="sm">
-      <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-        <span className={`text-sm font-medium ${config.text}`}>{config.label}</span>
+    <Popover anchorX={anchorX} anchorY={anchorY} onClose={onClose} width={300}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+          <span className={`text-sm font-medium ${config.text}`}>{config.label}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="w-6 h-6 flex items-center justify-center rounded text-xs transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          ✕
+        </button>
       </div>
 
-      <div className="space-y-2 mt-3">
+      <div className="space-y-2">
         <InfoRow label="Cliente" value={appointment.clientName} />
         {appointment.clientPhone && (
           <InfoRow label="Telefone" value={appointment.clientPhone} />
@@ -96,7 +112,7 @@ export function DetailModal({
       </div>
 
       {canManage && isEditable && (
-        <div className="space-y-2 mt-4 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="space-y-2 mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
           {appointment.comandaId ? (
             <a
               href={`/dashboard/comandas/${appointment.comandaId}`}
@@ -175,6 +191,6 @@ export function DetailModal({
           </div>
         </div>
       )}
-    </Modal>
+    </Popover>
   );
 }

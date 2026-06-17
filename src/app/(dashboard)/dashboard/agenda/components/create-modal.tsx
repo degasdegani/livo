@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { Popover } from "@/components/ui/popover";
 import { Select } from "@/components/ui/select";
 import type {
   AgendaClientResult,
@@ -103,7 +103,7 @@ export function ServiceChips({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {services.map((s) => {
         const isOn = selected.includes(s.id);
         return (
@@ -111,7 +111,7 @@ export function ServiceChips({
             key={s.id}
             type="button"
             onClick={() => toggle(s.id)}
-            className="rounded-full px-3 py-1 text-xs font-medium transition-all border"
+            className="rounded-full px-2.5 py-1 text-xs font-medium transition-all border"
             style={
               isOn
                 ? {
@@ -146,6 +146,8 @@ export function CreateModal({
   userRole,
   userProfessionalId,
   isPending,
+  anchorX,
+  anchorY,
   onClose,
   onCreate,
 }: {
@@ -157,6 +159,8 @@ export function CreateModal({
   userRole: string;
   userProfessionalId: string | null;
   isPending: boolean;
+  anchorX: number;
+  anchorY: number;
   onClose: () => void;
   onCreate: (data: {
     professionalId: string;
@@ -194,23 +198,24 @@ export function CreateModal({
   }
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title="Novo Agendamento"
-      size="md"
-      footer={{
-        cancel: { onClick: onClose },
-        confirm: {
-          label: "Agendar",
-          onClick: handleSubmit,
-          loading: isPending,
-          loadingLabel: "Agendando…",
-          disabled: !canSubmit,
-        },
-      }}
-    >
-      <div className="space-y-4">
+    <Popover anchorX={anchorX} anchorY={anchorY} onClose={onClose} width={340}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          Novo Agendamento
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar"
+          className="w-6 h-6 flex items-center justify-center rounded text-xs transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-3">
         {(userRole === "owner" || userRole === "reception") && (
           <Select
             id="create-prof"
@@ -237,7 +242,7 @@ export function CreateModal({
 
         <div>
           <p
-            className="text-xs font-medium uppercase tracking-wide mb-2"
+            className="text-xs font-medium uppercase tracking-wide mb-1.5"
             style={{ color: "var(--text-tertiary)" }}
           >
             Serviços{" "}
@@ -251,9 +256,9 @@ export function CreateModal({
             onChange={setSelectedServiceIds}
           />
           {totalDuration > 0 && (
-            <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
-              Duração total: {totalDuration} min
-              {endTimeStr && ` · Término: ${endTimeStr}`}
+            <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
+              {totalDuration} min
+              {endTimeStr && ` · término ${endTimeStr}`}
               {totalPrice > 0 && ` · ${formatCurrency(totalPrice)}`}
             </p>
           )}
@@ -312,9 +317,9 @@ export function CreateModal({
 
         {cs.isManual && (
           <div
-            className="space-y-3 p-3 rounded-lg"
+            className="space-y-2 p-2.5 rounded-lg"
             style={{
-              backgroundColor: "var(--bg-card-elevated)",
+              backgroundColor: "var(--bg-card)",
               border: "1px solid var(--border)",
             }}
           >
@@ -354,6 +359,30 @@ export function CreateModal({
           />
         </div>
       </div>
-    </Modal>
+
+      {/* Footer */}
+      <div
+        className="flex gap-2 mt-4 pt-3"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg py-2 text-sm transition-colors"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit || isPending}
+          className="flex-1 rounded-lg py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          {isPending ? "Agendando…" : "Agendar"}
+        </button>
+      </div>
+    </Popover>
   );
 }

@@ -25,7 +25,7 @@ export function AppointmentCard({
   columnCount: number;
   topPx: number;
   heightPx: number;
-  onClick: () => void;
+  onClick: (clientX: number, clientY: number) => void;
   draggable?: boolean;
   durationMin?: number;
 }) {
@@ -78,12 +78,14 @@ export function AppointmentCard({
       }}
       onClick={(e) => {
         e.stopPropagation();
-        onClick();
+        onClick(e.clientX, e.clientY);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onClick();
+          // Keyboard: use card's right edge as anchor since there's no clientX/Y.
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          onClick(rect.right + 8, rect.top);
         }
       }}
       // Spread dnd-kit listeners/attributes only when dragging is enabled.
