@@ -30,7 +30,7 @@ export default function Oferta60DiasPage() {
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: "url('/oferta-bg.jpg')",
+          backgroundImage: "url('/oferta-bg.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
