@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Camera,
   Check,
   Mail,
   Pencil,
@@ -12,12 +13,14 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState, useTransition } from "react";
+import Image from "next/image";
+import { useRef, useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { createInvitationAction } from "../settings/acessos/actions";
 import type {
+  AvatarUploadResult,
   ProfessionalWithDetails,
   ToggleProfessionalResult,
 } from "./actions";
@@ -25,8 +28,10 @@ import {
   createProfessional,
   deleteProfessional,
   getProfessionalsData,
+  removeProfessionalAvatar,
   toggleProfessionalActive,
   updateProfessional,
+  uploadProfessionalAvatar,
 } from "./actions";
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -40,12 +45,12 @@ function ProfessionalAvatar({
 }) {
   if (image) {
     return (
-      // biome-ignore lint/performance/noImgElement: user avatar from OAuth provider
-      <img
+      <Image
         src={image}
         alt={name}
+        width={36}
+        height={36}
         className="rounded-full object-cover"
-        style={{ width: 36, height: 36 }}
       />
     );
   }
@@ -76,15 +81,82 @@ function ProfessionalModal({
   professional,
   onClose,
   onSaved,
+  onAvatarChange,
 }: {
   professional?: ProfessionalWithDetails;
   onClose: () => void;
   onSaved: (message: string) => void;
+  onAvatarChange?: (message: string) => void;
 }) {
   const [name, setName] = useState(professional?.name ?? "");
   const [bio, setBio] = useState(professional?.bio ?? "");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+
+  // ── Avatar upload state ──────────────────────────────────────────────────────
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(
+    professional?.avatarUrl ?? null,
+  );
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarHovered, setAvatarHovered] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const displayAvatarSrc = localPreview ?? currentAvatarUrl;
+  const avatarInitials = (professional?.name ?? name)
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+  async function handleAvatarFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file || !professional) return;
+    e.target.value = "";
+
+    const objectUrl = URL.createObjectURL(file);
+    setLocalPreview(objectUrl);
+    setAvatarError("");
+    setUploadingAvatar(true);
+
+    const fd = new FormData();
+    fd.append("avatar", file);
+    const result: AvatarUploadResult = await uploadProfessionalAvatar(
+      professional.id,
+      fd,
+    );
+
+    URL.revokeObjectURL(objectUrl);
+    setLocalPreview(null);
+    setUploadingAvatar(false);
+
+    if (result.success) {
+      setCurrentAvatarUrl(result.avatarUrl);
+      onAvatarChange?.(result.message);
+    } else {
+      setAvatarError(result.error);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!professional) return;
+    setUploadingAvatar(true);
+    setAvatarError("");
+
+    const result = await removeProfessionalAvatar(professional.id);
+    setUploadingAvatar(false);
+
+    if (result.success) {
+      setCurrentAvatarUrl(null);
+      onAvatarChange?.(result.message);
+    } else {
+      setAvatarError(result.error);
+    }
+  }
 
   function handleSubmit() {
     if (!name.trim()) {
@@ -120,6 +192,85 @@ function ProfessionalModal({
       }}
     >
       <div className="space-y-4">
+        {/* Avatar upload — somente no modo edição */}
+        {professional && (
+          <div className="flex flex-col items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleAvatarFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              onMouseEnter={() => setAvatarHovered(true)}
+              onMouseLeave={() => setAvatarHovered(false)}
+              className="relative overflow-hidden rounded-full disabled:cursor-not-allowed"
+              style={{ width: 80, height: 80, flexShrink: 0 }}
+              title="Clique para alterar a foto"
+            >
+              {displayAvatarSrc ? (
+                <img
+                  src={displayAvatarSrc}
+                  alt={professional.name}
+                  style={{ width: 80, height: 80, objectFit: "cover" }}
+                />
+              ) : (
+                <div
+                  className="flex h-full w-full items-center justify-center rounded-full text-2xl font-bold"
+                  style={{
+                    backgroundColor: "var(--bg-card-elevated)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {avatarInitials}
+                </div>
+              )}
+              <div
+                className="absolute inset-0 flex items-center justify-center rounded-full transition-opacity"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.55)",
+                  opacity: avatarHovered || uploadingAvatar ? 1 : 0,
+                }}
+              >
+                {uploadingAvatar ? (
+                  <div
+                    className="animate-spin rounded-full"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      border: "2px solid rgba(255,255,255,0.2)",
+                      borderTopColor: "#fff",
+                    }}
+                  />
+                ) : (
+                  <Camera size={20} className="text-white" />
+                )}
+              </div>
+            </button>
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+              JPG, PNG ou WebP · max 5 MB
+            </p>
+            {currentAvatarUrl && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={uploadingAvatar}
+                className="text-xs transition-opacity hover:opacity-70 disabled:opacity-40"
+                style={{ color: "var(--status-red)" }}
+              >
+                Remover foto
+              </button>
+            )}
+            {avatarError && (
+              <p className="text-center text-xs text-red-400">{avatarError}</p>
+            )}
+          </div>
+        )}
+
         <Input
           id="prof-name"
           label="Nome"
@@ -492,7 +643,7 @@ export function ProfissionaisClient({ initialData }: Props) {
           {data.map((prof) => {
             const linkedUser = prof.membership?.user ?? null;
             const avatarName = linkedUser?.name ?? prof.name;
-            const avatarImage = linkedUser?.image ?? null;
+            const avatarImage = prof.avatarUrl ?? linkedUser?.image ?? null;
             const isToggling = togglingId === prof.id;
             const isDeleting = deletingId === prof.id;
             const isLinked = prof.membership !== null;
@@ -723,6 +874,12 @@ export function ProfissionaisClient({ initialData }: Props) {
         <ProfessionalModal
           professional={editingProfessional}
           onClose={closeModal}
+          onAvatarChange={(message) => {
+            showToast("success", message);
+            startTransition(async () => {
+              await refreshData();
+            });
+          }}
           onSaved={(message) => {
             showToast("success", message);
             startTransition(async () => {

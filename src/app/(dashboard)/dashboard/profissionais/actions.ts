@@ -1,6 +1,7 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
+import { del, put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
@@ -221,4 +222,84 @@ export async function deleteProfessional(
   revalidatePath("/dashboard/settings/acessos");
 
   return { success: true, message: "Profissional excluído com sucesso." };
+}
+
+// ─── Upload / remoção de avatar ───────────────────────────────────────────────
+
+export type AvatarUploadResult =
+  | { success: true; message: string; avatarUrl: string }
+  | { success: false; error: string };
+
+const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+export async function uploadProfessionalAvatar(
+  professionalId: string,
+  formData: FormData,
+): Promise<AvatarUploadResult> {
+  const membership = await requireRole("owner");
+
+  const professional = await db.professional.findFirst({
+    where: { id: professionalId, barbershopId: membership.barbershopId },
+  });
+  if (!professional) {
+    return { success: false, error: "Profissional não encontrado." };
+  }
+
+  const file = formData.get("avatar");
+  if (!(file instanceof File)) {
+    return { success: false, error: "Arquivo inválido." };
+  }
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+    return { success: false, error: "Formato inválido. Use JPEG, PNG ou WebP." };
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    return { success: false, error: "Arquivo muito grande. Máximo 5 MB." };
+  }
+
+  if (professional.avatarUrl) {
+    try { await del(professional.avatarUrl); } catch {}
+  }
+
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const blob = await put(
+    `professionals/${membership.barbershopId}/${professionalId}.${ext}`,
+    file,
+    { access: "public", addRandomSuffix: true },
+  );
+
+  await db.professional.update({
+    where: { id: professionalId },
+    data: { avatarUrl: blob.url },
+  });
+
+  revalidatePath("/dashboard/profissionais");
+
+  return { success: true, message: "Foto atualizada com sucesso.", avatarUrl: blob.url };
+}
+
+export async function removeProfessionalAvatar(
+  professionalId: string,
+): Promise<ActionResult> {
+  const membership = await requireRole("owner");
+
+  const professional = await db.professional.findFirst({
+    where: { id: professionalId, barbershopId: membership.barbershopId },
+  });
+  if (!professional) {
+    return { success: false, error: "Profissional não encontrado." };
+  }
+
+  if (professional.avatarUrl) {
+    try { await del(professional.avatarUrl); } catch {}
+  }
+
+  await db.professional.update({
+    where: { id: professionalId },
+    data: { avatarUrl: null },
+  });
+
+  revalidatePath("/dashboard/profissionais");
+
+  return { success: true, message: "Foto removida com sucesso." };
 }

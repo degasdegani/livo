@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import type { SlotInfo } from "@/lib/availability";
 import { createAppointment, getAvailableSlots } from "./actions";
@@ -67,10 +68,12 @@ function ProfAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | nul
 
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={name}
-        style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }}
+        width={56}
+        height={56}
+        className="rounded-full object-cover shrink-0"
       />
     );
   }

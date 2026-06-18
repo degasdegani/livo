@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
+    ],
+  },
+};
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG ?? "",
