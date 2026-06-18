@@ -34,7 +34,7 @@ import { getAvailableSlots } from "@/app/[slug]/book/actions";
 vi.mock("@/lib/db", () => ({
   db: {
     comanda: { findMany: vi.fn() },
-    service: { findFirst: vi.fn() },
+    service: { findFirst: vi.fn(), findMany: vi.fn() },
     businessHour: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn() },
   },
@@ -129,11 +129,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireRole).mockResolvedValue(membership() as never);
   vi.mocked(db.comanda.findMany).mockResolvedValue([]);
-  vi.mocked(db.service.findFirst).mockResolvedValue({
+  vi.mocked(db.service.findMany).mockResolvedValue([{
     id: SVC_ID,
     durationMin: 30,
     name: "Corte",
-  } as never);
+  }] as never);
   vi.mocked(db.businessHour.findFirst).mockResolvedValue({
     isOpen: true,
     openTime: "09:00",
@@ -291,11 +291,11 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
-    expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(db.service.findMany)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(db.businessHour.findFirst)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(db.appointment.findMany)).toHaveBeenCalledTimes(1);
   });
@@ -304,7 +304,7 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
@@ -320,7 +320,7 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
@@ -342,7 +342,7 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     const result = await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
@@ -352,12 +352,12 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
   });
 
   it("returns empty array when service not found (1 query only)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
 
     const result = await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
@@ -374,7 +374,7 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     const result = await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 
@@ -386,7 +386,7 @@ describe("getAvailableSlots — 3-query profile and day scoping", () => {
     await getAvailableSlots({
       barbershopId: SHOP_ID,
       professionalId: PROF_ID,
-      serviceId: SVC_ID,
+      serviceIds: [SVC_ID],
       date: "2026-06-14",
     });
 

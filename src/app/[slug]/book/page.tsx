@@ -8,30 +8,38 @@ export default async function BookPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ serviceId?: string }>;
+  searchParams: Promise<{ serviceIds?: string }>;
 }) {
   const { slug } = await params;
-  const { serviceId } = await searchParams;
+  const { serviceIds: serviceIdsParam } = await searchParams;
 
-  // Sem serviceId → volta para a página da barbearia
-  if (!serviceId) redirect(`/${slug}`);
+  // Sem serviceIds → volta para a página da barbearia
+  if (!serviceIdsParam) redirect(`/${slug}`);
 
-  // Busca barbearia + profissional + serviço no banco
+  const serviceIdsList = serviceIdsParam.split(",").filter(Boolean);
+  if (serviceIdsList.length === 0) redirect(`/${slug}`);
+
+  // Busca barbearia + TODOS os profissionais ativos + serviços solicitados
   const barbershop = await db.barbershop.findUnique({
     where: { slug, isActive: true },
     include: {
-      professionals: { where: { isActive: true }, take: 1 },
-      services: { where: { id: serviceId, isActive: true } },
+      professionals: {
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+      },
+      services: {
+        where: { id: { in: serviceIdsList }, isActive: true },
+      },
     },
   });
 
   if (!barbershop) notFound();
 
-  const professional = barbershop.professionals[0];
-  const service = barbershop.services[0];
+  const professionals = barbershop.professionals;
+  const services = barbershop.services;
 
-  // Sem profissional ou serviço → 404
-  if (!professional || !service) notFound();
+  // Sem profissional ou nenhum serviço encontrado → 404
+  if (professionals.length === 0 || services.length === 0) notFound();
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
@@ -55,11 +63,18 @@ export default async function BookPage({
         {/* Formulário client-side com todos os dados já carregados */}
         <BookingForm
           barbershopId={barbershop.id}
-          professionalId={professional.id}
-          serviceName={service.name}
-          serviceId={service.id}
-          serviceDuration={service.durationMin}
-          servicePrice={service.priceInCents}
+          serviceIds={serviceIdsList}
+          services={services.map((s) => ({
+            id: s.id,
+            name: s.name,
+            durationMin: s.durationMin,
+            priceInCents: s.priceInCents,
+          }))}
+          professionals={professionals.map((p) => ({
+            id: p.id,
+            name: p.name,
+            avatarUrl: p.avatarUrl,
+          }))}
           barbershopName={barbershop.name}
           barbershopSlug={slug}
         />

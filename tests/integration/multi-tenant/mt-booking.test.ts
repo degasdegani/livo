@@ -25,7 +25,7 @@ import { makeService, makeProfessional } from "../../factories";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    service: { findFirst: vi.fn() },
+    service: { findFirst: vi.fn(), findMany: vi.fn() },
     professional: { findFirst: vi.fn() },
     barbershop: { findUnique: vi.fn() },
     businessHour: { findFirst: vi.fn() },
@@ -85,12 +85,12 @@ describe("MT — Public Booking", () => {
   describe("getAvailableSlots", () => {
     it("returns empty array when service does not belong to the requested barbershopId", async () => {
       // Service from SHOP_B is NOT found under SHOP_A → returns []
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
 
       const slots = await getAvailableSlots({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_B, // Cross-tenant serviceId
+        serviceIds: [SVC_B], // Cross-tenant serviceId
         date: TODAY,
       });
 
@@ -98,19 +98,18 @@ describe("MT — Public Booking", () => {
     });
 
     it("scopes service lookup to the URL-provided barbershopId", async () => {
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
 
       await getAvailableSlots({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_B,
+        serviceIds: [SVC_B],
         date: TODAY,
       });
 
-      expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+      expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            id: SVC_B,
             barbershopId: SHOP_A,
           }),
         }),
@@ -119,7 +118,7 @@ describe("MT — Public Booking", () => {
 
     it("scopes appointment lookup to both barbershopId and professionalId", async () => {
       const svc = makeService({ id: SVC_A, barbershopId: SHOP_A, durationMin: 30 });
-      vi.mocked(db.service.findFirst).mockResolvedValue(svc);
+      vi.mocked(db.service.findMany).mockResolvedValue([svc]);
       vi.mocked(db.businessHour.findFirst).mockResolvedValue({
         id: "bh-1",
         barbershopId: SHOP_A,
@@ -133,7 +132,7 @@ describe("MT — Public Booking", () => {
       await getAvailableSlots({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_A,
+        serviceIds: [SVC_A],
         date: TODAY,
       });
 
@@ -150,14 +149,14 @@ describe("MT — Public Booking", () => {
 
   describe("createAppointment", () => {
     it("returns error when service does not belong to the provided barbershopId", async () => {
-      vi.mocked(db.service.findFirst).mockResolvedValue(null); // Cross-tenant service
+      vi.mocked(db.service.findMany).mockResolvedValue([]); // Cross-tenant service
       vi.mocked(db.professional.findFirst).mockResolvedValue(null);
       vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
       const result = await createAppointment({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_B, // Belongs to SHOP_B
+        serviceIds: [SVC_B], // Belongs to SHOP_B
         date: TODAY,
         time: "10:00",
         clientName: "Test Client",
@@ -168,14 +167,14 @@ describe("MT — Public Booking", () => {
     });
 
     it("scopes service and professional lookups to the URL-provided barbershopId", async () => {
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
       vi.mocked(db.professional.findFirst).mockResolvedValue(null);
       vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
       await createAppointment({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_A,
+        serviceIds: [SVC_A],
         date: TODAY,
         time: "10:00",
         clientName: "Test Client",
@@ -183,7 +182,7 @@ describe("MT — Public Booking", () => {
       });
 
       // Both service and professional must be validated against SHOP_A
-      expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+      expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ barbershopId: SHOP_A }),
         }),
@@ -199,7 +198,7 @@ describe("MT — Public Booking", () => {
       const svc = makeService({ id: SVC_A, barbershopId: SHOP_A, durationMin: 30 });
       const prof = makeProfessional({ id: PROF_A, barbershopId: SHOP_A });
 
-      vi.mocked(db.service.findFirst).mockResolvedValue(svc);
+      vi.mocked(db.service.findMany).mockResolvedValue([svc]);
       vi.mocked(db.professional.findFirst).mockResolvedValue(prof);
       vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
@@ -212,7 +211,7 @@ describe("MT — Public Booking", () => {
       await createAppointment({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_A,
+        serviceIds: [SVC_A],
         date: TODAY,
         time: "10:00",
         clientName: "Test Client",
@@ -228,14 +227,14 @@ describe("MT — Public Booking", () => {
 
     it("cannot book across tenant boundaries — different barbershopId for service vs booking", async () => {
       // Lookup scoped to SHOP_A returns null for SVC_B — the service belongs to SHOP_B
-      vi.mocked(db.service.findFirst).mockResolvedValue(null);
+      vi.mocked(db.service.findMany).mockResolvedValue([]);
       vi.mocked(db.professional.findFirst).mockResolvedValue(null);
       vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
       const result = await createAppointment({
         barbershopId: SHOP_A,
         professionalId: PROF_A,
-        serviceId: SVC_B, // Cross-tenant service ID
+        serviceIds: [SVC_B], // Cross-tenant service ID
         date: TODAY,
         time: "10:00",
         clientName: "Attacker",

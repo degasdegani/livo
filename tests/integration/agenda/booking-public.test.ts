@@ -24,7 +24,7 @@ import { makeService, makeProfessional } from "../../factories";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    service: { findFirst: vi.fn() },
+    service: { findFirst: vi.fn(), findMany: vi.fn() },
     professional: { findFirst: vi.fn() },
     businessHour: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn() },
@@ -75,12 +75,12 @@ beforeEach(() => {
 
 describe("getAvailableSlots()", () => {
   it("returns empty array when service not found in barbershop (cross-tenant guard)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
 
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: "foreign-service-id",
+      serviceIds: ["foreign-service-id"],
       date: "2020-01-01",
     });
 
@@ -88,16 +88,16 @@ describe("getAvailableSlots()", () => {
   });
 
   it("validates service by barbershopId — query must scope to barbershop", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
 
     await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
-    expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ barbershopId: SHOP_A }),
       }),
@@ -105,15 +105,15 @@ describe("getAvailableSlots()", () => {
   });
 
   it("returns empty array when businessHour not configured for that day", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue(null);
 
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
@@ -121,9 +121,9 @@ describe("getAvailableSlots()", () => {
   });
 
   it("returns empty array when barbershop is closed on that day", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue({
       ...openBusinessHour,
       isOpen: false,
@@ -132,7 +132,7 @@ describe("getAvailableSlots()", () => {
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
@@ -140,9 +140,9 @@ describe("getAvailableSlots()", () => {
   });
 
   it("scopes appointment query to barbershopId and professionalId", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue(
       openBusinessHour as never,
     );
@@ -151,7 +151,7 @@ describe("getAvailableSlots()", () => {
     await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
@@ -166,9 +166,9 @@ describe("getAvailableSlots()", () => {
   });
 
   it("excludes cancelled and no_show appointments from slot calculation", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue(
       openBusinessHour as never,
     );
@@ -177,7 +177,7 @@ describe("getAvailableSlots()", () => {
     await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
@@ -191,9 +191,9 @@ describe("getAvailableSlots()", () => {
   });
 
   it("returns slots when no appointments exist for the day", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue({
       ...openBusinessHour,
       openTime: "09:00",
@@ -205,14 +205,17 @@ describe("getAvailableSlots()", () => {
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
-    // Window 09:00–10:00, service 30 min, SLOT_MINUTES=10 → 09:00,09:10,09:20,09:30
-    expect(slots).toHaveLength(4);
-    expect(slots).toContain("09:00");
-    expect(slots).toContain("09:30");
+    // Window 09:00–10:00, service 30 min, SLOT_MINUTES=10 → 6 slots total
+    // Available: 09:00,09:10,09:20,09:30 (fit before close); unavailable: 09:40,09:50
+    expect(slots).toHaveLength(6);
+    const availableTimes = slots.filter((s) => s.available).map((s) => s.time);
+    expect(availableTimes).toHaveLength(4);
+    expect(availableTimes).toContain("09:00");
+    expect(availableTimes).toContain("09:30");
   });
 
   // GAP-05: appointments are stored in UTC; conversion to Brasília (UTC-3) is critical.
@@ -224,9 +227,9 @@ describe("getAvailableSlots()", () => {
     const apptDate = new Date("2020-01-01T13:00:00.000Z"); // 10:00 Brasília
     const apptEnd = new Date("2020-01-01T13:30:00.000Z"); // 10:30 Brasília
 
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue({
       ...openBusinessHour,
       openTime: "09:00",
@@ -239,14 +242,16 @@ describe("getAvailableSlots()", () => {
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
     // 10:00 slot must be blocked by the 10:00–10:30 appointment
-    expect(slots).not.toContain("10:00");
+    const slot10 = slots.find((s) => s.time === "10:00");
+    expect(slot10?.available).toBe(false);
     // 09:00 slot must be available (no conflict before 10:00)
-    expect(slots).toContain("09:00");
+    const slot09 = slots.find((s) => s.time === "09:00");
+    expect(slot09?.available).toBe(true);
   });
 
   it("GAP-05: appointment endTime also converted via getUTCMinutes() - 180", async () => {
@@ -258,9 +263,9 @@ describe("getAvailableSlots()", () => {
     const apptDate = new Date("2020-01-01T12:30:00.000Z"); // 09:30 Brasília
     const apptEnd = new Date("2020-01-01T13:30:00.000Z"); // 10:30 Brasília
 
-    vi.mocked(db.service.findFirst).mockResolvedValue(
+    vi.mocked(db.service.findMany).mockResolvedValue([
       makeService({ durationMin: 30 }),
-    );
+    ]);
     vi.mocked(db.businessHour.findFirst).mockResolvedValue({
       ...openBusinessHour,
       openTime: "09:00",
@@ -273,7 +278,7 @@ describe("getAvailableSlots()", () => {
     const slots = await getAvailableSlots({
       barbershopId: SHOP_A,
       professionalId: PROF_A,
-      serviceId: SVC_A,
+      serviceIds: [SVC_A],
       date: "2020-01-01",
     });
 
@@ -290,7 +295,7 @@ describe("createAppointment()", () => {
   const baseCreateData = {
     barbershopId: SHOP_A,
     professionalId: PROF_A,
-    serviceId: SVC_A,
+    serviceIds: [SVC_A],
     date: "2026-06-15",
     time: "10:00",
     clientName: "João Silva",
@@ -318,7 +323,7 @@ describe("createAppointment()", () => {
   });
 
   it("returns error when service not found in barbershop (cross-tenant guard)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
@@ -329,13 +334,13 @@ describe("createAppointment()", () => {
   });
 
   it("validates service by barbershopId", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
     await createAppointment(baseCreateData);
 
-    expect(vi.mocked(db.service.findFirst)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.service.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ barbershopId: SHOP_A }),
       }),
@@ -343,7 +348,7 @@ describe("createAppointment()", () => {
   });
 
   it("validates professional by barbershopId", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(null);
+    vi.mocked(db.service.findMany).mockResolvedValue([]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
 
@@ -357,7 +362,7 @@ describe("createAppointment()", () => {
   });
 
   it("delegates to createAppointmentCore with correct barbershopId and professionalId", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(makeService({ id: SVC_A }));
+    vi.mocked(db.service.findMany).mockResolvedValue([makeService({ id: SVC_A })]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
     vi.mocked(createAppointmentCore).mockResolvedValue({
@@ -377,7 +382,7 @@ describe("createAppointment()", () => {
   });
 
   it("builds dateISO with Brasília UTC-3 offset (GAP-05: dateISO must be 13:00Z for 10:00 local)", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(makeService({ id: SVC_A }));
+    vi.mocked(db.service.findMany).mockResolvedValue([makeService({ id: SVC_A })]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
     vi.mocked(createAppointmentCore).mockResolvedValue({
@@ -395,7 +400,7 @@ describe("createAppointment()", () => {
   });
 
   it("propagates error from createAppointmentCore", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(makeService({ id: SVC_A }));
+    vi.mocked(db.service.findMany).mockResolvedValue([makeService({ id: SVC_A })]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
     vi.mocked(createAppointmentCore).mockResolvedValue({
@@ -410,7 +415,7 @@ describe("createAppointment()", () => {
   });
 
   it("returns success with appointmentId when core succeeds", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(makeService({ id: SVC_A }));
+    vi.mocked(db.service.findMany).mockResolvedValue([makeService({ id: SVC_A })]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(
       makeProfessional({ id: PROF_A }),
     );
@@ -431,7 +436,7 @@ describe("createAppointment()", () => {
   });
 
   it("sets appointment status as confirmed in public booking flow", async () => {
-    vi.mocked(db.service.findFirst).mockResolvedValue(makeService({ id: SVC_A }));
+    vi.mocked(db.service.findMany).mockResolvedValue([makeService({ id: SVC_A })]);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(null);
     vi.mocked(createAppointmentCore).mockResolvedValue({

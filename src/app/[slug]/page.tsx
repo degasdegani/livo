@@ -4,6 +4,7 @@ import { BarbershopMap } from "@/components/barbershop-map";
 import { db } from "@/lib/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ServicePicker } from "./service-picker";
 
 // Gera o título da aba dinamicamente para cada barbearia
 export async function generateMetadata({
@@ -197,6 +198,16 @@ export default async function BarbershopPage({
             <p style={{ color: "#52525B", fontSize: "14px" }}>
               Nenhum serviço disponível no momento.
             </p>
+          ) : professional ? (
+            <ServicePicker
+              services={barbershop.services.map((s) => ({
+                id: s.id,
+                name: s.name,
+                durationMin: s.durationMin,
+                priceInCents: s.priceInCents,
+              }))}
+              slug={slug}
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {barbershop.services.map((service) => (
@@ -216,34 +227,12 @@ export default async function BarbershopPage({
                       {service.durationMin} minutos
                     </p>
                   </div>
-
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-right">
-                      <p
-                        className="font-black"
-                        style={{
-                          color: "#FFFFFF",
-                          fontSize: "16px",
-                          letterSpacing: "-0.5px",
-                        }}
-                      >
-                        R$ {(service.priceInCents / 100).toFixed(0)}
-                      </p>
-                    </div>
-
-                    {professional && (
-                      <a
-                        href={`/${slug}/book?serviceId=${service.id}`}
-                        className="px-4 py-2 rounded-xl font-bold text-white text-sm transition-all hover:opacity-90 whitespace-nowrap"
-                        style={{
-                          background: "#FF2D55",
-                          boxShadow: "0 4px 16px rgba(255,45,85,0.3)",
-                        }}
-                      >
-                        Agendar
-                      </a>
-                    )}
-                  </div>
+                  <p
+                    className="font-black shrink-0"
+                    style={{ color: "#FFFFFF", fontSize: "16px", letterSpacing: "-0.5px" }}
+                  >
+                    R$ {(service.priceInCents / 100).toFixed(0)}
+                  </p>
                 </div>
               ))}
             </div>

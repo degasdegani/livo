@@ -1,10 +1,10 @@
 // ============================================================
 // LIVO — Lógica de Disponibilidade de Horários
-// Calcula slots disponíveis considerando:
+// Calcula slots do expediente considerando:
 //   - Horário de funcionamento da barbearia
-//   - Duração do serviço
-//   - Agendamentos já existentes
-//   - Hora atual (bloqueia slots no passado)
+//   - Duração total somada dos serviços escolhidos
+//   - Agendamentos já existentes (sobreposição de intervalos)
+//   - Hora atual (bloqueia slots passados + buffer de 30 min)
 // ============================================================
 import { SLOT_CONFIG } from "@/lib/slot-config";
 
@@ -27,16 +27,22 @@ interface ExistingAppointment {
   endMinutes: number; // minutos desde meia-noite
 }
 
+// Slot com status de disponibilidade
+export type SlotInfo = { time: string; available: boolean };
+
 interface GenerateSlotsParams {
   openTime: string; // "09:00"
   closeTime: string; // "18:00"
-  serviceDuration: number; // em minutos (ex: 30, 45, 60)
+  serviceDuration: number; // duração total somada dos serviços selecionados (minutos)
   appointments: ExistingAppointment[];
   isToday: boolean; // se for hoje, bloqueia slots passados
   currentMinutes: number; // hora atual em minutos (só usado se isToday)
 }
 
-// Função principal: gera todos os slots disponíveis
+// Gera TODOS os slots do expediente (openTime → closeTime, step = SLOT_MINUTES).
+// Cada slot inclui available: boolean.
+// available = false quando: serviço não cabe antes do fechamento, há conflito,
+// ou o slot está no passado (isToday + buffer de 30 min).
 export function generateAvailableSlots({
   openTime,
   closeTime,
@@ -44,40 +50,26 @@ export function generateAvailableSlots({
   appointments,
   isToday,
   currentMinutes,
-}: GenerateSlotsParams): string[] {
+}: GenerateSlotsParams): SlotInfo[] {
   const openMin = timeToMinutes(openTime);
   const closeMin = timeToMinutes(closeTime);
-
   const SLOT_INTERVAL = SLOT_CONFIG.SLOT_MINUTES;
+  const slots: SlotInfo[] = [];
 
-  const availableSlots: string[] = [];
-
-  // Gera slots do horário de abertura até o horário em que
-  // o último atendimento ainda caberia antes do fechamento
-  for (
-    let slotStart = openMin;
-    slotStart + serviceDuration <= closeMin;
-    slotStart += SLOT_INTERVAL
-  ) {
+  for (let slotStart = openMin; slotStart < closeMin; slotStart += SLOT_INTERVAL) {
     const slotEnd = slotStart + serviceDuration;
-
-    // ── Verifica conflito com agendamentos existentes ──────
-    // Um slot está ocupado se houver qualquer agendamento que:
-    // - começa antes do fim do slot
-    // - termina depois do início do slot
-    // (lógica de sobreposição de intervalos)
-    const hasConflict = appointments.some(
-      (appt) => slotStart < appt.endMinutes && slotEnd > appt.startMinutes,
-    );
-
-    // ── Verifica se está no passado ────────────────────────
-    // Adiciona 30 min de buffer para não mostrar slots muito próximos
+    const fitsBeforeClose = slotEnd <= closeMin;
     const isPast = isToday && slotStart <= currentMinutes + 30;
-
-    if (!hasConflict && !isPast) {
-      availableSlots.push(minutesToTime(slotStart));
-    }
+    const hasConflict =
+      fitsBeforeClose &&
+      appointments.some(
+        (appt) => slotStart < appt.endMinutes && slotEnd > appt.startMinutes,
+      );
+    slots.push({
+      time: minutesToTime(slotStart),
+      available: fitsBeforeClose && !isPast && !hasConflict,
+    });
   }
 
-  return availableSlots;
+  return slots;
 }

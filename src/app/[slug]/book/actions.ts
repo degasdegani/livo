@@ -1,6 +1,6 @@
 // ============================================================
 // LIVO — Server Actions: Agendamento Público
-// getAvailableSlots: retorna horários disponíveis para uma data
+// getAvailableSlots: retorna todos os slots do expediente com status
 // createAppointment: cria o agendamento + envia e-mail
 // ============================================================
 
@@ -8,7 +8,7 @@
 
 import { headers } from "next/headers";
 import { createAppointmentCore } from "@/lib/appointment-core";
-import { generateAvailableSlots } from "@/lib/availability";
+import { generateAvailableSlots, type SlotInfo } from "@/lib/availability";
 import { db } from "@/lib/db";
 import { sendAppointmentConfirmation } from "@/lib/email";
 import { log } from "@/lib/logger";
@@ -46,24 +46,32 @@ function isBookingRateLimited(ip: string): boolean {
 }
 
 // ── Buscar slots disponíveis ──────────────────────────────────
+// Retorna TODOS os slots do expediente com available: boolean.
+// Guarda de cross-tenant: todos os serviceIds devem pertencer ao barbershopId.
 interface GetSlotsParams {
   barbershopId: string;
   professionalId: string;
-  serviceId: string;
+  serviceIds: string[]; // múltiplos serviços; duração somada internamente
   date: string; // "YYYY-MM-DD"
 }
 
 export async function getAvailableSlots({
   barbershopId,
   professionalId,
-  serviceId,
+  serviceIds,
   date,
-}: GetSlotsParams): Promise<string[]> {
+}: GetSlotsParams): Promise<SlotInfo[]> {
   try {
-    const service = await db.service.findFirst({
-      where: { id: serviceId, barbershopId },
+    const uniqueIds = [...new Set(serviceIds)];
+
+    const services = await db.service.findMany({
+      where: { id: { in: uniqueIds }, barbershopId },
     });
-    if (!service) return [];
+
+    // Cross-tenant guard: todos os IDs solicitados devem existir nesta barbearia
+    if (services.length === 0 || services.length !== uniqueIds.length) return [];
+
+    const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
 
     // Ancora em Brasília (UTC-3, sem DST desde 2019) para dayOfWeek correto
     const dateObj = new Date(`${date}T12:00:00-03:00`);
@@ -88,7 +96,7 @@ export async function getAvailableSlots({
     });
 
     const appointmentsForCalculation = existingAppointments.map((appt) => ({
-      // Datas são armazenadas em UTC; converte para Brasília (UTC-3) via getUTC*
+      // Datas armazenadas em UTC; converte para Brasília (UTC-3) via getUTC*
       startMinutes: appt.date.getUTCHours() * 60 + appt.date.getUTCMinutes() - 180,
       endMinutes: appt.endTime
         ? appt.endTime.getUTCHours() * 60 + appt.endTime.getUTCMinutes() - 180
@@ -105,7 +113,7 @@ export async function getAvailableSlots({
     return generateAvailableSlots({
       openTime: businessHour.openTime,
       closeTime: businessHour.closeTime,
-      serviceDuration: service.durationMin,
+      serviceDuration: totalDuration,
       appointments: appointmentsForCalculation,
       isToday,
       currentMinutes,
@@ -120,7 +128,7 @@ export async function getAvailableSlots({
 interface CreateAppointmentParams {
   barbershopId: string;
   professionalId: string;
-  serviceId: string;
+  serviceIds: string[]; // múltiplos serviços
   date: string;
   time: string;
   clientName: string;
@@ -150,27 +158,31 @@ export async function createAppointment(
     if (!data.clientPhone?.trim()) return { error: "Informe seu telefone." };
     if (!data.date || !data.time) return { error: "Selecione data e horário." };
 
-    // Busca dados para o e-mail em paralelo — todas as leituras tenant-scoped
-    const [service, professional, barbershop] = await Promise.all([
-      db.service.findFirst({
-        where: { id: data.serviceId, barbershopId: data.barbershopId },
+    const uniqueServiceIds = [...new Set(data.serviceIds)];
+
+    // Busca todos os dados em paralelo — todas as leituras tenant-scoped
+    const [services, professional, barbershop] = await Promise.all([
+      db.service.findMany({
+        where: { id: { in: uniqueServiceIds }, barbershopId: data.barbershopId },
       }),
       db.professional.findFirst({
         where: { id: data.professionalId, barbershopId: data.barbershopId },
       }),
       db.barbershop.findUnique({ where: { id: data.barbershopId } }),
     ]);
-    if (!service) return { error: "Serviço não encontrado." };
+
+    // Cross-tenant guard: todos os serviços solicitados devem pertencer à barbearia
+    if (services.length === 0 || services.length !== uniqueServiceIds.length) {
+      return { error: "Serviço não encontrado." };
+    }
 
     // -03:00 = UTC-3 (Brasília, sem DST desde 2019)
-    const dateISO = new Date(
-      `${data.date}T${data.time}:00-03:00`,
-    ).toISOString();
+    const dateISO = new Date(`${data.date}T${data.time}:00-03:00`).toISOString();
 
     const result = await createAppointmentCore({
       barbershopId: data.barbershopId,
       professionalId: data.professionalId,
-      serviceIds: [data.serviceId],
+      serviceIds: uniqueServiceIds,
       dateISO,
       clientName: data.clientName,
       clientPhone: data.clientPhone,
@@ -181,13 +193,15 @@ export async function createAppointment(
     if (!result.success) return { error: result.error };
 
     if (data.clientEmail && barbershop && professional) {
+      const serviceName = services.map((s) => s.name).join(" + ");
+      const servicePrice = services.reduce((sum, s) => sum + s.priceInCents, 0);
       await sendAppointmentConfirmation({
         clientEmail: data.clientEmail,
         clientName: data.clientName.trim(),
         barbershopName: barbershop.name,
         barbershopSlug: barbershop.slug,
-        serviceName: service.name,
-        servicePrice: service.priceInCents,
+        serviceName,
+        servicePrice,
         date: data.date,
         time: data.time,
         professional: professional.name,
