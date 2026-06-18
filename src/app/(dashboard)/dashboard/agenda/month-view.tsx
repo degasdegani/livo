@@ -263,12 +263,13 @@ export default function MonthView({
             return (
               <div
                 key={dateKey}
-                className="min-h-[88px] p-2 flex flex-col transition-colors"
+                className="min-h-[88px] p-2 flex flex-col transition-colors cursor-pointer"
                 style={{ borderRight, borderBottom }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                onClick={(e) => { openCreateModal(dateKey, e.clientX, e.clientY); }}
               >
-                {/* Day number — opens quick-create popover */}
+                {/* Day number — stopPropagation to avoid double-firing with the container onClick */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openCreateModal(dateKey, e.clientX, e.clientY); }}
@@ -287,12 +288,12 @@ export default function MonthView({
                   </span>
                 </button>
 
-                {/* Up to 2 appointment lines */}
+                {/* Up to 2 appointment lines — stopPropagation to avoid triggering the cell create */}
                 {summary?.appointments.slice(0, 2).map((appt) => (
                   <button
                     key={appt.id}
                     type="button"
-                    onClick={() => navigateToDay(dateKey)}
+                    onClick={(e) => { e.stopPropagation(); navigateToDay(dateKey); }}
                     className="flex items-center gap-1 overflow-hidden w-full text-left outline-none mt-0.5"
                     style={{ minHeight: 18 }}
                   >
