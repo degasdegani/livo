@@ -31,7 +31,8 @@ export function TimeRuler({
           className="absolute right-0 left-0 flex items-center justify-end pr-2"
           style={{ top: offset * PX_PER_MINUTE, transform: "translateY(-50%)" }}
         >
-          {isHour && (
+          {/* Skip label at offset 0 — centered at top edge would be half-clipped. First visible label is 1:00. */}
+          {isHour && offset > 0 && (
             <span className="text-xs tabular-nums" style={{ color: "var(--text-tertiary)" }}>
               {minToTimeStr(openingMin + offset)}
             </span>

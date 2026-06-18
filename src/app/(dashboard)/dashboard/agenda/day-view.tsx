@@ -26,6 +26,7 @@ import {
 } from "./agenda-actions";
 import { AppointmentCard, type DragData } from "./components/appointment-card";
 import { CreateModal } from "./components/create-modal";
+import { NowIndicator } from "./components/now-indicator";
 import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
@@ -84,6 +85,7 @@ function ProfessionalColumn({
   onCardClick,
   userRole,
   userProfessionalId,
+  showNowIndicator,
 }: {
   professional: { id: string; name: string; avatarUrl: string | null };
   appointments: AgendaAppointment[];
@@ -93,6 +95,7 @@ function ProfessionalColumn({
   onCardClick: (appt: AgendaAppointment, clientX: number, clientY: number) => void;
   userRole: string;
   userProfessionalId: string | null;
+  showNowIndicator: boolean;
 }) {
   // Barbers can only drop on their own column.
   const isOwnColumn =
@@ -136,22 +139,21 @@ function ProfessionalColumn({
       }}
       onClick={handleClick}
     >
-      {/* Off-hours dim — before opening time */}
+      {/* Off-hours dim — very subtle tint, not a hard block */}
       <div
         className="absolute left-0 right-0 pointer-events-none"
         style={{
           top: 0,
           height: openingMin * PX_PER_MINUTE,
-          backgroundColor: "rgba(0,0,0,0.2)",
+          backgroundColor: "rgba(0,0,0,0.04)",
         }}
       />
-      {/* Off-hours dim — after closing time */}
       <div
         className="absolute left-0 right-0 pointer-events-none"
         style={{
           top: closingMin * PX_PER_MINUTE,
           height: (GRID_END_MIN - closingMin) * PX_PER_MINUTE,
-          backgroundColor: "rgba(0,0,0,0.2)",
+          backgroundColor: "rgba(0,0,0,0.04)",
         }}
       />
 
@@ -189,6 +191,7 @@ function ProfessionalColumn({
           />
         );
       })}
+      {showNowIndicator && <NowIndicator />}
     </div>
   );
 }
@@ -208,10 +211,12 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
 
   const gridScrollRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to 07:00 on mount so the grid opens at the start of the workday.
+  // Scroll to current real time on mount, with ~1.5h of context before.
   useEffect(() => {
     if (gridScrollRef.current) {
-      gridScrollRef.current.scrollTop = 7 * 60 * PX_PER_MINUTE;
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      gridScrollRef.current.scrollTop = Math.max(0, (nowMin - 90) * PX_PER_MINUTE);
     }
   }, []);
 
@@ -566,6 +571,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
                     onCardClick={(appt, cx, cy) => setModal({ type: "detail", appointment: appt, anchorX: cx, anchorY: cy })}
                     userRole={data.userRole}
                     userProfessionalId={data.userProfessionalId}
+                    showNowIndicator={isToday}
                   />
                 ))
               )}

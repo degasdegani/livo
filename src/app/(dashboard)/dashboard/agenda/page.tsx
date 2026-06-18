@@ -59,11 +59,8 @@ export default async function AgendaPage({
     ]);
 
     return (
-      <div className="h-full flex flex-col min-h-0" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-        <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+      <div className="h-full flex flex-col min-h-0 gap-3" style={{ maxWidth: 1200, margin: "0 auto", width: "100%", padding: "16px 24px 24px" }}>
+        <div className="flex items-center justify-between shrink-0">
           <div>
             <h1
               className="text-xl font-bold"
@@ -77,7 +74,10 @@ export default async function AgendaPage({
           </div>
           <ViewToggle current="semana" />
         </div>
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div
+          className="flex-1 min-h-0 overflow-hidden rounded-2xl"
+          style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
+        >
           <WeekView
             initialData={weekData}
             initialWeekStart={weekStart}
@@ -98,11 +98,8 @@ export default async function AgendaPage({
     ]);
 
     return (
-      <div className="h-full flex flex-col min-h-0" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-        <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+      <div className="h-full flex flex-col min-h-0 gap-3" style={{ maxWidth: 1200, margin: "0 auto", width: "100%", padding: "16px 24px 24px" }}>
+        <div className="flex items-center justify-between shrink-0">
           <div>
             <h1
               className="text-xl font-bold"
@@ -116,7 +113,10 @@ export default async function AgendaPage({
           </div>
           <ViewToggle current="operacional" />
         </div>
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div
+          className="flex-1 min-h-0 overflow-hidden rounded-2xl"
+          style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
+        >
           <DayView
             initialData={dayData}
             initialDateKey={dateKey}

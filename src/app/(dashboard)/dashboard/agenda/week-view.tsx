@@ -31,6 +31,7 @@ import {
 import { AppointmentCard, type DragData } from "./components/appointment-card";
 import { ProfessionalFilter } from "./components/professional-filter";
 import { CreateModal } from "./components/create-modal";
+import { NowIndicator } from "./components/now-indicator";
 import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
@@ -201,22 +202,21 @@ function DayColumn({
       }}
       onClick={handleClick}
     >
-      {/* Off-hours dim — before opening time */}
+      {/* Off-hours dim — very subtle tint, not a hard block */}
       <div
         className="absolute left-0 right-0 pointer-events-none"
         style={{
           top: 0,
           height: openingMin * PX_PER_MINUTE,
-          backgroundColor: "rgba(0,0,0,0.2)",
+          backgroundColor: "rgba(0,0,0,0.04)",
         }}
       />
-      {/* Off-hours dim — after closing time */}
       <div
         className="absolute left-0 right-0 pointer-events-none"
         style={{
           top: closingMin * PX_PER_MINUTE,
           height: (GRID_END_MIN - closingMin) * PX_PER_MINUTE,
-          backgroundColor: "rgba(0,0,0,0.2)",
+          backgroundColor: "rgba(0,0,0,0.04)",
         }}
       />
 
@@ -254,6 +254,7 @@ function DayColumn({
           />
         );
       })}
+      {isToday && <NowIndicator />}
     </div>
   );
 }
@@ -273,10 +274,12 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
 
   const gridScrollRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to 07:00 on mount so the grid opens at the start of the workday.
+  // Scroll to current real time on mount, with ~1.5h of context before.
   useEffect(() => {
     if (gridScrollRef.current) {
-      gridScrollRef.current.scrollTop = 7 * 60 * PX_PER_MINUTE;
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      gridScrollRef.current.scrollTop = Math.max(0, (nowMin - 90) * PX_PER_MINUTE);
     }
   }, []);
 
