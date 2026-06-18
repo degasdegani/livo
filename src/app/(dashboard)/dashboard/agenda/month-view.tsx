@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Popover } from "@/components/ui/popover";
-import { getAgendaMonthSummary, type AgendaMonthSummary } from "./agenda-actions";
+import {
+  createQuickAppointment,
+  getAgendaMonthSummary,
+  type AgendaMonthSummary,
+  type AgendaProfessional,
+  type AgendaService,
+} from "./agenda-actions";
+import { CreateModal } from "./components/create-modal";
 import { isoToDateKeyBRT } from "./components/shared";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -21,11 +28,21 @@ interface MonthViewProps {
   initialDaysSummary: AgendaMonthSummary["daysSummary"];
   initialYear: number;
   initialMonth: number; // 0-indexed (0 = Janeiro)
+  services: AgendaService[];
+  professionals: AgendaProfessional[];
+  userRole: string;
+  userProfessionalId: string | null;
 }
 
 // ── Popover state ─────────────────────────────────────────────────────────────
 
 type VerMaisState = {
+  dateKey: string;
+  anchorX: number;
+  anchorY: number;
+} | null;
+
+type CreateState = {
   dateKey: string;
   anchorX: number;
   anchorY: number;
@@ -39,6 +56,10 @@ export default function MonthView({
   initialDaysSummary,
   initialYear,
   initialMonth,
+  services,
+  professionals,
+  userRole,
+  userProfessionalId,
 }: MonthViewProps) {
   const router = useRouter();
   const [year, setYear] = useState(initialYear);
@@ -46,6 +67,7 @@ export default function MonthView({
   const [daysSummary, setDaysSummary] = useState(initialDaysSummary);
   const [isPending, startTransition] = useTransition();
   const [verMais, setVerMais] = useState<VerMaisState>(null);
+  const [createState, setCreateState] = useState<CreateState>(null);
 
   // Computed once on mount — BRT today regardless of browser timezone.
   const todayKey = useMemo(() => isoToDateKeyBRT(new Date().toISOString()), []);
@@ -82,6 +104,29 @@ export default function MonthView({
 
   function navigateToDay(dateKey: string) {
     router.push(`/dashboard/agenda?view=operacional&date=${dateKey}`);
+  }
+
+  // ── Quick-create from month view ─────────────────────────────────────────
+
+  function openCreateModal(dateKey: string, anchorX: number, anchorY: number) {
+    setCreateState({ dateKey, anchorX, anchorY });
+  }
+
+  function handleCreate(data: {
+    professionalId: string;
+    serviceIds: string[];
+    dateISO: string;
+    clientName: string;
+    clientPhone: string;
+    notes: string;
+  }) {
+    startTransition(async () => {
+      const result = await createQuickAppointment(data);
+      if (result.success) {
+        setCreateState(null);
+        await loadMonth(year, month);
+      }
+    });
   }
 
   // ── Grid computation ─────────────────────────────────────────────────────
@@ -223,12 +268,12 @@ export default function MonthView({
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               >
-                {/* Day number — navigates to day view */}
+                {/* Day number — opens quick-create popover */}
                 <button
                   type="button"
-                  onClick={() => navigateToDay(dateKey)}
+                  onClick={(e) => { e.stopPropagation(); openCreateModal(dateKey, e.clientX, e.clientY); }}
                   className="self-start outline-none"
-                  aria-label={`${d} de ${MONTHS[month]}`}
+                  aria-label={`Criar agendamento em ${d} de ${MONTHS[month]}`}
                 >
                   <span
                     className="w-7 h-7 flex items-center justify-center rounded-full text-sm"
@@ -296,6 +341,28 @@ export default function MonthView({
           </div>
         )}
       </div>
+
+      {/* ── CreateModal (criação rápida a partir da visão mensal) ─────────── */}
+      {createState && professionals.length > 0 && (
+        <CreateModal
+          professionalId={
+            userRole === "barber" && userProfessionalId
+              ? userProfessionalId
+              : (professionals[0]?.id ?? "")
+          }
+          suggestedMinute={8 * 60}
+          dateKey={createState.dateKey}
+          services={services}
+          professionals={professionals}
+          userRole={userRole}
+          userProfessionalId={userProfessionalId}
+          isPending={isPending}
+          anchorX={createState.anchorX}
+          anchorY={createState.anchorY}
+          onClose={() => setCreateState(null)}
+          onCreate={handleCreate}
+        />
+      )}
 
       {/* ── "Ver mais" Popover ───────────────────────────────────────────────── */}
       {verMais && (

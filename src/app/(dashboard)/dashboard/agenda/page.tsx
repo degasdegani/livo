@@ -4,6 +4,7 @@ import {
   getAgendaDay,
   getAgendaMonthSummary,
   getAgendaWeek,
+  getProfessionalsForAgenda,
   getServicesForAgenda,
 } from "./agenda-actions";
 import DayView from "./day-view";
@@ -135,7 +136,11 @@ export default async function AgendaPage({
   const brtMonth = brtMonthStr - 1; // 0-indexed for JS
   const monthStart = `${brtYear}-${String(brtMonthStr).padStart(2, "0")}-01`;
 
-  const monthData = await getAgendaMonthSummary(monthStart);
+  const [monthData, services, profData] = await Promise.all([
+    getAgendaMonthSummary(monthStart),
+    getServicesForAgenda(),
+    getProfessionalsForAgenda(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6 p-6" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
@@ -154,6 +159,10 @@ export default async function AgendaPage({
         initialDaysSummary={monthData.daysSummary}
         initialYear={brtYear}
         initialMonth={brtMonth}
+        services={services}
+        professionals={profData.professionals}
+        userRole={profData.userRole}
+        userProfessionalId={profData.userProfessionalId}
       />
     </div>
   );

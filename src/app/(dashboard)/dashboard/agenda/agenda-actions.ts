@@ -182,6 +182,31 @@ export async function getServicesForAgenda(): Promise<AgendaService[]> {
   }));
 }
 
+// ─── Buscar profissionais e contexto do usuário ──────────────────────────────
+
+export async function getProfessionalsForAgenda(): Promise<{
+  professionals: AgendaProfessional[];
+  userRole: string;
+  userProfessionalId: string | null;
+}> {
+  const membership = await requireMembership();
+
+  const professionals = await db.professional.findMany({
+    where: { barbershopId: membership.barbershopId, isActive: true },
+    orderBy: { name: "asc" },
+  });
+
+  return {
+    professionals: professionals.map((p) => ({
+      id: p.id,
+      name: p.name,
+      avatarUrl: p.avatarUrl,
+    })),
+    userRole: membership.role,
+    userProfessionalId: membership.professionalId,
+  };
+}
+
 // ─── Mover entre barbeiros ───────────────────────────────────────────────────
 
 export async function moveAppointment(
