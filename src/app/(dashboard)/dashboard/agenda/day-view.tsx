@@ -118,8 +118,6 @@ function ProfessionalColumn({
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const relY = e.clientY - rect.top;
-    const clickMin = relY / PX_PER_MINUTE;
-    if (clickMin < openingMin || clickMin >= closingMin) return;
     onGridClick(relY, e.clientX, e.clientY);
   }
 
