@@ -3,11 +3,12 @@
  *
  * Verifies:
  *   - Single appointment query for the full month (no N+1)
- *   - Minimal projection (only `date` field needed for counting)
+ *   - Correct projection (date, id, clientName)
  *   - cancelled/no_show excluded
  *   - appointmentScope RBAC applied
  *   - Appointments grouped correctly by BRT dateKey
  *   - UTC midnight boundary handled correctly
+ *   - daysSummary includes count + appointments array
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -117,62 +118,87 @@ describe("getAgendaMonthSummary — query shape", () => {
   });
 });
 
-describe("getAgendaMonthSummary — countByDay grouping", () => {
-  it("returns empty countByDay when no appointments", async () => {
+describe("getAgendaMonthSummary — daysSummary grouping", () => {
+  it("returns empty daysSummary when no appointments", async () => {
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay).toEqual({});
+    expect(result.daysSummary).toEqual({});
   });
 
   it("counts a single appointment on the correct BRT day", async () => {
     // 2026-06-17T10:00:00Z = 07:00 BRT → "2026-06-17"
     vi.mocked(db.appointment.findMany).mockResolvedValue([
-      { date: new Date("2026-06-17T10:00:00.000Z") } as never,
+      { id: "appt-1", date: new Date("2026-06-17T10:00:00.000Z"), clientName: "João" } as never,
     ]);
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay["2026-06-17"]).toBe(1);
+    expect(result.daysSummary["2026-06-17"].count).toBe(1);
+  });
+
+  it("populates appointments array with id, time (BRT) and clientName", async () => {
+    vi.mocked(db.appointment.findMany).mockResolvedValue([
+      { id: "appt-1", date: new Date("2026-06-17T10:00:00.000Z"), clientName: "João" } as never,
+    ]);
+    const result = await getAgendaMonthSummary("2026-06-01");
+    expect(result.daysSummary["2026-06-17"].appointments).toHaveLength(1);
+    expect(result.daysSummary["2026-06-17"].appointments[0]).toMatchObject({
+      id: "appt-1",
+      time: "07:00",
+      clientName: "João",
+    });
   });
 
   it("counts multiple appointments on the same day", async () => {
     vi.mocked(db.appointment.findMany).mockResolvedValue([
-      { date: new Date("2026-06-17T09:00:00.000Z") } as never,
-      { date: new Date("2026-06-17T11:00:00.000Z") } as never,
-      { date: new Date("2026-06-17T15:00:00.000Z") } as never,
+      { id: "a1", date: new Date("2026-06-17T09:00:00.000Z"), clientName: "A" } as never,
+      { id: "a2", date: new Date("2026-06-17T11:00:00.000Z"), clientName: "B" } as never,
+      { id: "a3", date: new Date("2026-06-17T15:00:00.000Z"), clientName: "C" } as never,
     ]);
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay["2026-06-17"]).toBe(3);
+    expect(result.daysSummary["2026-06-17"].count).toBe(3);
   });
 
   it("distributes appointments across multiple days", async () => {
     vi.mocked(db.appointment.findMany).mockResolvedValue([
-      { date: new Date("2026-06-16T12:00:00.000Z") } as never,
-      { date: new Date("2026-06-17T10:00:00.000Z") } as never,
-      { date: new Date("2026-06-17T14:00:00.000Z") } as never,
-      { date: new Date("2026-06-20T09:00:00.000Z") } as never,
+      { id: "a1", date: new Date("2026-06-16T12:00:00.000Z"), clientName: "A" } as never,
+      { id: "a2", date: new Date("2026-06-17T10:00:00.000Z"), clientName: "B" } as never,
+      { id: "a3", date: new Date("2026-06-17T14:00:00.000Z"), clientName: "C" } as never,
+      { id: "a4", date: new Date("2026-06-20T09:00:00.000Z"), clientName: "D" } as never,
     ]);
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay["2026-06-16"]).toBe(1);
-    expect(result.countByDay["2026-06-17"]).toBe(2);
-    expect(result.countByDay["2026-06-20"]).toBe(1);
-    expect(result.countByDay["2026-06-18"]).toBeUndefined();
+    expect(result.daysSummary["2026-06-16"].count).toBe(1);
+    expect(result.daysSummary["2026-06-17"].count).toBe(2);
+    expect(result.daysSummary["2026-06-20"].count).toBe(1);
+    expect(result.daysSummary["2026-06-18"]).toBeUndefined();
   });
 
   it("handles BRT midnight boundary: 22:00 UTC prev day = 19:00 BRT same day", async () => {
     // 2026-06-17T22:00:00Z = 19:00 BRT → still "2026-06-17"
     vi.mocked(db.appointment.findMany).mockResolvedValue([
-      { date: new Date("2026-06-17T22:00:00.000Z") } as never,
+      { id: "a1", date: new Date("2026-06-17T22:00:00.000Z"), clientName: "X" } as never,
     ]);
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay["2026-06-17"]).toBe(1);
-    expect(result.countByDay["2026-06-18"]).toBeUndefined();
+    expect(result.daysSummary["2026-06-17"].count).toBe(1);
+    expect(result.daysSummary["2026-06-18"]).toBeUndefined();
   });
 
   it("handles BRT midnight boundary: 03:00 UTC = 00:00 BRT (same day)", async () => {
     // 2026-06-18T03:00:00Z = 00:00 BRT on June 18 → "2026-06-18"
     vi.mocked(db.appointment.findMany).mockResolvedValue([
-      { date: new Date("2026-06-18T03:00:00.000Z") } as never,
+      { id: "a1", date: new Date("2026-06-18T03:00:00.000Z"), clientName: "X" } as never,
     ]);
     const result = await getAgendaMonthSummary("2026-06-01");
-    expect(result.countByDay["2026-06-18"]).toBe(1);
-    expect(result.countByDay["2026-06-17"]).toBeUndefined();
+    expect(result.daysSummary["2026-06-18"].count).toBe(1);
+    expect(result.daysSummary["2026-06-17"]).toBeUndefined();
+  });
+
+  it("caps appointments array at 5 entries even when count is higher", async () => {
+    const rows = Array.from({ length: 7 }, (_, i) => ({
+      id: `appt-${i}`,
+      date: new Date(`2026-06-17T${String(8 + i).padStart(2, "0")}:00:00.000Z`),
+      clientName: `Client ${i}`,
+    }));
+    vi.mocked(db.appointment.findMany).mockResolvedValue(rows as never);
+    const result = await getAgendaMonthSummary("2026-06-01");
+    expect(result.daysSummary["2026-06-17"].count).toBe(7);
+    expect(result.daysSummary["2026-06-17"].appointments).toHaveLength(5);
   });
 });

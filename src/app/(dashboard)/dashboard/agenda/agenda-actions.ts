@@ -293,6 +293,13 @@ function _isoToDateKeyBRT(isoStr: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
+function _isoToTimeBRT(isoStr: string): string {
+  const utcMs = new Date(isoStr).getTime();
+  const brtMs = utcMs - 3 * 60 * 60 * 1_000;
+  const d = new Date(brtMs);
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 // ─── Tipos da visão semanal ───────────────────────────────────────────────────
 
 export type AgendaWeekData = {
@@ -409,11 +416,17 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
   };
 }
 
-// ─── Resumo mensal (contagem de agendamentos por dia, sem detalhes) ──────────
+// ─── Resumo mensal (agendamentos por dia com detalhes para o MonthView) ──────
+
+export type AgendaMonthSummaryItem = {
+  id: string;
+  time: string;        // "HH:MM" BRT
+  clientName: string;
+};
 
 export type AgendaMonthSummary = {
-  /** dateKey (YYYY-MM-DD BRT) → quantidade de agendamentos ativos naquele dia. */
-  countByDay: Record<string, number>;
+  /** dateKey (YYYY-MM-DD BRT) → count + up to 5 appointments sorted by time. */
+  daysSummary: Record<string, { count: number; appointments: AgendaMonthSummaryItem[] }>;
 };
 
 export async function getAgendaMonthSummary(
@@ -430,23 +443,33 @@ export async function getAgendaMonthSummary(
   const lastDayStr = `${y}-${String(mo).padStart(2, "0")}-${String(lastDayDate.getUTCDate()).padStart(2, "0")}`;
   const rangeEnd = new Date(`${lastDayStr}T23:59:59.999-03:00`);
 
-  // Minimal projection: only the date field is needed to build the count map.
   const rows = await db.appointment.findMany({
     where: {
       ...appointmentScope(membership),
       date: { gte: rangeStart, lte: rangeEnd },
       status: { notIn: ["cancelled", "no_show"] },
     },
-    select: { date: true },
+    select: { id: true, date: true, clientName: true },
+    orderBy: { date: "asc" },
   });
 
-  const countByDay: Record<string, number> = {};
+  const daysSummary: Record<string, { count: number; appointments: AgendaMonthSummaryItem[] }> = {};
   for (const row of rows) {
     const dk = _isoToDateKeyBRT(row.date.toISOString());
-    countByDay[dk] = (countByDay[dk] ?? 0) + 1;
+    if (!daysSummary[dk]) {
+      daysSummary[dk] = { count: 0, appointments: [] };
+    }
+    daysSummary[dk].count++;
+    if (daysSummary[dk].appointments.length < 5) {
+      daysSummary[dk].appointments.push({
+        id: row.id,
+        time: _isoToTimeBRT(row.date.toISOString()),
+        clientName: row.clientName,
+      });
+    }
   }
 
-  return { countByDay };
+  return { daysSummary };
 }
 
 // ─── Reagendar via drag-and-drop (muda data + profissional em uma operação) ───

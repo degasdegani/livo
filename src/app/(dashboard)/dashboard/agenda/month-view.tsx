@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { getAgendaMonthSummary } from "./agenda-actions";
+import { Popover } from "@/components/ui/popover";
+import { getAgendaMonthSummary, type AgendaMonthSummary } from "./agenda-actions";
 import { isoToDateKeyBRT } from "./components/shared";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -17,25 +18,34 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MonthViewProps {
-  initialCountByDay: Record<string, number>;
+  initialDaysSummary: AgendaMonthSummary["daysSummary"];
   initialYear: number;
   initialMonth: number; // 0-indexed (0 = Janeiro)
 }
+
+// ── Popover state ─────────────────────────────────────────────────────────────
+
+type VerMaisState = {
+  dateKey: string;
+  anchorX: number;
+  anchorY: number;
+} | null;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MonthView
 // ══════════════════════════════════════════════════════════════════════════════
 
 export default function MonthView({
-  initialCountByDay,
+  initialDaysSummary,
   initialYear,
   initialMonth,
 }: MonthViewProps) {
   const router = useRouter();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
-  const [countByDay, setCountByDay] = useState(initialCountByDay);
+  const [daysSummary, setDaysSummary] = useState(initialDaysSummary);
   const [isPending, startTransition] = useTransition();
+  const [verMais, setVerMais] = useState<VerMaisState>(null);
 
   // Computed once on mount — BRT today regardless of browser timezone.
   const todayKey = useMemo(() => isoToDateKeyBRT(new Date().toISOString()), []);
@@ -45,7 +55,7 @@ export default function MonthView({
   async function loadMonth(y: number, m: number) {
     const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`;
     const data = await getAgendaMonthSummary(monthStart);
-    setCountByDay(data.countByDay);
+    setDaysSummary(data.daysSummary);
   }
 
   function navigate(delta: number) {
@@ -96,168 +106,274 @@ export default function MonthView({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      {/* ── Header: navegação de mês ─────────────────────────────────────── */}
+    <>
       <div
-        className="flex items-center justify-between px-6 py-5"
-        style={{ borderBottom: "1px solid var(--border)" }}
+        className="rounded-2xl overflow-hidden"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
       >
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
+        {/* ── Header: navegação de mês ─────────────────────────────────────── */}
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: "1px solid var(--border)" }}
         >
-          {MONTHS[month]} de {year}
-        </h2>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            disabled={isPending}
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40"
-            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-            aria-label="Mês anterior"
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--text-primary)" }}
           >
-            ◀
-          </button>
+            {MONTHS[month]} de {year}
+          </h2>
 
-          {!isCurrentMonth && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={goToday}
+              onClick={() => navigate(-1)}
               disabled={isPending}
-              className="px-3 h-8 rounded-lg text-xs font-medium transition-colors disabled:opacity-40"
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40"
               style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              aria-label="Mês anterior"
             >
-              Hoje
+              ◀
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={() => navigate(1)}
-            disabled={isPending}
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40"
-            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-            aria-label="Próximo mês"
-          >
-            ▶
-          </button>
-        </div>
-      </div>
+            {!isCurrentMonth && (
+              <button
+                type="button"
+                onClick={goToday}
+                disabled={isPending}
+                className="px-3 h-8 rounded-lg text-xs font-medium transition-colors disabled:opacity-40"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              >
+                Hoje
+              </button>
+            )}
 
-      {/* ── Cabeçalho dos dias da semana ────────────────────────────────── */}
-      <div
-        className="grid grid-cols-7"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        {WEEKDAYS.map((w) => (
-          <div
-            key={w}
-            className="py-3 text-center text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {w}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Grid de dias ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-7">
-        {cells.map((d, i) => {
-          const col = i % 7;
-          const row = Math.floor(i / 7);
-          const borderRight = col < 6 ? "1px solid var(--border)" : "none";
-          const borderBottom = row < totalRows - 1 ? "1px solid var(--border)" : "none";
-
-          // Empty padding cell (days outside this month)
-          if (d === null) {
-            return (
-              <div
-                key={`blank-${i}`}
-                className="min-h-[80px]"
-                style={{
-                  borderRight,
-                  borderBottom,
-                  backgroundColor: "var(--bg-base)",
-                  opacity: 0.4,
-                }}
-              />
-            );
-          }
-
-          // Real day cell
-          const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          const count = countByDay[dateKey] ?? 0;
-          const isToday = dateKey === todayKey;
-
-          return (
             <button
-              key={dateKey}
               type="button"
-              onClick={() => navigateToDay(dateKey)}
-              className="min-h-[80px] p-2 flex flex-col gap-1 text-left transition-colors"
-              style={{ borderRight, borderBottom, outline: "none" }}
+              onClick={() => navigate(1)}
+              disabled={isPending}
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-              aria-label={`${d} de ${MONTHS[month]}, ${count} agendamento${count !== 1 ? "s" : ""}`}
+              aria-label="Próximo mês"
             >
-              {/* Número do dia */}
-              <span
-                className="w-7 h-7 flex items-center justify-center rounded-full text-sm"
-                style={{
-                  backgroundColor: isToday ? "var(--color-primary)" : undefined,
-                  color: isToday ? "#fff" : "var(--text-primary)",
-                  fontWeight: isToday ? 700 : 400,
-                }}
-              >
-                {d}
-              </span>
-
-              {/* Indicador de agendamentos */}
-              {count > 0 && (
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: "var(--color-primary)" }}
-                  />
-                  <span
-                    className="text-xs tabular-nums"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {count}
-                  </span>
-                </div>
-              )}
+              ▶
             </button>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* ── Cabeçalho dos dias da semana ────────────────────────────────── */}
+        <div
+          className="grid grid-cols-7"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+          {WEEKDAYS.map((w) => (
+            <div
+              key={w}
+              className="py-3 text-center text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {w}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Grid de dias ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-7">
+          {cells.map((d, i) => {
+            const col = i % 7;
+            const row = Math.floor(i / 7);
+            const borderRight = col < 6 ? "1px solid var(--border)" : "none";
+            const borderBottom = row < totalRows - 1 ? "1px solid var(--border)" : "none";
+
+            // Empty padding cell (days outside this month)
+            if (d === null) {
+              return (
+                <div
+                  key={`blank-${i}`}
+                  className="min-h-[88px]"
+                  style={{
+                    borderRight,
+                    borderBottom,
+                    backgroundColor: "var(--bg-base)",
+                    opacity: 0.4,
+                  }}
+                />
+              );
+            }
+
+            // Real day cell
+            const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const summary = daysSummary[dateKey];
+            const count = summary?.count ?? 0;
+            const isToday = dateKey === todayKey;
+
+            return (
+              <div
+                key={dateKey}
+                className="min-h-[88px] p-2 flex flex-col transition-colors"
+                style={{ borderRight, borderBottom }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              >
+                {/* Day number — navigates to day view */}
+                <button
+                  type="button"
+                  onClick={() => navigateToDay(dateKey)}
+                  className="self-start outline-none"
+                  aria-label={`${d} de ${MONTHS[month]}`}
+                >
+                  <span
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-sm"
+                    style={{
+                      backgroundColor: isToday ? "var(--color-primary)" : undefined,
+                      color: isToday ? "#fff" : "var(--text-primary)",
+                      fontWeight: isToday ? 700 : 400,
+                    }}
+                  >
+                    {d}
+                  </span>
+                </button>
+
+                {/* Up to 2 appointment lines */}
+                {summary?.appointments.slice(0, 2).map((appt) => (
+                  <button
+                    key={appt.id}
+                    type="button"
+                    onClick={() => navigateToDay(dateKey)}
+                    className="flex items-center gap-1 overflow-hidden w-full text-left outline-none mt-0.5"
+                    style={{ minHeight: 18 }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: "var(--color-primary)" }}
+                    />
+                    <span
+                      className="text-xs truncate"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {appt.time} {appt.clientName}
+                    </span>
+                  </button>
+                ))}
+
+                {/* "Ver mais" when there are more than 2 */}
+                {count > 2 && (
+                  <button
+                    type="button"
+                    className="text-xs text-left outline-none mt-0.5"
+                    style={{ color: "var(--color-primary)" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVerMais({ dateKey, anchorX: e.clientX, anchorY: e.clientY });
+                    }}
+                  >
+                    Ver mais
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Loading indicator durante navegação de mês */}
+        {isPending && (
+          <div
+            className="text-center py-2 text-xs"
+            style={{
+              color: "var(--text-tertiary)",
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            Carregando…
+          </div>
+        )}
       </div>
 
-      {/* Loading indicator durante navegação de mês */}
-      {isPending && (
-        <div
-          className="text-center py-2 text-xs"
-          style={{
-            color: "var(--text-tertiary)",
-            borderTop: "1px solid var(--border)",
-          }}
+      {/* ── "Ver mais" Popover ───────────────────────────────────────────────── */}
+      {verMais && (
+        <Popover
+          anchorX={verMais.anchorX}
+          anchorY={verMais.anchorY}
+          onClose={() => setVerMais(null)}
+          width={240}
         >
-          Carregando…
-        </div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              {new Date(`${verMais.dateKey}T12:00:00`).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+              })}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setVerMais(null)}
+              aria-label="Fechar"
+              className="w-6 h-6 flex items-center justify-center rounded text-xs transition-colors"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Appointment list */}
+          <div className="space-y-0.5">
+            {daysSummary[verMais.dateKey]?.appointments.map((appt) => (
+              <button
+                key={appt.id}
+                type="button"
+                className="w-full text-left flex items-center gap-2 py-1.5 px-2 rounded-lg outline-none"
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                onClick={() => {
+                  setVerMais(null);
+                  navigateToDay(verMais.dateKey);
+                }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                />
+                <span
+                  className="text-xs tabular-nums flex-shrink-0"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {appt.time}
+                </span>
+                <span
+                  className="text-sm truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {appt.clientName}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Footer: navigate to day */}
+          <button
+            type="button"
+            className="w-full mt-3 py-2 rounded-lg text-xs font-medium transition-colors outline-none"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+            onClick={() => {
+              setVerMais(null);
+              navigateToDay(verMais.dateKey);
+            }}
+          >
+            Ver todos os agendamentos
+          </button>
+        </Popover>
       )}
-    </div>
+    </>
   );
 }

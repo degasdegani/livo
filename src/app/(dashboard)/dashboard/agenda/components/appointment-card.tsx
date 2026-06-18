@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import type { AgendaAppointment } from "../agenda-actions";
-import { STATUS_CONFIG } from "./shared";
+import { STATUS_CONFIG, isoToTimeBRT } from "./shared";
 
 export type DragData = {
   appointmentId: string;
@@ -59,20 +59,77 @@ export function AppointmentCard({
       ? `${appointment.services[0].serviceName} +${appointment.services.length - 1}`
       : appointment.serviceName;
 
+  // Compact pill for very short slots
+  if (heightPx < 36) {
+    return (
+      <div
+        ref={setNodeRef}
+        role="button"
+        tabIndex={0}
+        style={{
+          position: "absolute",
+          top: topPx + 1,
+          height: Math.max(16, heightPx - 2),
+          left: leftCalc,
+          width: widthCalc,
+          opacity: isInactive ? 0.4 : isDragging ? 0.25 : 1,
+          display: "flex",
+          alignItems: "center",
+          paddingLeft: 5,
+          paddingRight: 4,
+          overflow: "hidden",
+          borderLeft: `2px solid ${config.color}`,
+          cursor: draggable ? (isDragging ? "grabbing" : "grab") : "pointer",
+          touchAction: draggable ? "none" : undefined,
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(e.clientX, e.clientY);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            onClick(rect.right + 8, rect.top);
+          }
+        }}
+        {...(draggable ? listeners : undefined)}
+        {...(draggable ? attributes : undefined)}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 500,
+            color: "var(--text-secondary)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {isoToTimeBRT(appointment.date)} · {appointment.clientName}
+        </span>
+      </div>
+    );
+  }
+
+  // Normal card with pastel background
   return (
     <div
       ref={setNodeRef}
       role="button"
       tabIndex={0}
-      className={`absolute rounded border overflow-hidden transition-opacity ${config.bg} ${config.border}`}
       style={{
+        position: "absolute",
         top: topPx + 1,
         height: Math.max(20, heightPx - 2),
         left: leftCalc,
         width: widthCalc,
-        // Ghost while dragging — DragOverlay renders the moving clone.
         opacity: isInactive ? 0.4 : isDragging ? 0.25 : 1,
         zIndex: isInactive ? 0 : 1,
+        backgroundColor: config.pastelBg,
+        borderLeft: `3px solid ${config.color}`,
+        borderRadius: "0 8px 8px 0",
+        overflow: "hidden",
         cursor: draggable ? (isDragging ? "grabbing" : "grab") : "pointer",
         touchAction: draggable ? "none" : undefined,
       }}
@@ -83,30 +140,41 @@ export function AppointmentCard({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Keyboard: use card's right edge as anchor since there's no clientX/Y.
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
           onClick(rect.right + 8, rect.top);
         }
       }}
-      // Spread dnd-kit listeners/attributes only when dragging is enabled.
-      // {…undefined} === {} in JS, so it's safe when disabled returns undefined.
       {...(draggable ? listeners : undefined)}
       {...(draggable ? attributes : undefined)}
     >
-      {/* pointer-events-none prevents child text nodes from intercepting drag */}
       <div className="px-1.5 py-1 h-full overflow-hidden pointer-events-none">
         <p
-          className="text-xs font-semibold leading-tight truncate"
-          style={{ color: "var(--text-primary)" }}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            lineHeight: 1.3,
+            color: "var(--text-primary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         >
           {appointment.clientName}
         </p>
-        {heightPx > 28 && (
+        {heightPx > 32 && (
           <p
-            className="text-xs leading-tight truncate mt-0.5"
-            style={{ color: "var(--text-secondary)" }}
+            style={{
+              fontSize: 10,
+              fontWeight: 400,
+              lineHeight: 1.3,
+              color: "var(--text-secondary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              marginTop: 1,
+            }}
           >
-            {serviceLabel}
+            {isoToTimeBRT(appointment.date)}{serviceLabel ? ` · ${serviceLabel}` : ""}
           </p>
         )}
       </div>

@@ -59,7 +59,7 @@ export default async function AgendaPage({
     ]);
 
     return (
-      <div className="h-full flex flex-col min-h-0">
+      <div className="h-full flex flex-col min-h-0" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
         <div
           className="flex items-center justify-between px-6 py-4 shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}
@@ -98,7 +98,7 @@ export default async function AgendaPage({
     ]);
 
     return (
-      <div className="h-full flex flex-col min-h-0">
+      <div className="h-full flex flex-col min-h-0" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
         <div
           className="flex items-center justify-between px-6 py-4 shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}
@@ -138,7 +138,7 @@ export default async function AgendaPage({
   const monthData = await getAgendaMonthSummary(monthStart);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
@@ -151,7 +151,7 @@ export default async function AgendaPage({
         <ViewToggle current="mensal" />
       </div>
       <MonthView
-        initialCountByDay={monthData.countByDay}
+        initialDaysSummary={monthData.daysSummary}
         initialYear={brtYear}
         initialMonth={brtMonth}
       />

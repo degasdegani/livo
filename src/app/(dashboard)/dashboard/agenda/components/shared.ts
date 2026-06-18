@@ -1,7 +1,9 @@
 // Constantes e helpers puros compartilhados entre DayView e WeekView.
 // Sem React, sem imports de UI — só lógica de data e configuração visual.
 
-export const PX_PER_MINUTE = 2;
+export const PX_PER_MINUTE = 1;
+export const GRID_START_MIN = 0;    // Grade sempre inicia à meia-noite
+export const GRID_END_MIN = 1440;   // Grade sempre termina à meia-noite seguinte
 export const RULER_WIDTH = 56; // px
 export const MIN_COL_WIDTH = 160; // px
 
@@ -12,6 +14,8 @@ export const STATUS_CONFIG = {
     border: "border-yellow-500/40",
     dot: "bg-yellow-500",
     text: "text-yellow-400",
+    color: "#f59e0b",
+    pastelBg: "rgba(245, 158, 11, 0.12)",
   },
   confirmed: {
     label: "Confirmado",
@@ -19,6 +23,8 @@ export const STATUS_CONFIG = {
     border: "border-green-500/40",
     dot: "bg-green-500",
     text: "text-green-400",
+    color: "#22c55e",
+    pastelBg: "rgba(34, 197, 94, 0.12)",
   },
   completed: {
     label: "Concluído",
@@ -26,6 +32,8 @@ export const STATUS_CONFIG = {
     border: "border-zinc-600/40",
     dot: "bg-zinc-500",
     text: "text-zinc-400",
+    color: "#71717a",
+    pastelBg: "rgba(113, 113, 122, 0.1)",
   },
   cancelled: {
     label: "Cancelado",
@@ -33,6 +41,8 @@ export const STATUS_CONFIG = {
     border: "border-red-500/30",
     dot: "bg-red-500",
     text: "text-red-400",
+    color: "#ef4444",
+    pastelBg: "rgba(239, 68, 68, 0.08)",
   },
   no_show: {
     label: "Não compareceu",
@@ -40,6 +50,8 @@ export const STATUS_CONFIG = {
     border: "border-zinc-700/40",
     dot: "bg-zinc-600",
     text: "text-zinc-500",
+    color: "#52525b",
+    pastelBg: "rgba(82, 82, 91, 0.08)",
   },
 } as const;
 

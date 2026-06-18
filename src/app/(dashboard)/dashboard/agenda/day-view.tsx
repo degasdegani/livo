@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { layoutAppointments } from "@/lib/agenda-layout";
 import { calcDropMinute, checkClientConflict } from "@/lib/agenda-drag";
 import { updateAppointmentStatus } from "../actions";
@@ -31,6 +31,8 @@ import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
 import { ProfessionalFilter } from "./components/professional-filter";
 import {
+  GRID_END_MIN,
+  GRID_START_MIN,
   MIN_COL_WIDTH,
   PX_PER_MINUTE,
   RULER_WIDTH,
@@ -102,20 +104,23 @@ function ProfessionalColumn({
     disabled: !isOwnColumn,
   });
 
-  const positioned = layoutAppointments(appointments, openingMin, PX_PER_MINUTE);
-  const totalMin = closingMin - openingMin;
+  const positioned = layoutAppointments(appointments, GRID_START_MIN, PX_PER_MINUTE);
+  const totalMin = GRID_END_MIN - GRID_START_MIN;
   const gridHeight = totalMin * PX_PER_MINUTE;
 
   const lines: { offset: number; isHour: boolean; isHalf: boolean }[] = [];
   for (let i = 0; i <= totalMin; i += 10) {
-    const absMin = openingMin + i;
+    const absMin = GRID_START_MIN + i;
     lines.push({ offset: i, isHour: absMin % 60 === 0, isHalf: absMin % 30 === 0 });
   }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    onGridClick(e.clientY - rect.top, e.clientX, e.clientY);
+    const relY = e.clientY - rect.top;
+    const clickMin = relY / PX_PER_MINUTE;
+    if (clickMin < openingMin || clickMin >= closingMin) return;
+    onGridClick(relY, e.clientX, e.clientY);
   }
 
   return (
@@ -127,13 +132,31 @@ function ProfessionalColumn({
         height: gridHeight,
         borderColor: "var(--border)",
         cursor: "crosshair",
-        // Highlight the column when a card is dragged over it.
         backgroundColor: isOver ? "rgba(99, 102, 241, 0.06)" : undefined,
         boxShadow: isOver ? "inset 0 0 0 2px var(--color-primary)" : undefined,
         transition: "background-color 0.1s, box-shadow 0.1s",
       }}
       onClick={handleClick}
     >
+      {/* Off-hours dim — before opening time */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: 0,
+          height: openingMin * PX_PER_MINUTE,
+          backgroundColor: "rgba(0,0,0,0.2)",
+        }}
+      />
+      {/* Off-hours dim — after closing time */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: closingMin * PX_PER_MINUTE,
+          height: (GRID_END_MIN - closingMin) * PX_PER_MINUTE,
+          backgroundColor: "rgba(0,0,0,0.2)",
+        }}
+      />
+
       {lines.map(({ offset, isHour, isHalf }) => (
         <div
           key={offset}
@@ -142,7 +165,7 @@ function ProfessionalColumn({
             top: offset * PX_PER_MINUTE,
             height: 1,
             backgroundColor: "var(--border)",
-            opacity: isHour ? 0.5 : isHalf ? 0.25 : 0.1,
+            opacity: isHour ? 0.3 : isHalf ? 0.15 : 0.06,
           }}
         />
       ))}
@@ -184,6 +207,15 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
   const [isPending, startTransition] = useTransition();
   const [draggingAppt, setDraggingAppt] = useState<AgendaAppointment | null>(null);
   const [selectedProfIds, setSelectedProfIds] = useState<string[]>([]);
+
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to 07:00 on mount so the grid opens at the start of the workday.
+  useEffect(() => {
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = 7 * 60 * PX_PER_MINUTE;
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -238,7 +270,8 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
 
   function handleGridClick(professionalId: string, clickY: number, clientX: number, clientY: number) {
     if (data.userRole === "barber" && professionalId !== data.userProfessionalId) return;
-    const rawMin = openingMin + clickY / PX_PER_MINUTE;
+    // clickY is relative to the top of the grid (which starts at GRID_START_MIN = 0).
+    const rawMin = clickY / PX_PER_MINUTE;
     const rounded = Math.round(rawMin / 10) * 10;
     const clamped = Math.max(openingMin, Math.min(closingMin - 10, rounded));
     setModal({ type: "create", professionalId, suggestedMinute: clamped, dateKey, anchorX: clientX, anchorY: clientY });
@@ -267,7 +300,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
     const cardMidY = translated.top + translated.height / 2;
     const offsetY = cardMidY - over.rect.top;
 
-    const newMin = calcDropMinute(offsetY, openingMin, PX_PER_MINUTE, closingMin);
+    const newMin = calcDropMinute(offsetY, GRID_START_MIN, PX_PER_MINUTE, GRID_END_MIN);
     const newProfessionalId = dropData.professionalId;
     const newDateISO = dateTimeToISO(dateKey, minToTimeStr(newMin));
 
@@ -487,7 +520,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
         </div>
 
         {/* ── Grid body ─────────────────────── */}
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div ref={gridScrollRef} className="flex-1 min-h-0 overflow-auto">
           <div style={{ minWidth: RULER_WIDTH + visibleProfessionals.length * MIN_COL_WIDTH }}>
             {/* Professional name header (sticky) */}
             <div
@@ -515,7 +548,7 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
 
             {/* Time ruler + professional columns */}
             <div className="flex">
-              <TimeRuler openingMin={openingMin} closingMin={closingMin} />
+              <TimeRuler openingMin={GRID_START_MIN} closingMin={GRID_END_MIN} />
               {visibleProfessionals.length === 0 ? (
                 <div
                   className="flex-1 flex items-center justify-center text-sm"
@@ -559,8 +592,16 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
         <DragOverlay dropAnimation={null}>
           {draggingAppt ? (
             <div
-              className={`rounded border px-1.5 py-1 shadow-xl ${STATUS_CONFIG[draggingAppt.status].bg} ${STATUS_CONFIG[draggingAppt.status].border}`}
-              style={{ width: 150, minHeight: 38, opacity: 0.95, cursor: "grabbing" }}
+              style={{
+                width: 150,
+                minHeight: 38,
+                opacity: 0.95,
+                cursor: "grabbing",
+                backgroundColor: STATUS_CONFIG[draggingAppt.status].pastelBg,
+                borderLeft: `3px solid ${STATUS_CONFIG[draggingAppt.status].color}`,
+                borderRadius: "0 8px 8px 0",
+                padding: "4px 8px",
+              }}
             >
               <p
                 className="text-xs font-semibold leading-tight truncate"

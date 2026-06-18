@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { layoutAppointments } from "@/lib/agenda-layout";
 import { calcDropMinute, checkClientConflict } from "@/lib/agenda-drag";
 import { updateAppointmentStatus } from "../actions";
@@ -35,6 +35,8 @@ import { DetailModal } from "./components/detail-modal";
 import { EditModal } from "./components/edit-modal";
 import { MoveModal } from "./components/move-modal";
 import {
+  GRID_END_MIN,
+  GRID_START_MIN,
   PX_PER_MINUTE,
   RULER_WIDTH,
   STATUS_CONFIG,
@@ -161,13 +163,13 @@ function DayColumn({
     data: { dateKey },
   });
 
-  const positioned = layoutAppointments(appointments, openingMin, PX_PER_MINUTE);
-  const totalMin = closingMin - openingMin;
+  const positioned = layoutAppointments(appointments, GRID_START_MIN, PX_PER_MINUTE);
+  const totalMin = GRID_END_MIN - GRID_START_MIN;
   const gridHeight = totalMin * PX_PER_MINUTE;
 
   const lines: { offset: number; isHour: boolean; isHalf: boolean }[] = [];
   for (let i = 0; i <= totalMin; i += 10) {
-    const absMin = openingMin + i;
+    const absMin = GRID_START_MIN + i;
     lines.push({ offset: i, isHour: absMin % 60 === 0, isHalf: absMin % 30 === 0 });
   }
 
@@ -176,7 +178,10 @@ function DayColumn({
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    onGridClick(e.clientY - rect.top, e.clientX, e.clientY);
+    const relY = e.clientY - rect.top;
+    const clickMin = relY / PX_PER_MINUTE;
+    if (clickMin < openingMin || clickMin >= closingMin) return;
+    onGridClick(relY, e.clientX, e.clientY);
   }
 
   return (
@@ -198,6 +203,25 @@ function DayColumn({
       }}
       onClick={handleClick}
     >
+      {/* Off-hours dim — before opening time */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: 0,
+          height: openingMin * PX_PER_MINUTE,
+          backgroundColor: "rgba(0,0,0,0.2)",
+        }}
+      />
+      {/* Off-hours dim — after closing time */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: closingMin * PX_PER_MINUTE,
+          height: (GRID_END_MIN - closingMin) * PX_PER_MINUTE,
+          backgroundColor: "rgba(0,0,0,0.2)",
+        }}
+      />
+
       {lines.map(({ offset, isHour, isHalf }) => (
         <div
           key={offset}
@@ -206,7 +230,7 @@ function DayColumn({
             top: offset * PX_PER_MINUTE,
             height: 1,
             backgroundColor: "var(--border)",
-            opacity: isHour ? 0.5 : isHalf ? 0.25 : 0.1,
+            opacity: isHour ? 0.3 : isHalf ? 0.15 : 0.06,
           }}
         />
       ))}
@@ -249,6 +273,15 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
   const [draggingAppt, setDraggingAppt] = useState<AgendaAppointment | null>(null);
   const [selectedProfIds, setSelectedProfIds] = useState<string[]>([]);
 
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to 07:00 on mount so the grid opens at the start of the workday.
+  useEffect(() => {
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = 7 * 60 * PX_PER_MINUTE;
+    }
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -290,7 +323,8 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
   }
 
   function handleGridClick(dateKey: string, clickY: number, clientX: number, clientY: number) {
-    const rawMin = openingMin + clickY / PX_PER_MINUTE;
+    // clickY is relative to the top of the grid (which starts at GRID_START_MIN = 0).
+    const rawMin = clickY / PX_PER_MINUTE;
     const rounded = Math.round(rawMin / 10) * 10;
     const clamped = Math.max(openingMin, Math.min(closingMin - 10, rounded));
     const defaultProfId = data.professionals[0]?.id ?? "";
@@ -320,7 +354,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
     const cardMidY = translated.top + translated.height / 2;
     const offsetY = cardMidY - over.rect.top;
 
-    const newMin = calcDropMinute(offsetY, openingMin, PX_PER_MINUTE, closingMin);
+    const newMin = calcDropMinute(offsetY, GRID_START_MIN, PX_PER_MINUTE, GRID_END_MIN);
     const targetDateKey = dropData.dateKey;
     const newDateISO = dateTimeToISO(targetDateKey, minToTimeStr(newMin));
 
@@ -542,7 +576,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
         </div>
 
         {/* ── Grid body ─────────────────────────────────────────────── */}
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div ref={gridScrollRef} className="flex-1 min-h-0 overflow-auto">
           <div style={{ minWidth: RULER_WIDTH + data.weekDates.length * DAY_MIN_WIDTH }}>
             {/* Day name header (sticky) */}
             <div
@@ -594,7 +628,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
 
             {/* Time ruler + day columns */}
             <div className="flex">
-              <TimeRuler openingMin={openingMin} closingMin={closingMin} />
+              <TimeRuler openingMin={GRID_START_MIN} closingMin={GRID_END_MIN} />
               {data.weekDates.map((dk) => {
                 const appts = (data.appointmentsByDay[dk] ?? []).filter(
                   (a) => selectedProfIds.length === 0 || selectedProfIds.includes(a.professionalId),
@@ -634,8 +668,16 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
         <DragOverlay dropAnimation={null}>
           {draggingAppt ? (
             <div
-              className={`rounded border px-1.5 py-1 shadow-xl ${STATUS_CONFIG[draggingAppt.status].bg} ${STATUS_CONFIG[draggingAppt.status].border}`}
-              style={{ width: 110, minHeight: 38, opacity: 0.95, cursor: "grabbing" }}
+              style={{
+                width: 110,
+                minHeight: 38,
+                opacity: 0.95,
+                cursor: "grabbing",
+                backgroundColor: STATUS_CONFIG[draggingAppt.status].pastelBg,
+                borderLeft: `3px solid ${STATUS_CONFIG[draggingAppt.status].color}`,
+                borderRadius: "0 8px 8px 0",
+                padding: "4px 8px",
+              }}
             >
               <p
                 className="text-xs font-semibold leading-tight truncate"
