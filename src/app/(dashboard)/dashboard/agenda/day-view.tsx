@@ -812,6 +812,8 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
             anchorY={modal.anchorY}
             suggestedStartISO={modal.startISO}
             suggestedEndISO={modal.endISO}
+            professionals={data.professionals}
+            professionalId={modal.professionalId}
             isPending={isPending}
             onClose={() => setModal({ type: "none" })}
             onCreate={handleTimeBlockConfirm}
