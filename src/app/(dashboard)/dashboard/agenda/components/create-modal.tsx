@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { Select } from "@/components/ui/select";
+import { maskPhone } from "@/lib/masks";
 import type {
   AgendaClientResult,
   AgendaService,
@@ -313,6 +314,21 @@ export function CreateModal({
               </button>
             </div>
           )}
+          {/* Link "Cadastrar novo" aparece quando busca retornou zero resultados */}
+          {!cs.isManual && !cs.selected && !cs.isSearching &&
+            cs.query.trim().length >= 2 && cs.results.length === 0 && (
+            <button
+              type="button"
+              className="mt-1 text-xs transition-opacity hover:opacity-70"
+              style={{ color: "var(--color-primary)" }}
+              onClick={() => {
+                cs.setIsManual(true);
+                cs.setManualName(cs.query.trim());
+              }}
+            >
+              + Cadastrar novo cliente
+            </button>
+          )}
         </div>
 
         {cs.isManual && (
@@ -334,8 +350,10 @@ export function CreateModal({
               id="create-manual-phone"
               label="Telefone"
               type="tel"
+              inputMode="numeric"
               value={cs.manualPhone}
-              onChange={(e) => cs.setManualPhone(e.target.value)}
+              onChange={(e) => cs.setManualPhone(maskPhone(e.target.value))}
+              placeholder="(11) 99999-9999"
               required
             />
           </div>

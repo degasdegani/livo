@@ -236,5 +236,30 @@ describe("RBAC — Agenda", () => {
 
       expect(result.success).toBe(false);
     });
+
+    it("passes clientName and clientPhone to createAppointmentCore so new client is auto-created", async () => {
+      vi.mocked(requireMembership).mockResolvedValue(ownerCtx());
+      const { createAppointmentCore } = await import("@/lib/appointment-core");
+      vi.mocked(createAppointmentCore).mockResolvedValue({
+        success: true,
+        appointmentId: "appt-new",
+      });
+
+      await createQuickAppointment({
+        professionalId: "prof-anyone",
+        serviceIds: ["svc-a"],
+        dateISO: new Date().toISOString(),
+        clientName: "João Silva",
+        clientPhone: "(11) 98888-7777",
+      });
+
+      expect(vi.mocked(createAppointmentCore)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientName: "João Silva",
+          clientPhone: "(11) 98888-7777",
+          barbershopId: SHOP_A,
+        }),
+      );
+    });
   });
 });
