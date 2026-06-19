@@ -27,15 +27,24 @@ export function TimeBlockCreateModal({
   onCreate: (startISO: string, endISO: string, reason: string, professionalId: string) => void;
 }) {
   const [reason, setReason] = useState("");
-  const [profId, setProfId] = useState(initialProfId ?? professionals?.[0]?.id ?? "");
+  const [profId, setProfId] = useState(
+    initialProfId || professionals?.[0]?.id || ""
+  );
 
+  // Safety net: se o useState inicializou vazio (props chegaram depois do mount),
+  // tenta preencher quando professionals ou initialProfId mudarem.
   useEffect(() => {
-    if (!profId && professionals && professionals.length > 0) {
-      setProfId(professionals[0].id);
+    if (!profId) {
+      if (initialProfId) {
+        setProfId(initialProfId);
+      } else if (professionals && professionals.length > 0) {
+        setProfId(professionals[0].id);
+      }
     }
-  // professionals é a dep relevante; profId intencionalmente omitido para evitar loop
+  // profId intencionalmente omitido: só queremos reagir a mudanças nas props,
+  // não criar loop ao setar o próprio estado.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [professionals]);
+  }, [professionals, initialProfId]);
 
   function toLocalTime(iso: string): string {
     const d = new Date(iso);
@@ -43,6 +52,8 @@ export function TimeBlockCreateModal({
     const b = new Date(brtMs);
     return `${String(b.getUTCHours()).padStart(2, "0")}:${String(b.getUTCMinutes()).padStart(2, "0")}`;
   }
+
+  const noProfessional = !profId;
 
   return (
     <Popover anchorX={anchorX} anchorY={anchorY} onClose={onClose} width={260}>
@@ -83,6 +94,7 @@ export function TimeBlockCreateModal({
             </select>
           </div>
         )}
+
         <div>
           <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             Motivo (opcional)
@@ -97,10 +109,16 @@ export function TimeBlockCreateModal({
           />
         </div>
 
+        {noProfessional && (
+          <p className="text-xs text-center" style={{ color: "var(--status-red)" }}>
+            Nenhum profissional disponível para bloqueio. Recarregue a página.
+          </p>
+        )}
+
         <button
           type="button"
           onClick={() => onCreate(suggestedStartISO, suggestedEndISO, reason, profId)}
-          disabled={isPending || !profId}
+          disabled={isPending || noProfessional}
           className="w-full rounded-lg py-2 text-sm font-medium text-white disabled:opacity-50"
           style={{ backgroundColor: "var(--color-primary)" }}
         >
