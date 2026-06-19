@@ -78,6 +78,10 @@ export function makeTxMock() {
     service: {
       findFirst: vi.fn().mockResolvedValue(null),
     },
+
+    timeBlock: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   };
 }
 

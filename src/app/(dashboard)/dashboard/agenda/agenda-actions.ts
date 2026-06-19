@@ -60,6 +60,7 @@ export type AgendaBusinessHour = {
 export type AgendaDayData = {
   professionals: AgendaProfessional[];
   appointments: AgendaAppointment[];
+  timeBlocks: AgendaTimeBlock[];
   userRole: string;
   userProfessionalId: string | null;
   // Null when barbershop has no BusinessHour row for this weekday — caller falls back to defaults.
@@ -86,7 +87,7 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
   const [y, mo, d] = dateStr.split("-").map(Number);
   const dayOfWeek = new Date(Date.UTC(y, mo - 1, d)).getDay();
 
-  const [professionals, appointments, businessHourRow] = await Promise.all([
+  const [professionals, appointments, timeBlockRows, businessHourRow] = await Promise.all([
     db.professional.findMany({
       where: { barbershopId: membership.barbershopId, isActive: true },
       orderBy: { name: "asc" },
@@ -112,6 +113,11 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
           },
         },
       },
+      orderBy: { date: "asc" },
+    }),
+    db.timeBlock.findMany({
+      where: { barbershopId: membership.barbershopId, date: { gte: date, lte: nextDay } },
+      select: { id: true, professionalId: true, date: true, endTime: true, reason: true },
       orderBy: { date: "asc" },
     }),
     db.businessHour.findFirst({
@@ -148,6 +154,13 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
         servicePriceInCents: s.servicePriceInCents,
         serviceDurationMin: s.serviceDurationMin,
       })),
+    })),
+    timeBlocks: timeBlockRows.map((b) => ({
+      id: b.id,
+      professionalId: b.professionalId,
+      date: b.date.toISOString(),
+      endTime: b.endTime.toISOString(),
+      reason: b.reason,
     })),
     userRole: membership.role,
     userProfessionalId: membership.professionalId,
@@ -331,6 +344,8 @@ export type AgendaWeekData = {
   professionals: AgendaProfessional[];
   /** dateKey → appointments for that day (todos os profissionais). */
   appointmentsByDay: Record<string, AgendaAppointment[]>;
+  /** dateKey → time blocks for that day. */
+  timeBlocksByDay: Record<string, AgendaTimeBlock[]>;
   userRole: string;
   userProfessionalId: string | null;
   /** dayOfWeek (0=Dom … 6=Sab) → BusinessHour, para grades de abertura por dia. */
@@ -356,7 +371,7 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
   const rangeStart = new Date(`${weekDates[0]}T00:00:00-03:00`);
   const rangeEnd   = new Date(`${weekDates[6]}T23:59:59.999-03:00`);
 
-  const [professionals, appointments, businessHourRows] = await Promise.all([
+  const [professionals, appointments, timeBlockRows, businessHourRows] = await Promise.all([
     db.professional.findMany({
       where: { barbershopId: membership.barbershopId, isActive: true },
       orderBy: { name: "asc" },
@@ -380,6 +395,11 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
           },
         },
       },
+      orderBy: { date: "asc" },
+    }),
+    db.timeBlock.findMany({
+      where: { barbershopId: membership.barbershopId, date: { gte: rangeStart, lte: rangeEnd } },
+      select: { id: true, professionalId: true, date: true, endTime: true, reason: true },
       orderBy: { date: "asc" },
     }),
     db.businessHour.findMany({
@@ -431,9 +451,27 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
     };
   }
 
+  const timeBlocksByDay: Record<string, AgendaTimeBlock[]> = {};
+  for (const dk of weekDates) {
+    timeBlocksByDay[dk] = [];
+  }
+  for (const b of timeBlockRows) {
+    const dk = _isoToDateKeyBRT(b.date.toISOString());
+    if (timeBlocksByDay[dk]) {
+      timeBlocksByDay[dk].push({
+        id: b.id,
+        professionalId: b.professionalId,
+        date: b.date.toISOString(),
+        endTime: b.endTime.toISOString(),
+        reason: b.reason,
+      });
+    }
+  }
+
   return {
     professionals: professionals.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
     appointmentsByDay,
+    timeBlocksByDay,
     userRole: membership.role,
     userProfessionalId: membership.professionalId,
     businessHours,
@@ -545,18 +583,28 @@ export async function rescheduleAppointment(
       // Advisory lock on the destination professional — same pattern as createAppointmentCore.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${newProfessionalId}))`;
 
-      const conflict = await tx.appointment.findFirst({
-        where: {
-          professionalId: newProfessionalId,
-          status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
-          date: { lt: endDate },
-          endTime: { gt: startDate },
-          NOT: { id: appointmentId },
-        },
-        select: { id: true },
-      });
+      const [apptConflict, blockConflict] = await Promise.all([
+        tx.appointment.findFirst({
+          where: {
+            professionalId: newProfessionalId,
+            status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
+            date: { lt: endDate },
+            endTime: { gt: startDate },
+            NOT: { id: appointmentId },
+          },
+          select: { id: true },
+        }),
+        tx.timeBlock.findFirst({
+          where: {
+            professionalId: newProfessionalId,
+            date: { lt: endDate },
+            endTime: { gt: startDate },
+          },
+          select: { id: true },
+        }),
+      ]);
 
-      if (conflict) {
+      if (apptConflict || blockConflict) {
         throw Object.assign(new Error("conflict"), { isConflict: true });
       }
 
@@ -574,6 +622,139 @@ export async function rescheduleAppointment(
       return { success: false, error: "Horário em conflito com outro agendamento." };
     }
     return { success: false, error: "Erro ao reagendar agendamento." };
+  }
+}
+
+// ─── TimeBlock types ─────────────────────────────────────────────────────────
+
+export type AgendaTimeBlock = {
+  id: string;
+  professionalId: string;
+  date: string;
+  endTime: string;
+  reason: string | null;
+};
+
+// ─── createTimeBlock ──────────────────────────────────────────────────────────
+
+export async function createTimeBlock(
+  professionalId: string,
+  dateISO: string,
+  durationMin: number,
+  reason?: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    if (
+      membership.role === "barber" &&
+      professionalId !== membership.professionalId
+    ) {
+      return { success: false, error: "Sem permissão para bloquear este profissional." };
+    }
+
+    const professional = await db.professional.findFirst({
+      where: { id: professionalId, barbershopId: membership.barbershopId },
+      select: { id: true },
+    });
+    if (!professional) return { success: false, error: "Profissional não encontrado." };
+
+    const startDate = new Date(dateISO);
+    const endDate = new Date(startDate.getTime() + durationMin * 60_000);
+
+    // Check conflict with existing appointments
+    const apptConflict = await db.appointment.findFirst({
+      where: {
+        professionalId,
+        status: { notIn: ["cancelled", "no_show"] },
+        date: { lt: endDate },
+        endTime: { gt: startDate },
+      },
+      select: { id: true },
+    });
+    if (apptConflict) {
+      return { success: false, error: "Horário em conflito com um agendamento existente." };
+    }
+
+    await db.timeBlock.create({
+      data: {
+        professionalId,
+        barbershopId: membership.barbershopId,
+        date: startDate,
+        endTime: endDate,
+        reason: reason?.trim() || null,
+      },
+    });
+
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao criar bloqueio de horário." };
+  }
+}
+
+// ─── deleteTimeBlock ──────────────────────────────────────────────────────────
+
+export async function deleteTimeBlock(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    const block = await db.timeBlock.findFirst({
+      where: { id, barbershopId: membership.barbershopId },
+      select: { professionalId: true },
+    });
+    if (!block) return { success: false, error: "Bloqueio não encontrado." };
+
+    if (
+      membership.role === "barber" &&
+      block.professionalId !== membership.professionalId
+    ) {
+      return { success: false, error: "Sem permissão para remover este bloqueio." };
+    }
+
+    await db.timeBlock.delete({ where: { id } });
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao remover bloqueio." };
+  }
+}
+
+// ─── Excluir agendamento (hard delete) ───────────────────────────────────────
+
+export async function deleteAppointment(
+  appointmentId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    const appointment = await db.appointment.findFirst({
+      where: { id: appointmentId, barbershopId: membership.barbershopId },
+      include: { comanda: { select: { id: true } } },
+    });
+
+    if (!appointment) return { success: false, error: "Agendamento não encontrado." };
+
+    if (membership.role === "barber" && appointment.professionalId !== membership.professionalId) {
+      return { success: false, error: "Sem permissão para excluir este agendamento." };
+    }
+
+    if (appointment.comanda !== null) {
+      return {
+        success: false,
+        error: "Não é possível excluir um agendamento com comanda vinculada. Cancele em vez disso.",
+      };
+    }
+
+    // AppointmentService cascade-deletes via onDelete: Cascade (schema.prisma)
+    await db.appointment.delete({ where: { id: appointmentId } });
+
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erro ao excluir agendamento." };
   }
 }
 

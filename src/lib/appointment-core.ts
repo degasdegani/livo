@@ -60,19 +60,27 @@ async function checkConflict(
   endDate: Date,
   excludeId?: string,
 ): Promise<boolean> {
-  const where = {
-    professionalId,
-    status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
-    date: { lt: endDate },
-    endTime: { gt: startDate },
-    ...(excludeId ? { NOT: { id: excludeId } } : {}),
-  };
-
-  const conflict = await db.appointment.findFirst({
-    where,
-    select: { id: true },
-  });
-  return conflict !== null;
+  const [apptConflict, blockConflict] = await Promise.all([
+    db.appointment.findFirst({
+      where: {
+        professionalId,
+        status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
+        date: { lt: endDate },
+        endTime: { gt: startDate },
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+      select: { id: true },
+    }),
+    db.timeBlock.findFirst({
+      where: {
+        professionalId,
+        date: { lt: endDate },
+        endTime: { gt: startDate },
+      },
+      select: { id: true },
+    }),
+  ]);
+  return apptConflict !== null || blockConflict !== null;
 }
 
 // ─── createAppointmentCore ────────────────────────────────────────────────────

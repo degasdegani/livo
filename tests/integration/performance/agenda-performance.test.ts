@@ -39,6 +39,7 @@ vi.mock("@/lib/db", () => ({
     professional: { findMany: vi.fn() },
     appointment: { findMany: vi.fn() },
     businessHour: { findFirst: vi.fn() },
+    timeBlock: { findMany: vi.fn() },
     service: { findMany: vi.fn() },
     client: { findMany: vi.fn() },
   },
@@ -100,6 +101,7 @@ beforeEach(() => {
   vi.mocked(db.professional.findMany).mockResolvedValue([]);
   vi.mocked(db.appointment.findMany).mockResolvedValue([]);
   vi.mocked(db.businessHour.findFirst).mockResolvedValue(null);
+  vi.mocked(db.timeBlock.findMany).mockResolvedValue([]);
   vi.mocked(db.service.findMany).mockResolvedValue([]);
   vi.mocked(db.client.findMany).mockResolvedValue([]);
 });

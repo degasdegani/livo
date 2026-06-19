@@ -97,6 +97,7 @@ model Barbershop {
   professionals       Professional[]
   services            Service[]
   stockMovements      StockMovement[]
+  timeBlocks          TimeBlock[]
 
   @@map("barbershops")
 }
@@ -119,6 +120,7 @@ model Professional {
   membership           Membership?
   serviceCommissions   ProfessionalServiceCommission[]
   productCommissions   ProfessionalProductCommission[]
+  timeBlocks           TimeBlock[]
   barbershop           Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
@@ -217,6 +219,21 @@ model AppointmentService {
 
   @@index([appointmentId])
   @@map("appointment_services")
+}
+
+model TimeBlock {
+  id             String       @id @default(cuid())
+  professionalId String
+  barbershopId   String
+  date           DateTime
+  endTime        DateTime
+  reason         String?
+  createdAt      DateTime     @default(now())
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  barbershop     Barbershop   @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId, date])
+  @@map("time_blocks")
 }
 
 model BusinessHour {

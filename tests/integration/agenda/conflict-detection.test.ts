@@ -24,6 +24,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     service: { findMany: vi.fn() },
     appointment: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    timeBlock: { findFirst: vi.fn().mockResolvedValue(null) },
     client: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     professional: { findFirst: vi.fn() },
     comanda: { updateMany: vi.fn(), findFirst: vi.fn() },

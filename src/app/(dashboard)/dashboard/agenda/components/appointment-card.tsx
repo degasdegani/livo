@@ -112,7 +112,7 @@ export function AppointmentCard({
     );
   }
 
-  // Normal card with pastel background
+  // Normal card with solid status color
   return (
     <div
       ref={setNodeRef}
@@ -126,7 +126,7 @@ export function AppointmentCard({
         width: widthCalc,
         opacity: isInactive ? 0.4 : isDragging ? 0.25 : 1,
         zIndex: isInactive ? 0 : 1,
-        backgroundColor: config.pastelBg,
+        backgroundColor: config.color,
         borderLeft: `3px solid ${config.color}`,
         borderRadius: "0 8px 8px 0",
         overflow: "hidden",
@@ -153,7 +153,7 @@ export function AppointmentCard({
             fontSize: 11,
             fontWeight: 600,
             lineHeight: 1.3,
-            color: "var(--text-primary)",
+            color: "#fff",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -167,7 +167,7 @@ export function AppointmentCard({
               fontSize: 10,
               fontWeight: 400,
               lineHeight: 1.3,
-              color: "var(--text-secondary)",
+              color: "rgba(255,255,255,0.8)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

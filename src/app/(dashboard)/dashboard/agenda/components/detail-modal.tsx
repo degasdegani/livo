@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Popover } from "@/components/ui/popover";
 import type { AgendaAppointment } from "../agenda-actions";
 import { STATUS_CONFIG, formatCurrency, isoToTimeBRT } from "./shared";
@@ -25,6 +26,7 @@ export function DetailModal({
   onMove,
   onStatusChange,
   onAbrirComanda,
+  onDelete,
   isPending,
 }: {
   appointment: AgendaAppointment;
@@ -36,12 +38,16 @@ export function DetailModal({
   onMove: () => void;
   onStatusChange: (status: "confirmed" | "completed" | "cancelled" | "no_show") => void;
   onAbrirComanda: () => void;
+  onDelete: () => void;
   isPending: boolean;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   const config = STATUS_CONFIG[appointment.status];
   const canManage = userRole !== "barber";
   const isEditable =
     appointment.status === "pending" || appointment.status === "confirmed";
+  const canDelete = isEditable && !appointment.comandaId;
 
   const totalPrice =
     appointment.services.length > 0
@@ -189,6 +195,49 @@ export function DetailModal({
               </button>
             )}
           </div>
+
+          {canDelete && !confirmingDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={isPending}
+              className="w-full rounded-lg py-2 text-xs font-medium transition-colors disabled:opacity-50"
+              style={{ border: "1px solid var(--status-red)", color: "var(--status-red)" }}
+            >
+              🗑 Excluir agendamento
+            </button>
+          )}
+
+          {canDelete && confirmingDelete && (
+            <div
+              className="rounded-lg p-3 space-y-2"
+              style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid var(--status-red)" }}
+            >
+              <p className="text-xs font-medium" style={{ color: "var(--status-red)" }}>
+                Tem certeza? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={isPending}
+                  className="flex-1 rounded-lg py-1.5 text-xs transition-colors disabled:opacity-50"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={isPending}
+                  className="flex-1 rounded-lg py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: "var(--status-red)" }}
+                >
+                  Confirmar exclusão
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Popover>
