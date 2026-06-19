@@ -21,7 +21,12 @@ export default async function SettingsPage() {
     }),
     db.barbershop.findUnique({
       where: { id: membership.barbershopId },
-      include: {
+      select: {
+        name: true,
+        slug: true,
+        phone: true,
+        city: true,
+        reopenPin: true,
         services: { orderBy: { name: "asc" } },
         businessHours: { orderBy: { dayOfWeek: "asc" } },
       },
@@ -159,6 +164,7 @@ export default async function SettingsPage() {
             services: barbershop.services,
             businessHours: barbershop.businessHours,
           }}
+          hasReopenPin={!!barbershop.reopenPin}
         />
       </main>
     </div>

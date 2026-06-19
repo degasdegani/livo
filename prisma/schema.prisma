@@ -84,6 +84,7 @@ model Barbershop {
   cep                 String?
   neighborhood        String?
   street              String?
+  reopenPin           String?
   appointments        Appointment[]
   owner               User              @relation("BarbershopOwner", fields: [ownerId], references: [id])
   businessHours       BusinessHour[]
@@ -348,6 +349,7 @@ model Comanda {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   items          ComandaItem[]
+  payments       ComandaPayment[]
   appointment    Appointment?   @relation(fields: [appointmentId], references: [id])
   barbershop     Barbershop     @relation(fields: [barbershopId], references: [id])
   client         Client?        @relation(fields: [clientId], references: [id])
@@ -357,6 +359,18 @@ model Comanda {
   @@index([barbershopId, closedAt])
   @@index([barbershopId, status])
   @@map("comandas")
+}
+
+model ComandaPayment {
+  id            String        @id @default(cuid())
+  comandaId     String
+  method        PaymentMethod
+  amountInCents Int
+  createdAt     DateTime      @default(now())
+  comanda       Comanda       @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+
+  @@index([comandaId])
+  @@map("comanda_payments")
 }
 
 model ComandaItem {

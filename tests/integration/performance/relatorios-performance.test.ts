@@ -99,6 +99,7 @@ function makeComanda(opts: {
     paymentMethod,
     clientId: "client-1",
     professional: { id: "prof-1", name: professionalName },
+    payments: [] as { method: string; amountInCents: number }[],
     items: services.map((s) => ({
       type: "service",
       serviceName: s.name,

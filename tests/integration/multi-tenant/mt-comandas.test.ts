@@ -124,7 +124,7 @@ describe("MT — Comandas", () => {
     it("throws when comanda belongs to another tenant", async () => {
       vi.mocked(db.comanda.findFirst).mockResolvedValue(null);
 
-      await expect(fecharComanda(COMANDA_B, "pix")).rejects.toThrow(
+      await expect(fecharComanda(COMANDA_B, [{ method: "pix", amountInCents: 0 }])).rejects.toThrow(
         "Comanda não encontrada ou já fechada.",
       );
     });
@@ -133,7 +133,7 @@ describe("MT — Comandas", () => {
       vi.mocked(db.comanda.findFirst).mockResolvedValue(null);
 
       try {
-        await fecharComanda(COMANDA_B, "pix");
+        await fecharComanda(COMANDA_B, [{ method: "pix", amountInCents: 0 }]);
       } catch {
         // Expected throw
       }

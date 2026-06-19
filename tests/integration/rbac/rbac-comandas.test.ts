@@ -190,7 +190,7 @@ describe("RBAC — Comandas", () => {
       vi.mocked(db.comanda.findFirst).mockResolvedValue(null); // not found = thrown
 
       try {
-        await fecharComanda("comanda-a", "pix");
+        await fecharComanda("comanda-a", [{ method: "pix", amountInCents: 0 }]);
       } catch {
         // expected: comanda not found
       }
@@ -201,7 +201,7 @@ describe("RBAC — Comandas", () => {
     it("blocks unauthenticated from closing comanda", async () => {
       vi.mocked(requireMembership).mockRejectedValue(new Error("NEXT_REDIRECT"));
 
-      await expect(fecharComanda("comanda-a", "pix")).rejects.toThrow();
+      await expect(fecharComanda("comanda-a", [{ method: "pix", amountInCents: 0 }])).rejects.toThrow();
 
       expect(vi.mocked(db.comanda.findFirst)).not.toHaveBeenCalled();
     });

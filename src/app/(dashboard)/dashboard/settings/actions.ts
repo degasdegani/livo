@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
@@ -203,6 +204,30 @@ export async function updateBusinessHours(_: unknown, formData: FormData) {
     log.error("erro ao salvar horários de funcionamento", { barbershopId: membership.barbershopId }, err);
     return { error: "Erro ao salvar horários." };
   }
+}
+
+// ─── DADOS PESSOAIS DO OWNER ──────────────────────────────────────────────────
+
+// ─── PIN DE SEGURANÇA PARA REABRIR COMANDAS ──────────────────────────────────
+
+export async function updateReopenPin(
+  pin: string,
+): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  const membership = await requireRole("owner");
+
+  const cleaned = pin.replace(/\D/g, "");
+  if (cleaned.length < 4 || cleaned.length > 6) {
+    return { success: false, error: "PIN deve ter entre 4 e 6 dígitos numéricos." };
+  }
+
+  const hash = await bcrypt.hash(cleaned, 10);
+  await db.barbershop.update({
+    where: { id: membership.barbershopId },
+    data: { reopenPin: hash },
+  });
+
+  revalidatePath("/dashboard/settings");
+  return { success: true, message: "PIN configurado com sucesso." };
 }
 
 // ─── DADOS PESSOAIS DO OWNER ──────────────────────────────────────────────────

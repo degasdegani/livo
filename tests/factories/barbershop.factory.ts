@@ -30,6 +30,7 @@ export function makeBarbershop(overrides: Partial<Barbershop> = {}): Barbershop 
     cep: faker.string.numeric(8),
     neighborhood: faker.location.secondaryAddress(),
     street: faker.location.street(),
+    reopenPin: null,
     ...overrides,
-  };
+  } as Barbershop;
 }

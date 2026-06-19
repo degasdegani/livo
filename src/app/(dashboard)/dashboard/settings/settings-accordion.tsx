@@ -2,12 +2,13 @@
 "use client";
 
 import type { BusinessHour, Service } from "@prisma/client";
-import { ClipboardList, Clock, Scissors, User } from "lucide-react";
+import { ClipboardList, Clock, Lock, Scissors, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { BasicInfoForm } from "./basic-info-form";
 import { BusinessHoursForm } from "./business-hours-form";
 import { PersonalInfoForm } from "./personal-info-form";
+import { PinForm } from "./pin-form";
 import { ServicesManager } from "./services-manager";
 
 interface AccordionProps {
@@ -25,18 +26,20 @@ interface AccordionProps {
     services: Service[];
     businessHours: BusinessHour[];
   };
+  hasReopenPin: boolean;
 }
 
-type SectionId = "pessoal" | "barbearia" | "servicos" | "horarios";
+type SectionId = "pessoal" | "barbearia" | "servicos" | "horarios" | "seguranca";
 
 const sections: { id: SectionId; label: string; icon: ReactNode }[] = [
   { id: "pessoal", label: "Dados Pessoais", icon: <User size={16} /> },
   { id: "barbearia", label: "Informações da Barbearia", icon: <Scissors size={16} /> },
   { id: "servicos", label: "Serviços", icon: <ClipboardList size={16} /> },
   { id: "horarios", label: "Horários de Funcionamento", icon: <Clock size={16} /> },
+  { id: "seguranca", label: "Segurança", icon: <Lock size={16} /> },
 ];
 
-export function SettingsAccordion({ user, barbershop }: AccordionProps) {
+export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionProps) {
   const [open, setOpen] = useState<SectionId>("pessoal");
 
   function toggle(id: SectionId) {
@@ -120,6 +123,9 @@ export function SettingsAccordion({ user, barbershop }: AccordionProps) {
                 )}
                 {section.id === "horarios" && (
                   <BusinessHoursForm businessHours={barbershop.businessHours} />
+                )}
+                {section.id === "seguranca" && (
+                  <PinForm hasPin={hasReopenPin} />
                 )}
               </div>
             )}

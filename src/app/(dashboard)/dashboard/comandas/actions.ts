@@ -7,6 +7,7 @@ import {
   type Prisma,
   StockMovementReason,
 } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -334,7 +335,7 @@ export async function removeItem(itemId: string, comandaId: string) {
 
 export async function fecharComanda(
   comandaId: string,
-  paymentMethod: PaymentMethod,
+  payments: { method: PaymentMethod; amountInCents: number }[],
   discountInCents: number = 0,
 ) {
   const membership = await requireMembership();
@@ -349,6 +350,7 @@ export async function fecharComanda(
   });
 
   if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
+  if (!payments.length) throw new Error("Informe ao menos uma forma de pagamento.");
 
   // Buscar Professional para calcular comissão (campos vivem em Professional)
   const profissional = await db.professional.findFirst({
@@ -360,6 +362,14 @@ export async function fecharComanda(
   });
 
   const totalFinal = Math.max(0, comanda.totalInCents - discountInCents);
+
+  const sumPaid = payments.reduce((s, p) => s + p.amountInCents, 0);
+  if (sumPaid !== totalFinal) {
+    throw new Error(
+      `Total pago (R$ ${(sumPaid / 100).toFixed(2)}) não bate com o total da comanda (R$ ${(totalFinal / 100).toFixed(2)}).`,
+    );
+  }
+
   const closedAt = new Date();
 
   await db.$transaction(async (tx) => {
@@ -418,18 +428,27 @@ export async function fecharComanda(
       });
     }
 
-    // 3. Fechar a comanda
+    // 3. Fechar a comanda (paymentMethod = método predominante para compat. legado)
     await tx.comanda.update({
       where: { id: comandaId },
       data: {
         status: ComandaStatus.closed,
-        paymentMethod,
+        paymentMethod: payments[0].method,
         totalInCents: totalFinal,
         closedAt,
       },
     });
 
-    // 4. Sync: comanda fechada → appointment concluído (apenas se não finalizado)
+    // 4. Gravar registros de split payment
+    await tx.comandaPayment.createMany({
+      data: payments.map((p) => ({
+        comandaId,
+        method: p.method,
+        amountInCents: p.amountInCents,
+      })),
+    });
+
+    // 5. Sync: comanda fechada → appointment concluído (apenas se não finalizado)
     if (comanda.appointmentId) {
       await tx.appointment.updateMany({
         where: {
@@ -440,7 +459,7 @@ export async function fecharComanda(
       });
     }
 
-    // 5. CRM: visita real = comanda fechada (fonte de verdade para totalVisits/lastVisitAt)
+    // 6. CRM: visita real = comanda fechada (fonte de verdade para totalVisits/lastVisitAt)
     if (comanda.clientId) {
       await tx.client.update({
         where: { id: comanda.clientId },
@@ -455,7 +474,7 @@ export async function fecharComanda(
   log.comanda.info("comanda fechada", {
     barbershopId: membership.barbershopId,
     comandaId,
-    paymentMethod,
+    payments: payments.length,
     totalInCents: totalFinal,
   });
 
@@ -463,6 +482,54 @@ export async function fecharComanda(
   revalidatePath(`/dashboard/comandas`);
   revalidatePath(`/dashboard/comandas/${comandaId}`);
   redirect(`/dashboard/comandas`);
+}
+
+// ─── REABRIR COMANDA COM PIN ──────────────────────────────────────────────────
+
+export async function reabrirComanda(
+  comandaId: string,
+  pin: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const membership = await requireRole(["owner", "reception"]);
+
+  const [comanda, barbershop] = await Promise.all([
+    db.comanda.findFirst({
+      where: { id: comandaId, barbershopId: membership.barbershopId },
+      select: { id: true, status: true },
+    }),
+    db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      select: { reopenPin: true },
+    }),
+  ]);
+
+  if (!comanda) return { success: false, error: "Comanda não encontrada." };
+  if (comanda.status !== ComandaStatus.closed) {
+    return { success: false, error: "Apenas comandas fechadas podem ser reabertas." };
+  }
+  if (!barbershop?.reopenPin) {
+    return { success: false, error: "Configure um PIN nas Configurações antes de reabrir comandas." };
+  }
+
+  const pinOk = await bcrypt.compare(pin, barbershop.reopenPin);
+  if (!pinOk) return { success: false, error: "PIN incorreto." };
+
+  await db.$transaction(async (tx) => {
+    await tx.comanda.update({
+      where: { id: comandaId },
+      data: { status: ComandaStatus.open, closedAt: null },
+    });
+  });
+
+  log.comanda.info("comanda reaberta", {
+    barbershopId: membership.barbershopId,
+    comandaId,
+  });
+
+  revalidatePath(`/dashboard/comandas/${comandaId}`);
+  revalidatePath("/dashboard/comandas");
+
+  return { success: true };
 }
 
 // ─── CANCELAR COMANDA ────────────────────────────────────────────────────────

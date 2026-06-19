@@ -8,8 +8,9 @@
  *   1. Commission per item (service/product, based on profMembership)
  *   2. Stock decrement + stockMovement for product items
  *   3. Comanda closed with correct status, paymentMethod, totalFinal
- *   4. Linked appointment → completed (if not already completed/cancelled)
- *   5. CRM: client.totalVisits+1, lastVisitAt (if clientId)
+ *   4. ComandaPayment records created for split payment
+ *   5. Linked appointment → completed (if not already completed/cancelled)
+ *   6. CRM: client.totalVisits+1, lastVisitAt (if clientId)
  *
  * Failure criteria:
  * - Remove Math.max(0, ...) → discount allows negative totalFinal
@@ -55,6 +56,8 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+vi.mock("bcryptjs", () => ({ default: { hash: vi.fn(), compare: vi.fn() } }));
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const SHOP_A = "shop-a";
@@ -72,9 +75,14 @@ function makeFechamentoTx() {
     product: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     stockMovement: { create: vi.fn().mockResolvedValue({}) },
     comanda: { update: vi.fn().mockResolvedValue({}) },
+    comandaPayment: { createMany: vi.fn().mockResolvedValue({}) },
     appointment: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     client: { update: vi.fn().mockResolvedValue({}) },
   };
+}
+
+function pix(amountInCents = 10000) {
+  return [{ method: "pix" as const, amountInCents }];
 }
 
 function mockOpenComanda(overrides: {
@@ -117,7 +125,7 @@ describe("fecharComanda()", () => {
   it("throws when comanda not found or not open", async () => {
     vi.mocked(db.comanda.findFirst).mockResolvedValue(null);
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow(
+    await expect(fecharComanda(COMANDA_A, pix(0))).rejects.toThrow(
       "Comanda não encontrada ou já fechada.",
     );
   });
@@ -125,7 +133,7 @@ describe("fecharComanda()", () => {
   it("applies discount: totalFinal = totalInCents − discountInCents", async () => {
     mockOpenComanda({ totalInCents: 10000 });
 
-    await expect(fecharComanda(COMANDA_A, "pix", 2000)).rejects.toThrow(
+    await expect(fecharComanda(COMANDA_A, pix(8000), 2000)).rejects.toThrow(
       "NEXT_REDIRECT",
     );
 
@@ -139,7 +147,7 @@ describe("fecharComanda()", () => {
   it("clamps totalFinal to 0 when discount exceeds total (no negative values)", async () => {
     mockOpenComanda({ totalInCents: 5000 });
 
-    await expect(fecharComanda(COMANDA_A, "pix", 9999)).rejects.toThrow(
+    await expect(fecharComanda(COMANDA_A, pix(0), 9999)).rejects.toThrow(
       "NEXT_REDIRECT",
     );
 
@@ -163,7 +171,7 @@ describe("fecharComanda()", () => {
       commissionProductPct: null,
     } as never);
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.comandaItem.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -189,7 +197,7 @@ describe("fecharComanda()", () => {
       commissionProductPct: 10,
     } as never);
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.comandaItem.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -215,7 +223,7 @@ describe("fecharComanda()", () => {
       commissionProductPct: null,
     } as never);
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.comandaItem.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -232,7 +240,7 @@ describe("fecharComanda()", () => {
     });
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.comandaItem.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -248,7 +256,7 @@ describe("fecharComanda()", () => {
       ],
     });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.product.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -265,7 +273,7 @@ describe("fecharComanda()", () => {
       ],
     });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.stockMovement.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -286,7 +294,7 @@ describe("fecharComanda()", () => {
       ],
     });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.product.updateMany).not.toHaveBeenCalled();
     expect(tx.stockMovement.create).not.toHaveBeenCalled();
@@ -295,9 +303,9 @@ describe("fecharComanda()", () => {
   it("closes comanda with status closed, paymentMethod and totalInCents in transaction", async () => {
     mockOpenComanda({ totalInCents: 7500 });
 
-    await expect(fecharComanda(COMANDA_A, "credit_card")).rejects.toThrow(
-      "NEXT_REDIRECT",
-    );
+    await expect(
+      fecharComanda(COMANDA_A, [{ method: "credit_card", amountInCents: 7500 }]),
+    ).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.comanda.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -311,10 +319,36 @@ describe("fecharComanda()", () => {
     );
   });
 
+  it("creates ComandaPayment record for each payment entry", async () => {
+    mockOpenComanda({ totalInCents: 10000 });
+
+    await expect(
+      fecharComanda(COMANDA_A, [
+        { method: "pix", amountInCents: 6000 },
+        { method: "credit_card", amountInCents: 4000 },
+      ]),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(tx.comandaPayment.createMany).toHaveBeenCalledWith({
+      data: [
+        { comandaId: COMANDA_A, method: "pix", amountInCents: 6000 },
+        { comandaId: COMANDA_A, method: "credit_card", amountInCents: 4000 },
+      ],
+    });
+  });
+
+  it("throws when sum of payments does not match totalFinal", async () => {
+    mockOpenComanda({ totalInCents: 10000 });
+
+    await expect(
+      fecharComanda(COMANDA_A, [{ method: "pix", amountInCents: 5000 }]),
+    ).rejects.toThrow(/não bate/);
+  });
+
   it("updates linked appointment to completed when appointmentId is set", async () => {
     mockOpenComanda({ appointmentId: "appt-1" });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.appointment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -330,7 +364,7 @@ describe("fecharComanda()", () => {
   it("does not call appointment.updateMany when no appointmentId", async () => {
     mockOpenComanda({ appointmentId: null });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.appointment.updateMany).not.toHaveBeenCalled();
   });
@@ -338,7 +372,7 @@ describe("fecharComanda()", () => {
   it("increments client.totalVisits and sets lastVisitAt when clientId is present (CRM)", async () => {
     mockOpenComanda({ clientId: "client-1" });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.client.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -354,23 +388,23 @@ describe("fecharComanda()", () => {
   it("does not call client.update when clientId is absent", async () => {
     mockOpenComanda({ clientId: null });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(tx.client.update).not.toHaveBeenCalled();
   });
 
-  it("logs comanda.info with barbershopId, comandaId, paymentMethod and totalInCents", async () => {
+  it("logs comanda.info with barbershopId, comandaId, payments count and totalInCents", async () => {
     const { log } = await import("@/lib/logger");
     mockOpenComanda({ totalInCents: 7500 });
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix(7500))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(vi.mocked(log.comanda.info)).toHaveBeenCalledWith(
       expect.stringContaining("fechada"),
       expect.objectContaining({
         barbershopId: SHOP_A,
         comandaId: COMANDA_A,
-        paymentMethod: "pix",
+        payments: 1,
         totalInCents: 7500,
       }),
     );
@@ -379,7 +413,7 @@ describe("fecharComanda()", () => {
   it("queries comanda by id + barbershopId + status open (tenant + state guard)", async () => {
     mockOpenComanda();
 
-    await expect(fecharComanda(COMANDA_A, "pix")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(vi.mocked(db.comanda.findFirst)).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -112,6 +112,7 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
       paymentMethod: true,
       clientId: true,
       professional: { select: { id: true, name: true } },
+      payments: { select: { method: true, amountInCents: true } },
       items: {
         select: {
           type: true,
@@ -139,10 +140,18 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
   ).size;
 
   // Faturamento por método de pagamento
+  // Comandas com ComandaPayment (split): usa cada registro individualmente.
+  // Comandas legado sem registros: fallback para paymentMethod + totalInCents.
   const porPagamento = new Map<string, number>();
   for (const c of comandas) {
-    const metodo = c.paymentMethod ?? "Não informado";
-    porPagamento.set(metodo, (porPagamento.get(metodo) ?? 0) + c.totalInCents);
+    if (c.payments.length > 0) {
+      for (const p of c.payments) {
+        porPagamento.set(p.method, (porPagamento.get(p.method) ?? 0) + p.amountInCents);
+      }
+    } else {
+      const metodo = c.paymentMethod ?? "Não informado";
+      porPagamento.set(metodo, (porPagamento.get(metodo) ?? 0) + c.totalInCents);
+    }
   }
   const pagamentos = Array.from(porPagamento.entries())
     .map(([metodo, total]) => ({ metodo: traduzirPagamento(metodo), total }))

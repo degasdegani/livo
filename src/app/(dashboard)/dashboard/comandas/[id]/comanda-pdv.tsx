@@ -13,6 +13,7 @@ import {
   cancelarComanda,
   fecharComanda,
   getComanda,
+  reabrirComanda,
   removeItem,
 } from "../actions";
 
@@ -35,6 +36,8 @@ type Props = {
   role: string;
   myProfessionalId: string | null;
 };
+
+type SplitEntry = { method: PaymentMethod; amountInCents: number };
 
 const PAYMENT_OPTS: { value: PaymentMethod; label: string }[] = [
   { value: "cash", label: "Dinheiro" },
@@ -87,6 +90,11 @@ function formatCents(cents: number) {
   });
 }
 
+function parseCentsInput(val: string): number {
+  const cleaned = val.replace(/[^\d,.]/g, "").replace(",", ".");
+  const float = parseFloat(cleaned);
+  return Number.isNaN(float) ? 0 : Math.round(float * 100);
+}
 
 export default function ComandaPDV({
   comanda: initial,
@@ -105,11 +113,22 @@ export default function ComandaPDV({
   const [error, setError] = useState("");
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [showReopenModal, setShowReopenModal] = useState(false);
   const [discountStr, setDiscountStr] = useState("");
+
+  // Split payment state
+  const [payments, setPayments] = useState<SplitEntry[]>([
+    { method: "pix", amountInCents: 0 },
+  ]);
+  const [paymentAmountStrs, setPaymentAmountStrs] = useState<string[]>(["0"]);
+
+  // PIN de reabertura
+  const [reopenPin, setReopenPin] = useState("");
+  const [reopenError, setReopenError] = useState("");
 
   const isReadOnly = comanda.status !== "open";
   const canCancel = role === "owner" || role === "reception";
+  const canReopen = role === "owner" || role === "reception";
 
   async function refresh() {
     const updated = await getComanda(comanda.id);
@@ -123,9 +142,7 @@ export default function ComandaPDV({
         await addServiceItem(comanda.id, serviceId);
         await refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Erro ao adicionar serviço",
-        );
+        setError(err instanceof Error ? err.message : "Erro ao adicionar serviço");
       }
     });
   }
@@ -139,9 +156,7 @@ export default function ComandaPDV({
         setProductQty((prev) => ({ ...prev, [productId]: 1 }));
         await refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Erro ao adicionar produto",
-        );
+        setError(err instanceof Error ? err.message : "Erro ao adicionar produto");
       }
     });
   }
@@ -158,12 +173,39 @@ export default function ComandaPDV({
     });
   }
 
+  function openCloseModal() {
+    const totalLiq = Math.max(0, totalBruto - parseCentsInput(discountStr));
+    const defaultAmountStr = (totalLiq / 100).toFixed(2).replace(".", ",");
+    setPayments([{ method: "pix", amountInCents: totalLiq }]);
+    setPaymentAmountStrs([defaultAmountStr]);
+    setShowCloseModal(true);
+  }
+
+  function addPaymentLine() {
+    setPayments((prev) => [...prev, { method: "pix", amountInCents: 0 }]);
+    setPaymentAmountStrs((prev) => [...prev, "0"]);
+  }
+
+  function removePaymentLine(idx: number) {
+    setPayments((prev) => prev.filter((_, i) => i !== idx));
+    setPaymentAmountStrs((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updatePaymentMethod(idx: number, method: PaymentMethod) {
+    setPayments((prev) => prev.map((p, i) => (i === idx ? { ...p, method } : p)));
+  }
+
+  function updatePaymentAmount(idx: number, str: string) {
+    setPaymentAmountStrs((prev) => prev.map((s, i) => (i === idx ? str : s)));
+    const cents = parseCentsInput(str);
+    setPayments((prev) => prev.map((p, i) => (i === idx ? { ...p, amountInCents: cents } : p)));
+  }
+
   function handleClose() {
-    const discountCents = parseDiscountInput(discountStr);
     setError("");
     startTransition(async () => {
       try {
-        await fecharComanda(comanda.id, paymentMethod, discountCents);
+        await fecharComanda(comanda.id, payments, parseCentsInput(discountStr));
         setShowCloseModal(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao fechar comanda");
@@ -178,26 +220,30 @@ export default function ComandaPDV({
         await cancelarComanda(comanda.id);
         setShowCancelModal(false);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Erro ao cancelar comanda",
-        );
+        setError(err instanceof Error ? err.message : "Erro ao cancelar comanda");
         setShowCancelModal(false);
       }
     });
   }
 
-  function parseDiscountInput(val: string): number {
-    const cleaned = val.replace(/[^\d,.]/g, "").replace(",", ".");
-    const float = parseFloat(cleaned);
-    return Number.isNaN(float) ? 0 : Math.round(float * 100);
+  async function handleReopen() {
+    setReopenError("");
+    const result = await reabrirComanda(comanda.id, reopenPin);
+    if (result.success) {
+      setShowReopenModal(false);
+      setReopenPin("");
+      await refresh();
+    } else {
+      setReopenError(result.error);
+    }
   }
 
-  const discountCents = parseDiscountInput(discountStr);
-  const totalBruto = comanda.items.reduce(
-    (sum, item) => sum + item.totalInCents,
-    0,
-  );
+  const discountCents = parseCentsInput(discountStr);
+  const totalBruto = comanda.items.reduce((sum, item) => sum + item.totalInCents, 0);
   const totalLiquido = Math.max(0, totalBruto - discountCents);
+  const sumPaid = payments.reduce((s, p) => s + p.amountInCents, 0);
+  const sumMatchesTotal = sumPaid === totalLiquido;
+
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(searchService.toLowerCase()),
   );
@@ -228,27 +274,13 @@ export default function ComandaPDV({
               color: "var(--text-secondary)",
             }}
           >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
+            <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1
-                className="text-lg font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h1 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
                 Comanda #{comanda.id.slice(-6).toUpperCase()}
               </h1>
               <span
@@ -258,10 +290,7 @@ export default function ComandaPDV({
                 {STATUS_LABEL[comanda.status]}
               </span>
             </div>
-            <p
-              className="mt-0.5 text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="mt-0.5 text-sm" style={{ color: "var(--text-secondary)" }}>
               {comanda.professional.name}
               {(comanda.clientName || comanda.client?.name) && (
                 <> · {comanda.clientName || comanda.client?.name}</>
@@ -271,27 +300,44 @@ export default function ComandaPDV({
               )}
             </p>
           </div>
-          {canCancel && comanda.status !== "cancelled" && (
-            <button
-              type="button"
-              onClick={() => setShowCancelModal(true)}
-              className="rounded-lg px-3 py-1.5 text-sm transition-colors"
-              style={{
-                border: "1px solid var(--border)",
-                color: "var(--text-secondary)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-primary)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.color = "var(--text-secondary)";
-              }}
-            >
-              Cancelar
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {canReopen && comanda.status === "closed" && (
+              <button
+                type="button"
+                onClick={() => { setReopenPin(""); setReopenError(""); setShowReopenModal(true); }}
+                className="rounded-lg px-3 py-1.5 text-sm transition-colors"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--status-yellow)";
+                  e.currentTarget.style.color = "var(--status-yellow)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                }}
+              >
+                Reabrir
+              </button>
+            )}
+            {canCancel && comanda.status !== "cancelled" && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                className="rounded-lg px-3 py-1.5 text-sm transition-colors"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary)";
+                  e.currentTarget.style.color = "var(--color-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                }}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -301,10 +347,7 @@ export default function ComandaPDV({
           className="flex flex-1 flex-col p-6"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
-          <h2
-            className="mb-4 text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <h2 className="mb-4 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
             ITENS DA COMANDA ({comanda.items.length})
           </h2>
 
@@ -314,20 +357,8 @@ export default function ComandaPDV({
                 className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ backgroundColor: "var(--bg-card)" }}
               >
-                <svg
-                  aria-hidden="true"
-                  className="h-6 w-6"
-                  style={{ color: "var(--text-tertiary)" }}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M12 4v16m8-8H4"
-                  />
+                <svg aria-hidden="true" className="h-6 w-6" style={{ color: "var(--text-tertiary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
               <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
@@ -340,10 +371,7 @@ export default function ComandaPDV({
                 <div
                   key={item.id}
                   className="flex items-center justify-between rounded-lg p-3"
-                  style={{
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--bg-card)",
-                  }}
+                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -351,39 +379,22 @@ export default function ComandaPDV({
                         className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
                         style={
                           item.type === "service"
-                            ? {
-                                backgroundColor: "var(--color-primary-10)",
-                                color: "var(--color-primary)",
-                              }
-                            : {
-                                backgroundColor: "rgba(212,175,55,0.1)",
-                                color: "var(--color-gold)",
-                              }
+                            ? { backgroundColor: "var(--color-primary-10)", color: "var(--color-primary)" }
+                            : { backgroundColor: "rgba(212,175,55,0.1)", color: "var(--color-gold)" }
                         }
                       >
                         {item.type === "service" ? "Serviço" : "Produto"}
                       </span>
-                      <p
-                        className="truncate text-sm font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {item.type === "service"
-                          ? item.serviceName
-                          : item.productName}
+                      <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                        {item.type === "service" ? item.serviceName : item.productName}
                       </p>
                     </div>
-                    <p
-                      className="mt-0.5 text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
+                    <p className="mt-0.5 text-xs" style={{ color: "var(--text-secondary)" }}>
                       {item.quantity}× {formatCents(item.unitPriceInCents)}
                     </p>
                   </div>
                   <div className="ml-3 flex items-center gap-3">
-                    <span
-                      className="font-medium"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>
                       {formatCents(item.totalInCents)}
                     </span>
                     {!isReadOnly && (
@@ -394,8 +405,7 @@ export default function ComandaPDV({
                         className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
                         style={{ color: "var(--text-tertiary)" }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor =
-                            "var(--color-primary-10)";
+                          e.currentTarget.style.backgroundColor = "var(--color-primary-10)";
                           e.currentTarget.style.color = "var(--color-primary)";
                         }}
                         onMouseLeave={(e) => {
@@ -403,19 +413,8 @@ export default function ComandaPDV({
                           e.currentTarget.style.color = "var(--text-tertiary)";
                         }}
                       >
-                        <svg
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
+                        <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
@@ -428,15 +427,9 @@ export default function ComandaPDV({
           {comanda.items.length > 0 && (
             <div
               className="mt-6 rounded-xl p-4"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--bg-card)",
-              }}
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
             >
-              <div
-                className="flex items-center justify-between text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <div className="flex items-center justify-between text-sm" style={{ color: "var(--text-secondary)" }}>
                 <span>Subtotal</span>
                 <span>{formatCents(totalBruto)}</span>
               </div>
@@ -444,16 +437,8 @@ export default function ComandaPDV({
                 className="mt-2 flex items-center justify-between pt-2"
                 style={{ borderTop: "1px solid var(--border)" }}
               >
-                <span
-                  className="font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  Total
-                </span>
-                <span
-                  className="text-lg font-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Total</span>
+                <span className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
                   {formatCents(comanda.totalInCents)}
                 </span>
               </div>
@@ -466,10 +451,7 @@ export default function ComandaPDV({
           <div className="w-full p-6 lg:w-96">
             <div
               className="mb-4 flex rounded-lg p-1"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--bg-card)",
-              }}
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
             >
               {(["services", "products"] as const).map((t) => (
                 <button
@@ -479,10 +461,7 @@ export default function ComandaPDV({
                   className="flex-1 rounded-md py-2 text-sm font-medium transition-colors"
                   style={
                     tab === t
-                      ? {
-                          backgroundColor: "var(--bg-card-elevated)",
-                          color: "var(--text-primary)",
-                        }
+                      ? { backgroundColor: "var(--bg-card-elevated)", color: "var(--text-primary)" }
                       : { color: "var(--text-secondary)" }
                   }
                 >
@@ -499,21 +478,11 @@ export default function ComandaPDV({
                   value={searchService}
                   onChange={(e) => setSearchService(e.target.value)}
                   className="mb-3 w-full rounded-lg px-4 py-2.5 text-sm outline-none"
-                  style={{
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--bg-card)",
-                    color: "var(--text-primary)",
-                  }}
+                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
                 />
-                <div
-                  className="space-y-2 overflow-y-auto"
-                  style={{ maxHeight: "60vh" }}
-                >
+                <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "60vh" }}>
                   {filteredServices.length === 0 ? (
-                    <p
-                      className="py-8 text-center text-sm"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
+                    <p className="py-8 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
                       Nenhum serviço encontrado.
                     </p>
                   ) : (
@@ -524,57 +493,26 @@ export default function ComandaPDV({
                         onClick={() => handleAddService(s.id)}
                         disabled={isPending}
                         className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:opacity-50"
-                        style={{
-                          border: "1px solid var(--border)",
-                          backgroundColor: "var(--bg-card)",
-                        }}
+                        style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "var(--color-primary)";
-                          e.currentTarget.style.backgroundColor =
-                            "var(--bg-card-elevated)";
+                          e.currentTarget.style.borderColor = "var(--color-primary)";
+                          e.currentTarget.style.backgroundColor = "var(--bg-card-elevated)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = "var(--border)";
-                          e.currentTarget.style.backgroundColor =
-                            "var(--bg-card)";
+                          e.currentTarget.style.backgroundColor = "var(--bg-card)";
                         }}
                       >
                         <div>
-                          <p
-                            className="text-sm font-medium"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {s.name}
-                          </p>
-                          <p
-                            className="text-xs"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {s.durationMin} min
-                          </p>
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{s.name}</p>
+                          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{s.durationMin} min</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span
-                            className="text-sm font-semibold"
-                            style={{ color: "var(--color-primary)" }}
-                          >
+                          <span className="text-sm font-semibold" style={{ color: "var(--color-primary)" }}>
                             {formatCents(s.priceInCents)}
                           </span>
-                          <svg
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                            style={{ color: "var(--text-tertiary)" }}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
+                          <svg aria-hidden="true" className="h-4 w-4" style={{ color: "var(--text-tertiary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
                         </div>
                       </button>
@@ -592,21 +530,11 @@ export default function ComandaPDV({
                   value={searchProduct}
                   onChange={(e) => setSearchProduct(e.target.value)}
                   className="mb-3 w-full rounded-lg px-4 py-2.5 text-sm outline-none"
-                  style={{
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--bg-card)",
-                    color: "var(--text-primary)",
-                  }}
+                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
                 />
-                <div
-                  className="space-y-2 overflow-y-auto"
-                  style={{ maxHeight: "60vh" }}
-                >
+                <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "60vh" }}>
                   {filteredProducts.length === 0 ? (
-                    <p
-                      className="py-8 text-center text-sm"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
+                    <p className="py-8 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
                       Nenhum produto encontrado.
                     </p>
                   ) : (
@@ -625,101 +553,45 @@ export default function ComandaPDV({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p
-                                className="truncate text-sm font-medium"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {p.name}
-                              </p>
-                              <p
-                                className="text-xs"
-                                style={{ color: "var(--text-secondary)" }}
-                              >
-                                Estoque: {p.stockQuantity} ·{" "}
-                                {formatCents(p.priceInCents)}
+                              <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.name}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                                Estoque: {p.stockQuantity} · {formatCents(p.priceInCents)}
                               </p>
                             </div>
                           </div>
                           {!noStock && (
                             <div className="mt-2 flex items-center gap-2">
-                              <div
-                                className="flex items-center rounded-lg"
-                                style={{ border: "1px solid var(--border)" }}
-                              >
+                              <div className="flex items-center rounded-lg" style={{ border: "1px solid var(--border)" }}>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setProductQty((prev) => ({
-                                      ...prev,
-                                      [p.id]: Math.max(
-                                        1,
-                                        (prev[p.id] || 1) - 1,
-                                      ),
-                                    }))
-                                  }
+                                  onClick={() => setProductQty((prev) => ({ ...prev, [p.id]: Math.max(1, (prev[p.id] || 1) - 1) }))}
                                   className="flex h-8 w-8 items-center justify-center"
                                   style={{ color: "var(--text-secondary)" }}
-                                >
-                                  −
-                                </button>
-                                <span
-                                  className="w-8 text-center text-sm"
-                                  style={{ color: "var(--text-primary)" }}
-                                >
-                                  {qty}
-                                </span>
+                                >−</button>
+                                <span className="w-8 text-center text-sm" style={{ color: "var(--text-primary)" }}>{qty}</span>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setProductQty((prev) => ({
-                                      ...prev,
-                                      [p.id]: Math.min(
-                                        p.stockQuantity,
-                                        (prev[p.id] || 1) + 1,
-                                      ),
-                                    }))
-                                  }
+                                  onClick={() => setProductQty((prev) => ({ ...prev, [p.id]: Math.min(p.stockQuantity, (prev[p.id] || 1) + 1) }))}
                                   className="flex h-8 w-8 items-center justify-center"
                                   style={{ color: "var(--text-secondary)" }}
-                                >
-                                  +
-                                </button>
+                                >+</button>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleAddProduct(p.id)}
                                 disabled={isPending}
                                 className="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
-                                style={{
-                                  backgroundColor: "rgba(212,175,55,0.1)",
-                                  color: "var(--color-gold)",
-                                }}
+                                style={{ backgroundColor: "rgba(212,175,55,0.1)", color: "var(--color-gold)" }}
                               >
-                                <svg
-                                  aria-hidden="true"
-                                  className="h-3.5 w-3.5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 4v16m8-8H4"
-                                  />
+                                <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
                                 Adicionar
                               </button>
                             </div>
                           )}
                           {noStock && (
-                            <p
-                              className="mt-2 text-xs"
-                              style={{ color: "var(--color-primary)" }}
-                            >
-                              Sem estoque
-                            </p>
+                            <p className="mt-2 text-xs" style={{ color: "var(--color-primary)" }}>Sem estoque</p>
                           )}
                         </div>
                       );
@@ -745,7 +617,7 @@ export default function ComandaPDV({
             {comanda.items.length > 0 && (
               <button
                 type="button"
-                onClick={() => setShowCloseModal(true)}
+                onClick={openCloseModal}
                 disabled={isPending}
                 className="mt-4 w-full rounded-xl py-3.5 text-sm font-semibold text-white shadow-lg transition-all disabled:opacity-50"
                 style={{ backgroundColor: "var(--color-primary)" }}
@@ -761,66 +633,38 @@ export default function ComandaPDV({
           <div className="w-full p-6 lg:w-96">
             <div
               className="rounded-xl p-4"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--bg-card)",
-              }}
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
             >
-              <h2
-                className="mb-3 text-sm font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <h2 className="mb-3 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
                 RESUMO
               </h2>
               {comanda.status === "closed" && (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      Pagamento
-                    </span>
-                    <span
-                      className="font-medium"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {comanda.paymentMethod
-                        ? PAYMENT_LABEL[comanda.paymentMethod]
-                        : "—"}
+                    <span style={{ color: "var(--text-secondary)" }}>Pagamento</span>
+                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>
+                      {comanda.paymentMethod ? PAYMENT_LABEL[comanda.paymentMethod] : "—"}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      Fechado em
-                    </span>
+                    <span style={{ color: "var(--text-secondary)" }}>Fechado em</span>
                     <span style={{ color: "var(--text-primary)" }}>
-                      {comanda.closedAt
-                        ? new Date(comanda.closedAt).toLocaleString("pt-BR")
-                        : "—"}
+                      {comanda.closedAt ? new Date(comanda.closedAt).toLocaleString("pt-BR") : "—"}
                     </span>
                   </div>
                   <div
                     className="mt-3 flex items-center justify-between pt-3"
                     style={{ borderTop: "1px solid var(--border)" }}
                   >
-                    <span
-                      className="font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Total pago
-                    </span>
-                    <span
-                      className="text-lg font-bold"
-                      style={{ color: "var(--status-green)" }}
-                    >
+                    <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Total pago</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--status-green)" }}>
                       {formatCents(comanda.totalInCents)}
                     </span>
                   </div>
                 </>
               )}
               {comanda.status === "cancelled" && (
-                <p
-                  className="text-sm"
-                  style={{ color: "var(--color-primary)" }}
-                >
+                <p className="text-sm" style={{ color: "var(--color-primary)" }}>
                   Esta comanda foi cancelada.
                 </p>
               )}
@@ -829,14 +673,12 @@ export default function ComandaPDV({
         )}
       </div>
 
+      {/* Modal Fechar Comanda — split payment */}
       <Modal
         open={showCloseModal}
-        onClose={() => {
-          setShowCloseModal(false);
-          setError("");
-        }}
+        onClose={() => { setShowCloseModal(false); setError(""); }}
         title="Fechar Comanda"
-        description="Confirme a forma de pagamento e desconto (se houver)."
+        description="Informe o desconto e as formas de pagamento."
         size="md"
         footer={{
           cancel: { label: "Voltar" },
@@ -846,25 +688,18 @@ export default function ComandaPDV({
             onClick: handleClose,
             loading: isPending,
             variant: "success",
+            disabled: !sumMatchesTotal || payments.length === 0,
           },
         }}
       >
-        <div
-          className="rounded-lg p-3 text-sm"
-          style={{ backgroundColor: "var(--bg-base)" }}
-        >
-          <div
-            className="flex justify-between"
-            style={{ color: "var(--text-secondary)" }}
-          >
+        {/* Resumo de valores */}
+        <div className="rounded-lg p-3 text-sm mb-4" style={{ backgroundColor: "var(--bg-base)" }}>
+          <div className="flex justify-between" style={{ color: "var(--text-secondary)" }}>
             <span>Subtotal</span>
             <span>{formatCents(totalBruto)}</span>
           </div>
           {discountCents > 0 && (
-            <div
-              className="mt-1 flex justify-between"
-              style={{ color: "var(--status-yellow)" }}
-            >
+            <div className="mt-1 flex justify-between" style={{ color: "var(--status-yellow)" }}>
               <span>Desconto</span>
               <span>− {formatCents(discountCents)}</span>
             </div>
@@ -874,55 +709,110 @@ export default function ComandaPDV({
             style={{ borderTop: "1px solid var(--border)" }}
           >
             <span style={{ color: "var(--text-primary)" }}>Total</span>
-            <span style={{ color: "var(--status-green)" }}>
-              {formatCents(totalLiquido)}
-            </span>
+            <span style={{ color: "var(--status-green)" }}>{formatCents(totalLiquido)}</span>
           </div>
         </div>
 
-        <div className="mb-4">
+        {/* Desconto */}
+        <div className="mb-5">
           <Input
             label="Desconto (R$)"
             id="discount-input"
             type="text"
             placeholder="0,00"
             value={discountStr}
-            onChange={(e) => setDiscountStr(e.target.value)}
+            onChange={(e) => {
+              setDiscountStr(e.target.value);
+              // Atualiza o primeiro pagamento para totalLíquido quando há só um
+              if (payments.length === 1) {
+                const newTotal = Math.max(0, totalBruto - parseCentsInput(e.target.value));
+                const str = (newTotal / 100).toFixed(2).replace(".", ",");
+                setPayments([{ method: payments[0].method, amountInCents: newTotal }]);
+                setPaymentAmountStrs([str]);
+              }
+            }}
           />
         </div>
 
-        <div className="mb-6">
-          <p
-            className="mb-2 block text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Forma de pagamento
+        {/* Split payment lines */}
+        <div className="mb-3">
+          <p className="mb-2 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+            Formas de pagamento
           </p>
-          <div className="grid grid-cols-2 gap-2">
-            {PAYMENT_OPTS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setPaymentMethod(opt.value)}
-                className="rounded-lg py-2.5 text-sm font-medium transition-all"
-                style={
-                  paymentMethod === opt.value
-                    ? {
-                        border: "1px solid var(--color-primary)",
-                        backgroundColor: "var(--color-primary-10)",
-                        color: "var(--text-primary)",
-                      }
-                    : {
-                        border: "1px solid var(--border)",
-                        backgroundColor: "var(--bg-base)",
-                        color: "var(--text-secondary)",
-                      }
-                }
-              >
-                {opt.label}
-              </button>
+          <div className="space-y-2">
+            {payments.map((entry, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <select
+                  value={entry.method}
+                  onChange={(e) => updatePaymentMethod(idx, e.target.value as PaymentMethod)}
+                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-base)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {PAYMENT_OPTS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={paymentAmountStrs[idx] ?? ""}
+                  onChange={(e) => updatePaymentAmount(idx, e.target.value)}
+                  className="w-28 rounded-lg px-3 py-2 text-sm outline-none text-right"
+                  style={{
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--bg-base)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+                {payments.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePaymentLine(idx)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0"
+                    style={{ color: "var(--text-tertiary)", border: "1px solid var(--border)" }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={addPaymentLine}
+            className="mt-2 text-xs transition-opacity hover:opacity-70"
+            style={{ color: "var(--color-primary)" }}
+          >
+            + Adicionar forma de pagamento
+          </button>
+        </div>
+
+        {/* Indicador soma vs total */}
+        <div
+          className="mb-4 rounded-lg px-3 py-2 text-sm font-medium"
+          style={{
+            backgroundColor: sumMatchesTotal ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+            border: `1px solid ${sumMatchesTotal ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+            color: sumMatchesTotal ? "var(--status-green)" : "var(--status-red)",
+          }}
+        >
+          <div className="flex justify-between">
+            <span>Total pago</span>
+            <span>{formatCents(sumPaid)}</span>
+          </div>
+          {!sumMatchesTotal && (
+            <p className="mt-0.5 text-xs opacity-80">
+              {sumPaid < totalLiquido
+                ? `Falta ${formatCents(totalLiquido - sumPaid)}`
+                : `Excede em ${formatCents(sumPaid - totalLiquido)}`}
+            </p>
+          )}
         </div>
 
         {error && (
@@ -937,9 +827,9 @@ export default function ComandaPDV({
             {error}
           </div>
         )}
-
       </Modal>
 
+      {/* Modal Cancelar Comanda */}
       <Modal
         open={showCancelModal}
         onClose={() => setShowCancelModal(false)}
@@ -960,6 +850,45 @@ export default function ComandaPDV({
           },
         }}
       />
+
+      {/* Modal Reabrir Comanda com PIN */}
+      <Modal
+        open={showReopenModal}
+        onClose={() => { setShowReopenModal(false); setReopenPin(""); setReopenError(""); }}
+        title="Reabrir Comanda"
+        description="Insira o PIN de segurança para reabrir esta comanda."
+        size="sm"
+        footer={{
+          cancel: { label: "Cancelar" },
+          confirm: {
+            label: "Confirmar reabertura",
+            loadingLabel: "Verificando...",
+            onClick: handleReopen,
+            loading: isPending,
+            variant: "success",
+          },
+        }}
+      >
+        <div className="space-y-3">
+          <Input
+            id="reopen-pin"
+            label="PIN"
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={reopenPin}
+            onChange={(e) => setReopenPin(e.target.value.replace(/\D/g, ""))}
+            placeholder="••••"
+            onKeyDown={(e) => e.key === "Enter" && handleReopen()}
+          />
+          {reopenError && (
+            <p className="text-sm" style={{ color: "var(--status-red)" }}>{reopenError}</p>
+          )}
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            O estoque e as comissões não serão revertidos — reabrir serve apenas para correção dos itens.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

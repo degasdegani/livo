@@ -114,7 +114,8 @@ beforeEach(() => {
             appointment: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn().mockResolvedValue(null) },
             client: { update: vi.fn().mockResolvedValue({}) },
             comandaItem: { update: vi.fn().mockResolvedValue({}) },
-            product: { update: vi.fn().mockResolvedValue({}) },
+            comandaPayment: { createMany: vi.fn().mockResolvedValue({}) },
+            product: { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
             stockMovement: { create: vi.fn().mockResolvedValue({}) },
           })
         : Promise.all(ops as Promise<unknown>[]),
@@ -303,7 +304,7 @@ describe("Observabilidade — log.comanda", () => {
     } as never);
     vi.mocked(db.professional.findFirst).mockResolvedValue(null);
 
-    await expect(fecharComanda("comanda-a", "pix")).rejects.toThrow(
+    await expect(fecharComanda("comanda-a", [{ method: "pix", amountInCents: 5000 }])).rejects.toThrow(
       "NEXT_REDIRECT",
     );
 
