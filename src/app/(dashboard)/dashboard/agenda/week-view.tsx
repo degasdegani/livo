@@ -840,6 +840,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
             suggestedStartISO={modal.startISO}
             suggestedEndISO={modal.endISO}
             professionals={data.professionals}
+            professionalId={data.userRole === "barber" ? (data.userProfessionalId ?? undefined) : undefined}
             isPending={isPending}
             onClose={() => setModal({ type: "none" })}
             onCreate={handleTimeBlockConfirm}
