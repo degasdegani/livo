@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Popover } from "@/components/ui/popover";
 
 // ── Create modal ──────────────────────────────────────────────────────────────
@@ -28,6 +28,14 @@ export function TimeBlockCreateModal({
 }) {
   const [reason, setReason] = useState("");
   const [profId, setProfId] = useState(initialProfId ?? professionals?.[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!profId && professionals && professionals.length > 0) {
+      setProfId(professionals[0].id);
+    }
+  // professionals é a dep relevante; profId intencionalmente omitido para evitar loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [professionals]);
 
   function toLocalTime(iso: string): string {
     const d = new Date(iso);

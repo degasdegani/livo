@@ -22,7 +22,7 @@ export interface PopoverProps {
 export function Popover({ anchorX, anchorY, onClose, children, width = 320 }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   // Start invisible at anchor position; position+visibility set after first paint.
-  const [pos, setPos] = useState({ left: anchorX + 8, top: anchorY });
+  const [pos, setPos] = useState({ left: anchorX + 8, top: anchorY, maxHeight: 9999 });
   const [visible, setVisible] = useState(false);
 
   // ESC closes
@@ -71,7 +71,8 @@ export function Popover({ anchorX, anchorY, onClose, children, width = 320 }: Po
     }
     if (top < 8) top = 8;
 
-    setPos({ left, top });
+    const maxHeight = Math.max(100, vh - top - 8);
+    setPos({ left, top, maxHeight });
     setVisible(true);
 
     // Auto-focus first interactive element for keyboard accessibility.
@@ -97,6 +98,8 @@ export function Popover({ anchorX, anchorY, onClose, children, width = 320 }: Po
         borderRadius: 12,
         boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
         padding: 16,
+        maxHeight: pos.maxHeight,
+        overflowY: "auto",
         // Entry animation: invisible + scaled down → visible + full size.
         opacity: visible ? 1 : 0,
         transform: visible ? "scale(1)" : "scale(0.95)",
