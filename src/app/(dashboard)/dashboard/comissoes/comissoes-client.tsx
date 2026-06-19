@@ -19,6 +19,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getComissoesData, type ResumoProf } from "../comandas/actions";
+import {
+  getProfessionalItemCommissions,
+  updateProfessionalItemCommissions,
+} from "./actions";
 import { updateMembershipComissao } from "../settings/actions";
 
 type Profissional = { id: string; name: string };
@@ -84,6 +88,13 @@ export function ComissoesClient({
   const [editOnProducts, setEditOnProducts] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [itemCommExpanded, setItemCommExpanded] = useState(false);
+  const [itemCommData, setItemCommData] = useState<{
+    services: { id: string; name: string; override: number | null }[];
+    products: { id: string; name: string; override: number | null }[];
+  } | null>(null);
+  const [itemCommEdits, setItemCommEdits] = useState<Record<string, string>>({});
+  const [loadingItemComm, setLoadingItemComm] = useState(false);
   const { toast } = useToast();
 
   void dataInicio;
@@ -96,10 +107,34 @@ export function ComissoesClient({
     setEditServicePct(toNumber(p.commissionServicePct).toString() || "");
     setEditProductPct(toNumber(p.commissionProductPct).toString() || "");
     setSaveError("");
+    setItemCommExpanded(false);
+    setItemCommData(null);
+    setItemCommEdits({});
   }
   function fecharEdit() {
     setEditingProfessional(null);
     setSaveError("");
+    setItemCommExpanded(false);
+    setItemCommData(null);
+    setItemCommEdits({});
+  }
+
+  async function loadItemCommissions(professionalId: string) {
+    setLoadingItemComm(true);
+    try {
+      const data = await getProfessionalItemCommissions(professionalId);
+      setItemCommData(data);
+      const edits: Record<string, string> = {};
+      data.services.forEach((s) => {
+        edits[`svc:${s.id}`] = s.override !== null ? String(s.override) : "";
+      });
+      data.products.forEach((p) => {
+        edits[`prd:${p.id}`] = p.override !== null ? String(p.override) : "";
+      });
+      setItemCommEdits(edits);
+    } finally {
+      setLoadingItemComm(false);
+    }
   }
 
   async function salvarPct() {
@@ -118,6 +153,23 @@ export function ComissoesClient({
           ? parseFloat(editProductPct) || null
           : null,
       });
+
+      if (itemCommData) {
+        const overrides = [
+          ...itemCommData.services.map((s) => ({
+            type: "service" as const,
+            itemId: s.id,
+            commissionPct: parseFloat(itemCommEdits[`svc:${s.id}`]) || null,
+          })),
+          ...itemCommData.products.map((p) => ({
+            type: "product" as const,
+            itemId: p.id,
+            commissionPct: parseFloat(itemCommEdits[`prd:${p.id}`]) || null,
+          })),
+        ];
+        await updateProfessionalItemCommissions(editingProfessional.id, overrides);
+      }
+
       fecharEdit();
       if (resultado.atualizados > 0) {
         toast(
@@ -611,6 +663,136 @@ export function ComissoesClient({
                     placeholder="ex: 10"
                     style={{ width: 128 }}
                   />
+                </div>
+              )}
+            </div>
+
+            {/* Seção expansível: overrides por item */}
+            <div
+              className="mb-5 rounded-lg overflow-hidden"
+              style={{ border: "1px solid var(--border)" }}
+            >
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: itemCommExpanded ? "var(--color-primary-10)" : "var(--bg-base)",
+                  color: itemCommExpanded ? "var(--color-primary)" : "var(--text-secondary)",
+                }}
+                onClick={() => {
+                  const next = !itemCommExpanded;
+                  setItemCommExpanded(next);
+                  if (next && !itemCommData && editingProfessional) {
+                    loadItemCommissions(editingProfessional.id);
+                  }
+                }}
+              >
+                <span>Comissões específicas por item</span>
+                <span
+                  style={{
+                    display: "inline-block",
+                    transition: "transform 200ms",
+                    transform: itemCommExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                >
+                  ▾
+                </span>
+              </button>
+
+              {itemCommExpanded && (
+                <div
+                  className="px-4 py-3 space-y-4"
+                  style={{ borderTop: "1px solid var(--border)" }}
+                >
+                  {loadingItemComm ? (
+                    <p className="text-sm text-center py-2" style={{ color: "var(--text-tertiary)" }}>
+                      Carregando…
+                    </p>
+                  ) : itemCommData ? (
+                    <>
+                      {itemCommData.services.length > 0 && (
+                        <div>
+                          <p
+                            className="text-xs font-semibold uppercase tracking-wide mb-2"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Serviços
+                          </p>
+                          <div className="space-y-2">
+                            {itemCommData.services.map((s) => (
+                              <div key={s.id} className="flex items-center justify-between gap-3">
+                                <span className="text-sm flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+                                  {s.name}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.5"
+                                    placeholder="padrão"
+                                    value={itemCommEdits[`svc:${s.id}`] ?? ""}
+                                    onChange={(e) =>
+                                      setItemCommEdits((prev) => ({
+                                        ...prev,
+                                        [`svc:${s.id}`]: e.target.value,
+                                      }))
+                                    }
+                                    className="livo-input text-right text-sm"
+                                    style={{ width: 80 }}
+                                  />
+                                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>%</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {itemCommData.products.length > 0 && (
+                        <div>
+                          <p
+                            className="text-xs font-semibold uppercase tracking-wide mb-2"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Produtos
+                          </p>
+                          <div className="space-y-2">
+                            {itemCommData.products.map((p) => (
+                              <div key={p.id} className="flex items-center justify-between gap-3">
+                                <span className="text-sm flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+                                  {p.name}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.5"
+                                    placeholder="padrão"
+                                    value={itemCommEdits[`prd:${p.id}`] ?? ""}
+                                    onChange={(e) =>
+                                      setItemCommEdits((prev) => ({
+                                        ...prev,
+                                        [`prd:${p.id}`]: e.target.value,
+                                      }))
+                                    }
+                                    className="livo-input text-right text-sm"
+                                    style={{ width: 80 }}
+                                  />
+                                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>%</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                        Deixe em branco para usar a comissão padrão configurada acima.
+                      </p>
+                    </>
+                  ) : null}
                 </div>
               )}
             </div>

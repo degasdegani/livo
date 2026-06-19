@@ -361,6 +361,24 @@ export async function fecharComanda(
     },
   });
 
+  // Pré-carregar overrides por item (sem N+1 no loop abaixo)
+  const serviceOverrides = new Map<string, number>();
+  const productOverrides = new Map<string, number>();
+  if (profissional) {
+    const [svcComms, prodComms] = await Promise.all([
+      db.professionalServiceCommission.findMany({
+        where: { professionalId: profissional.id },
+        select: { serviceId: true, commissionPct: true },
+      }),
+      db.professionalProductCommission.findMany({
+        where: { professionalId: profissional.id },
+        select: { productId: true, commissionPct: true },
+      }),
+    ]);
+    svcComms.forEach((c) => serviceOverrides.set(c.serviceId, Number(c.commissionPct)));
+    prodComms.forEach((c) => productOverrides.set(c.productId, Number(c.commissionPct)));
+  }
+
   const totalFinal = Math.max(0, comanda.totalInCents - discountInCents);
 
   const sumPaid = payments.reduce((s, p) => s + p.amountInCents, 0);
@@ -374,21 +392,30 @@ export async function fecharComanda(
 
   await db.$transaction(async (tx) => {
     // 1. Calcular e gravar comissão em cada item
+    // Prioridade: override por item > percentual fixo do Professional > null
     for (const item of comanda.items) {
       let pct: number | null = null;
       let value: number | null = null;
 
-      if (profissional) {
-        if (
-          item.type === "service" &&
-          profissional.commissionOnServices &&
+      if (item.type === "service") {
+        const override = item.serviceId ? serviceOverrides.get(item.serviceId) : undefined;
+        if (override !== undefined) {
+          pct = override;
+          value = Math.round((item.totalInCents * pct) / 100);
+        } else if (
+          profissional?.commissionOnServices &&
           profissional.commissionServicePct !== null
         ) {
           pct = Number(profissional.commissionServicePct);
           value = Math.round((item.totalInCents * pct) / 100);
+        }
+      } else if (item.type === "product") {
+        const override = item.productId ? productOverrides.get(item.productId) : undefined;
+        if (override !== undefined) {
+          pct = override;
+          value = Math.round((item.totalInCents * pct) / 100);
         } else if (
-          item.type === "product" &&
-          profissional.commissionOnProducts &&
+          profissional?.commissionOnProducts &&
           profissional.commissionProductPct !== null
         ) {
           pct = Number(profissional.commissionProductPct);

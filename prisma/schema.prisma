@@ -117,6 +117,8 @@ model Professional {
   appointments         Appointment[]
   comandas             Comanda[]
   membership           Membership?
+  serviceCommissions   ProfessionalServiceCommission[]
+  productCommissions   ProfessionalProductCommission[]
   barbershop           Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
@@ -133,10 +135,11 @@ model Service {
   barbershopId String
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  appointments        Appointment[]
-  comandaItems        ComandaItem[]
-  appointmentServices AppointmentService[]
-  barbershop          Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointments            Appointment[]
+  comandaItems            ComandaItem[]
+  appointmentServices     AppointmentService[]
+  professionalCommissions ProfessionalServiceCommission[]
+  barbershop              Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
   @@map("services")
@@ -309,10 +312,11 @@ model Product {
   categoryId     String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  comandaItems   ComandaItem[]
-  barbershop     Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  category       ProductCategory? @relation(fields: [categoryId], references: [id])
-  stockMovements StockMovement[]
+  comandaItems            ComandaItem[]
+  professionalCommissions ProfessionalProductCommission[]
+  barbershop              Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  category                ProductCategory? @relation(fields: [categoryId], references: [id])
+  stockMovements          StockMovement[]
 
   @@index([barbershopId])
   @@map("products")
@@ -404,6 +408,30 @@ model InsightDismissal {
   @@unique([barbershopId, recId])
   @@index([barbershopId])
   @@map("insight_dismissals")
+}
+
+model ProfessionalServiceCommission {
+  id             String       @id @default(cuid())
+  professionalId String
+  serviceId      String
+  commissionPct  Decimal      @db.Decimal(5, 2)
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, serviceId])
+  @@map("professional_service_commissions")
+}
+
+model ProfessionalProductCommission {
+  id             String       @id @default(cuid())
+  professionalId String
+  productId      String
+  commissionPct  Decimal      @db.Decimal(5, 2)
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, productId])
+  @@map("professional_product_commissions")
 }
 
 enum Plan {

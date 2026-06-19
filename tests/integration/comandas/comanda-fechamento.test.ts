@@ -33,6 +33,8 @@ vi.mock("@/lib/db", () => ({
   db: {
     comanda: { findFirst: vi.fn() },
     professional: { findFirst: vi.fn() },
+    professionalServiceCommission: { findMany: vi.fn().mockResolvedValue([]) },
+    professionalProductCommission: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(),
   },
 }));
@@ -424,5 +426,94 @@ describe("fecharComanda()", () => {
         }),
       }),
     );
+  });
+
+  // ── Override por item ───────────────────────────────────────────────────────
+
+  it("uses service override pct when ProfessionalServiceCommission exists for that service", async () => {
+    mockOpenComanda({
+      items: [
+        { id: "item-svc", type: "service", serviceId: "svc-degradee", totalInCents: 10000, productId: null, quantity: 1 },
+      ],
+    });
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
+      id: "prof-a",
+      commissionOnServices: true,
+      commissionServicePct: 40,
+      commissionOnProducts: false,
+      commissionProductPct: null,
+    } as never);
+    // Override de 60% especificamente para svc-degradee
+    vi.mocked(db.professionalServiceCommission.findMany).mockResolvedValue([
+      { serviceId: "svc-degradee", commissionPct: 60 } as never,
+    ]);
+
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(tx.comandaItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "item-svc" },
+        data: expect.objectContaining({
+          commissionPct: 60,
+          commissionValue: 6000, // 10000 × 60 / 100
+        }),
+      }),
+    );
+  });
+
+  it("falls back to fixed pct when no override exists for a service", async () => {
+    mockOpenComanda({
+      items: [
+        { id: "item-svc2", type: "service", serviceId: "svc-corte", totalInCents: 5000, productId: null, quantity: 1 },
+      ],
+    });
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
+      id: "prof-a",
+      commissionOnServices: true,
+      commissionServicePct: 40,
+      commissionOnProducts: false,
+      commissionProductPct: null,
+    } as never);
+    // Override existe mas para outro serviço
+    vi.mocked(db.professionalServiceCommission.findMany).mockResolvedValue([
+      { serviceId: "svc-outro", commissionPct: 60 } as never,
+    ]);
+
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(tx.comandaItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "item-svc2" },
+        data: expect.objectContaining({
+          commissionPct: 40,
+          commissionValue: 2000, // 5000 × 40 / 100
+        }),
+      }),
+    );
+  });
+
+  it("fetches overrides in 2 queries before the loop — no N+1", async () => {
+    mockOpenComanda({
+      items: [
+        { id: "item-a", type: "service", serviceId: "svc-1", totalInCents: 3000, productId: null, quantity: 1 },
+        { id: "item-b", type: "service", serviceId: "svc-2", totalInCents: 2000, productId: null, quantity: 1 },
+        { id: "item-c", type: "service", serviceId: "svc-3", totalInCents: 1000, productId: null, quantity: 1 },
+      ],
+    });
+    vi.mocked(db.professional.findFirst).mockResolvedValue({
+      id: "prof-a",
+      commissionOnServices: true,
+      commissionServicePct: 30,
+      commissionOnProducts: false,
+      commissionProductPct: null,
+    } as never);
+
+    await expect(fecharComanda(COMANDA_A, pix())).rejects.toThrow("NEXT_REDIRECT");
+
+    // Overrides devem ser buscados UMA vez por tipo, não por item
+    expect(vi.mocked(db.professionalServiceCommission.findMany)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(db.professionalProductCommission.findMany)).toHaveBeenCalledTimes(1);
+    // Deve haver um update por item (3 itens)
+    expect(tx.comandaItem.update).toHaveBeenCalledTimes(3);
   });
 });

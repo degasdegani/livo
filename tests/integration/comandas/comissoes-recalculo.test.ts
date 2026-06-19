@@ -23,6 +23,8 @@ vi.mock("@/lib/db", () => ({
   db: {
     professional: { findFirst: vi.fn() },
     comandaItem: { findMany: vi.fn() },
+    professionalServiceCommission: { findMany: vi.fn().mockResolvedValue([]) },
+    professionalProductCommission: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(),
   },
 }));
