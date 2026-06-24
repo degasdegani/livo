@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// useRef/useState abaixo controlam a posição fixa do dropdown para escapar do
+// stacking context do header (z-index).
 import {
   type AlertItem,
   type AlertType,
@@ -134,6 +136,19 @@ export function NotificationBell({
   const alerts = useAppointmentAlerts(appointments);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+
+  const handleOpen = () => {
+    if (bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -156,8 +171,9 @@ export function NotificationBell({
   return (
     <div ref={containerRef} className="relative">
       <button
+        ref={bellRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : handleOpen())}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
         style={{ color: "var(--text-secondary)" }}
         aria-label="Notificações"
@@ -191,8 +207,12 @@ export function NotificationBell({
 
       {open && (
         <div
-          className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl shadow-xl"
+          className="w-80 overflow-hidden rounded-xl shadow-xl"
           style={{
+            position: "fixed",
+            top: dropdownPos.top,
+            right: dropdownPos.right,
+            zIndex: 99999,
             backgroundColor: "var(--bg-card)",
             border: "1px solid var(--border)",
             borderRadius: "12px",

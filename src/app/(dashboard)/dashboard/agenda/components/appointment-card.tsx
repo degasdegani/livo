@@ -198,7 +198,9 @@ export function AppointmentCard({
           paddingLeft: 5,
           paddingRight: 4,
           overflow: "hidden",
+          backgroundColor: config.color,
           borderLeft: `2px solid ${config.color}`,
+          borderRadius: "0 6px 6px 0",
           cursor: draggable ? (isDragging ? "grabbing" : "grab") : "pointer",
           touchAction: draggable ? "none" : undefined,
         }}
@@ -220,7 +222,7 @@ export function AppointmentCard({
           style={{
             fontSize: 10,
             fontWeight: 500,
-            color: "var(--text-secondary)",
+            color: "#fff",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
