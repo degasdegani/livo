@@ -15,23 +15,18 @@ import {
   sanitizePhone,
   type WhatsappMessageData,
 } from "@/lib/whatsapp";
+import { WhatsappIcon } from "@/components/ui/whatsapp-icon";
 
-const TYPE_META: Record<
-  AlertType,
-  { icon: string; color: string; label: string }
-> = {
+const TYPE_META: Record<AlertType, { color: string; label: string }> = {
   confirmation: {
-    icon: "📩",
     color: "#3B82F6",
     label: "Confirmar agendamento",
   },
   reminder: {
-    icon: "🔔",
     color: "#D4A72C",
     label: "Lembrete 3h",
   },
   noshow: {
-    icon: "⚠️",
     color: "#C8102E",
     label: "Reportar falta",
   },
@@ -76,11 +71,11 @@ function AlertRow({
     >
       <div className="flex items-start gap-3">
         <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base"
-          style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${meta.color}1A` }}
           aria-hidden="true"
         >
-          {meta.icon}
+          <WhatsappIcon size={16} className="text-[#25D366]" />
         </span>
         <div className="min-w-0 flex-1">
           <p

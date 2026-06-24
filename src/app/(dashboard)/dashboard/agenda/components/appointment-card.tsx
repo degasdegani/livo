@@ -1,6 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+import { WhatsappIcon } from "@/components/ui/whatsapp-icon";
 import type { AgendaAppointment } from "../agenda-actions";
 import { STATUS_CONFIG, isoToTimeBRT } from "./shared";
 
@@ -56,7 +57,6 @@ function AlertIcons({
 }) {
   const items: {
     key: string;
-    icon: string;
     color: string;
     pulse: boolean;
     label: string;
@@ -64,7 +64,6 @@ function AlertIcons({
   if (states.needsConfirmation)
     items.push({
       key: "confirmation",
-      icon: "📩",
       color: "#3B82F6",
       pulse: false,
       label: "Confirmação pendente",
@@ -72,7 +71,6 @@ function AlertIcons({
   if (states.needsReminder)
     items.push({
       key: "reminder",
-      icon: "🔔",
       color: "#D4A72C",
       pulse: true,
       label: "Lembrete pendente",
@@ -80,7 +78,6 @@ function AlertIcons({
   if (states.needsNoShow)
     items.push({
       key: "noshow",
-      icon: "⚠️",
       color: "#C8102E",
       pulse: true,
       label: "Falta pendente",
@@ -116,13 +113,15 @@ function AlertIcons({
             width: size,
             height: size,
             borderRadius: 999,
-            fontSize: compact ? 8 : 9,
             lineHeight: 1,
             backgroundColor: `${it.color}33`,
             border: `1px solid ${it.color}`,
           }}
         >
-          {it.icon}
+          <WhatsappIcon
+            size={compact ? 8 : 9}
+            className="text-[#25D366]"
+          />
         </span>
       ))}
     </div>

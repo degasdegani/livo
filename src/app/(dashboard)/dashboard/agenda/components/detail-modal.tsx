@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Popover } from "@/components/ui/popover";
+import { WhatsappIcon } from "@/components/ui/whatsapp-icon";
 import {
   buildWhatsappUrl,
   confirmationMessage,
@@ -58,6 +59,9 @@ export function DetailModal({
   isPending: boolean;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Fluxo WhatsApp em 2 passos: guarda qual tipo já teve o WhatsApp aberto e
+  // aguarda o "Marcar como enviado" antes de gravar o timestamp.
+  const [awaitingSent, setAwaitingSent] = useState<WhatsappType | null>(null);
 
   const config = STATUS_CONFIG[appointment.status];
   const canManage = userRole !== "barber";
@@ -92,7 +96,8 @@ export function DetailModal({
 
   const phone = sanitizePhone(appointment.clientPhone);
 
-  function handleWhatsapp(type: WhatsappType) {
+  // 1º passo: abre o WhatsApp e coloca o botão em estado "aguardando confirmação".
+  function openWhatsapp(type: WhatsappType) {
     if (phone) {
       const data: WhatsappMessageData = {
         clientName: appointment.clientName,
@@ -118,7 +123,13 @@ export function DetailModal({
         "noopener,noreferrer",
       );
     }
+    setAwaitingSent(type);
+  }
+
+  // 2º passo: grava o timestamp só depois que o barbeiro confirmou o envio.
+  function markSent(type: WhatsappType) {
     onMarkWhatsapp(type);
+    setAwaitingSent(null);
   }
 
   const totalPrice =
@@ -194,39 +205,75 @@ export function DetailModal({
           className="space-y-2 mt-3 pt-3"
           style={{ borderTop: "1px solid var(--border)" }}
         >
-          {needsConfirmation && (
-            <button
-              type="button"
-              onClick={() => handleWhatsapp("confirmation")}
-              disabled={isPending}
-              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ border: "1px solid #3B82F6", color: "#3B82F6" }}
-            >
-              ✉️ Confirmar agendamento
-            </button>
-          )}
-          {needsReminder && (
-            <button
-              type="button"
-              onClick={() => handleWhatsapp("reminder")}
-              disabled={isPending}
-              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ border: "1px solid #D4A72C", color: "#D4A72C" }}
-            >
-              🔔 Enviar lembrete
-            </button>
-          )}
-          {needsNoShow && (
-            <button
-              type="button"
-              onClick={() => handleWhatsapp("noshow")}
-              disabled={isPending}
-              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ border: "1px solid #C8102E", color: "#C8102E" }}
-            >
-              ⚠️ Reportar falta
-            </button>
-          )}
+          {needsConfirmation &&
+            (awaitingSent === "confirmation" ? (
+              <button
+                type="button"
+                onClick={() => markSent("confirmation")}
+                disabled={isPending}
+                className="w-full rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#075E54" }}
+              >
+                Marcar como enviado
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openWhatsapp("confirmation")}
+                disabled={isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ border: "1px solid #25D366", color: "#25D366" }}
+              >
+                <WhatsappIcon size={16} className="text-[#25D366]" />
+                Confirmar agendamento
+              </button>
+            ))}
+          {needsReminder &&
+            (awaitingSent === "reminder" ? (
+              <button
+                type="button"
+                onClick={() => markSent("reminder")}
+                disabled={isPending}
+                className="w-full rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#075E54" }}
+              >
+                Marcar como enviado
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openWhatsapp("reminder")}
+                disabled={isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ border: "1px solid #25D366", color: "#25D366" }}
+              >
+                <WhatsappIcon size={16} className="text-[#25D366]" />
+                Enviar lembrete
+              </button>
+            ))}
+          {needsNoShow &&
+            (awaitingSent === "noshow" ? (
+              <button
+                type="button"
+                onClick={() => markSent("noshow")}
+                disabled={isPending}
+                className="w-full rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#075E54" }}
+              >
+                Marcar como enviado
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openWhatsapp("noshow")}
+                disabled={isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ border: "1px solid #25D366", color: "#25D366" }}
+              >
+                <WhatsappIcon size={16} className="text-[#25D366]" />
+                Reportar falta
+              </button>
+            ))}
         </div>
       )}
 
