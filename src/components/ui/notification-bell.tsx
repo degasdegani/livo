@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// useRef/useState abaixo controlam a posição fixa do dropdown para escapar do
-// stacking context do header (z-index).
+import { createPortal } from "react-dom";
+// O dropdown é renderizado via portal no document.body para escapar do stacking
+// context (transform/filter) criado por ancestrais como o header.
 import {
   type AlertItem,
   type AlertType,
@@ -135,9 +136,12 @@ export function NotificationBell({
 }) {
   const alerts = useAppointmentAlerts(appointments);
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bellRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   const handleOpen = () => {
     if (bellRef.current) {
@@ -150,26 +154,26 @@ export function NotificationBell({
     setOpen(true);
   };
 
+  // O dropdown sai do DOM do componente (portal), então o click-outside precisa
+  // checar tanto o botão do sino quanto o próprio dropdown.
   useEffect(() => {
     if (!open) return;
 
-    function onMouseDown(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (bellRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     }
 
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
   const count = alerts.length;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <button
         ref={bellRef}
         type="button"
@@ -205,19 +209,21 @@ export function NotificationBell({
         )}
       </button>
 
-      {open && (
-        <div
-          className="w-80 overflow-hidden rounded-xl shadow-xl"
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            right: dropdownPos.right,
-            zIndex: 99999,
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-          }}
-        >
+      {mounted && open
+        ? createPortal(
+            <div
+              ref={dropdownRef}
+              className="w-80 overflow-hidden rounded-xl shadow-xl"
+              style={{
+                position: "fixed",
+                top: dropdownPos.top,
+                right: dropdownPos.right,
+                zIndex: 99999,
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: "12px",
+              }}
+            >
           <div
             className="px-4 py-3"
             style={{ borderBottom: "1px solid var(--border)" }}
@@ -265,8 +271,10 @@ export function NotificationBell({
               ))
             )}
           </div>
-        </div>
-      )}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

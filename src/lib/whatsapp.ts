@@ -25,26 +25,42 @@ export function buildWhatsappUrl(phone: string, message: string): string {
 }
 
 export function confirmationMessage(d: WhatsappMessageData): string {
-  return (
-    `Olá ${d.clientName}! ✂️ Seu agendamento na ${d.barbershopName} está confirmado.\n\n` +
-    `📅 ${d.dateLabel} às ${d.timeLabel}\n` +
-    `💈 Profissional: ${d.professionalName}\n` +
-    `✨ Serviço: ${d.serviceName}\n\n` +
-    `Te esperamos!`
-  );
+  return [
+    `Olá, ${d.clientName}! 👋`,
+    ``,
+    `Seu agendamento na *${d.barbershopName}* está confirmado. ✅`,
+    ``,
+    `🗓️ *Data:* ${d.dateLabel}`,
+    `⏰ *Horário:* ${d.timeLabel}`,
+    `💈 *Profissional:* ${d.professionalName}`,
+    `✂️ *Serviço:* ${d.serviceName}`,
+    ``,
+    `Qualquer imprevisto, é só nos avisar por aqui. Te esperamos! 😊`,
+  ].join("\n");
 }
 
 export function reminderMessage(d: WhatsappMessageData): string {
-  return (
-    `Olá ${d.clientName}! 👋 Passando para lembrar do seu horário hoje às ${d.timeLabel} ` +
-    `na ${d.barbershopName}, com ${d.professionalName}.\n\n` +
-    `Te esperamos em breve! ✂️`
-  );
+  return [
+    `Olá, ${d.clientName}! 👋`,
+    ``,
+    `Passando para lembrar do seu horário hoje na *${d.barbershopName}*. 😉`,
+    ``,
+    `⏰ *Horário:* ${d.timeLabel}`,
+    `💈 *Profissional:* ${d.professionalName}`,
+    `✂️ *Serviço:* ${d.serviceName}`,
+    ``,
+    `Estamos te esperando! Caso não consiga vir, avise a gente por aqui. 🙏`,
+  ].join("\n");
 }
 
 export function noShowMessage(d: WhatsappMessageData): string {
-  return (
-    `Olá ${d.clientName}, sentimos sua falta hoje às ${d.timeLabel} na ${d.barbershopName}. 😕\n\n` +
-    `Quando quiser remarcar, é só chamar a gente por aqui!`
-  );
+  return [
+    `Olá, ${d.clientName}!`,
+    ``,
+    `Sentimos sua falta hoje na *${d.barbershopName}*. 💈`,
+    ``,
+    `Sabemos que imprevistos acontecem. 😊 Quando quiser, é só chamar por aqui que encontramos um novo horário pra você.`,
+    ``,
+    `Será um prazer te atender! ✂️`,
+  ].join("\n");
 }
