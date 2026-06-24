@@ -22,6 +22,19 @@ const MONTHS = [
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+// Cor do ponto indicador conforme o alerta WhatsApp pendente do agendamento.
+const ALERT_DOT_COLOR: Record<"confirmation" | "reminder" | "noshow", string> = {
+  confirmation: "#3B82F6",
+  reminder: "#D4A72C",
+  noshow: "#C8102E",
+};
+
+function alertDotColor(
+  alert: "confirmation" | "reminder" | "noshow" | null,
+): string {
+  return alert ? ALERT_DOT_COLOR[alert] : "var(--color-primary)";
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MonthViewProps {
@@ -298,8 +311,12 @@ export default function MonthView({
                     style={{ minHeight: 18 }}
                   >
                     <span
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: "var(--color-primary)" }}
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        appt.alert === "reminder" || appt.alert === "noshow"
+                          ? "animate-pulse"
+                          : ""
+                      }`}
+                      style={{ backgroundColor: alertDotColor(appt.alert) }}
                     />
                     <span
                       className="text-xs truncate"
@@ -407,8 +424,12 @@ export default function MonthView({
                 }}
               >
                 <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: "var(--color-primary)" }}
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    appt.alert === "reminder" || appt.alert === "noshow"
+                      ? "animate-pulse"
+                      : ""
+                  }`}
+                  style={{ backgroundColor: alertDotColor(appt.alert) }}
                 />
                 <span
                   className="text-xs tabular-nums flex-shrink-0"

@@ -10,6 +10,123 @@ export type DragData = {
   durationMin: number;
 };
 
+type AlertStates = {
+  needsConfirmation: boolean;
+  needsReminder: boolean;
+  needsNoShow: boolean;
+};
+
+// Calcula os alertas WhatsApp pendentes a partir do estado atual do agendamento.
+function computeAlertStates(
+  appointment: AgendaAppointment,
+  durationMin: number,
+): AlertStates {
+  const nowMs = Date.now();
+  const startMs = new Date(appointment.date).getTime();
+  const endMs = appointment.endTime
+    ? new Date(appointment.endTime).getTime()
+    : startMs + durationMin * 60_000;
+  const msUntilStart = startMs - nowMs;
+
+  return {
+    needsConfirmation:
+      appointment.status === "confirmed" && !appointment.notificationSentAt,
+    needsReminder:
+      appointment.status === "confirmed" &&
+      !appointment.reminderSentAt &&
+      msUntilStart > 0 &&
+      msUntilStart <= 3 * 60 * 60_000,
+    needsNoShow:
+      (appointment.status === "confirmed" ||
+        appointment.status === "pending") &&
+      !appointment.noShowReportedAt &&
+      nowMs > endMs,
+  };
+}
+
+// Ícones sobrepostos no canto superior direito do card.
+function AlertIcons({
+  states,
+  compact,
+}: {
+  states: AlertStates;
+  compact: boolean;
+}) {
+  const items: {
+    key: string;
+    icon: string;
+    color: string;
+    pulse: boolean;
+    label: string;
+  }[] = [];
+  if (states.needsConfirmation)
+    items.push({
+      key: "confirmation",
+      icon: "📩",
+      color: "#3B82F6",
+      pulse: false,
+      label: "Confirmação pendente",
+    });
+  if (states.needsReminder)
+    items.push({
+      key: "reminder",
+      icon: "🔔",
+      color: "#D4A72C",
+      pulse: true,
+      label: "Lembrete pendente",
+    });
+  if (states.needsNoShow)
+    items.push({
+      key: "noshow",
+      icon: "⚠️",
+      color: "#C8102E",
+      pulse: true,
+      label: "Falta pendente",
+    });
+
+  if (items.length === 0) return null;
+
+  // Em pills compactos, mostra apenas o alerta de maior prioridade (último = no-show).
+  const shown = compact ? items.slice(-1) : items;
+  const size = compact ? 13 : 15;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 2,
+        right: 3,
+        display: "flex",
+        gap: 2,
+        pointerEvents: "none",
+        zIndex: 3,
+      }}
+    >
+      {shown.map((it) => (
+        <span
+          key={it.key}
+          title={it.label}
+          className={it.pulse ? "animate-pulse" : undefined}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: size,
+            height: size,
+            borderRadius: 999,
+            fontSize: compact ? 8 : 9,
+            lineHeight: 1,
+            backgroundColor: `${it.color}33`,
+            border: `1px solid ${it.color}`,
+          }}
+        >
+          {it.icon}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function AppointmentCard({
   appointment,
   columnIndex,
@@ -58,6 +175,8 @@ export function AppointmentCard({
     appointment.services.length > 1
       ? `${appointment.services[0].serviceName} +${appointment.services.length - 1}`
       : appointment.serviceName;
+
+  const alertStates = computeAlertStates(appointment, durationMin);
 
   // Compact pill for very short slots
   if (heightPx < 36) {
@@ -108,6 +227,19 @@ export function AppointmentCard({
         >
           {isoToTimeBRT(appointment.date)} · {appointment.clientName}
         </span>
+        {alertStates.needsNoShow && (
+          <div
+            className="animate-pulse"
+            style={{
+              position: "absolute",
+              inset: 0,
+              border: "2px solid #C8102E",
+              pointerEvents: "none",
+              zIndex: 2,
+            }}
+          />
+        )}
+        <AlertIcons states={alertStates} compact />
       </div>
     );
   }
@@ -178,6 +310,20 @@ export function AppointmentCard({
           </p>
         )}
       </div>
+      {alertStates.needsNoShow && (
+        <div
+          className="animate-pulse"
+          style={{
+            position: "absolute",
+            inset: 0,
+            border: "2px solid #C8102E",
+            borderRadius: "0 8px 8px 0",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        />
+      )}
+      <AlertIcons states={alertStates} compact={false} />
     </div>
   );
 }

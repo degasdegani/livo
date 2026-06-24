@@ -25,7 +25,9 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LiviaBubble } from "@/components/livia-bubble";
+import { NotificationBell } from "@/components/ui/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
+import type { AppointmentAlert } from "@/hooks/use-appointment-alerts";
 
 type MemberRole = "owner" | "reception" | "barber";
 
@@ -296,11 +298,13 @@ export function DashboardLayoutClient({
   role,
   barbershopId,
   barbershopName,
+  alerts,
 }: {
   children: React.ReactNode;
   role: MemberRole;
   barbershopId: string;
   barbershopName: string;
+  alerts: AppointmentAlert[];
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -411,15 +415,34 @@ export function DashboardLayoutClient({
             height={32}
             priority
           />
-          <button
-            type="button"
-            onClick={toggle}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: "var(--text-secondary)" }}
-            aria-label="Alternar tema"
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell
+              appointments={alerts}
+              barbershopName={barbershopName}
+            />
+            <button
+              type="button"
+              onClick={toggle}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--text-secondary)" }}
+              aria-label="Alternar tema"
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
+        </header>
+
+        <header
+          className="hidden lg:flex items-center justify-end px-6 py-3 sticky top-0 z-30"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            backgroundColor: "var(--bg-base)",
+          }}
+        >
+          <NotificationBell
+            appointments={alerts}
+            barbershopName={barbershopName}
+          />
         </header>
 
         <main className="flex-1">{children}</main>

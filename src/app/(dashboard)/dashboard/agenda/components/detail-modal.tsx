@@ -2,8 +2,18 @@
 
 import { useState } from "react";
 import { Popover } from "@/components/ui/popover";
+import {
+  buildWhatsappUrl,
+  confirmationMessage,
+  noShowMessage,
+  reminderMessage,
+  sanitizePhone,
+  type WhatsappMessageData,
+} from "@/lib/whatsapp";
 import type { AgendaAppointment } from "../agenda-actions";
 import { STATUS_CONFIG, formatCurrency, isoToTimeBRT } from "./shared";
+
+type WhatsappType = "confirmation" | "reminder" | "noshow";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -19,24 +29,30 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function DetailModal({
   appointment,
   userRole,
+  barbershopName,
+  professionalName,
   anchorX,
   anchorY,
   onClose,
   onEdit,
   onMove,
   onStatusChange,
+  onMarkWhatsapp,
   onAbrirComanda,
   onDelete,
   isPending,
 }: {
   appointment: AgendaAppointment;
   userRole: string;
+  barbershopName: string;
+  professionalName: string;
   anchorX: number;
   anchorY: number;
   onClose: () => void;
   onEdit: () => void;
   onMove: () => void;
   onStatusChange: (status: "confirmed" | "completed" | "cancelled" | "no_show") => void;
+  onMarkWhatsapp: (type: WhatsappType) => void;
   onAbrirComanda: () => void;
   onDelete: () => void;
   isPending: boolean;
@@ -48,6 +64,58 @@ export function DetailModal({
   const isEditable =
     appointment.status === "pending" || appointment.status === "confirmed";
   const canDelete = isEditable && !appointment.comandaId;
+
+  // ── Alertas WhatsApp pendentes (mesma lógica do card) ───────────────────────
+  const nowMs = Date.now();
+  const startMs = new Date(appointment.date).getTime();
+  const endMs = appointment.endTime
+    ? new Date(appointment.endTime).getTime()
+    : startMs + appointment.serviceDurationMin * 60_000;
+  const msUntilStart = startMs - nowMs;
+
+  const needsConfirmation =
+    appointment.status === "confirmed" && !appointment.notificationSentAt;
+  const needsReminder =
+    appointment.status === "confirmed" &&
+    !appointment.reminderSentAt &&
+    msUntilStart > 0 &&
+    msUntilStart <= 3 * 60 * 60_000;
+  const needsNoShow =
+    (appointment.status === "confirmed" || appointment.status === "pending") &&
+    !appointment.noShowReportedAt &&
+    nowMs > endMs;
+  const hasWhatsappAction = needsConfirmation || needsReminder || needsNoShow;
+
+  const phone = sanitizePhone(appointment.clientPhone);
+
+  function handleWhatsapp(type: WhatsappType) {
+    if (phone) {
+      const data: WhatsappMessageData = {
+        clientName: appointment.clientName,
+        barbershopName,
+        professionalName,
+        serviceName: appointment.serviceName,
+        dateLabel: new Date(appointment.date).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          timeZone: "America/Sao_Paulo",
+        }),
+        timeLabel: isoToTimeBRT(appointment.date),
+      };
+      const message =
+        type === "confirmation"
+          ? confirmationMessage(data)
+          : type === "reminder"
+            ? reminderMessage(data)
+            : noShowMessage(data);
+      window.open(
+        buildWhatsappUrl(phone, message),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+    onMarkWhatsapp(type);
+  }
 
   const totalPrice =
     appointment.services.length > 0
@@ -116,6 +184,47 @@ export function DetailModal({
         )}
         {appointment.notes && <InfoRow label="Obs." value={appointment.notes} />}
       </div>
+
+      {canManage && hasWhatsappAction && (
+        <div
+          className="space-y-2 mt-3 pt-3"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          {needsConfirmation && (
+            <button
+              type="button"
+              onClick={() => handleWhatsapp("confirmation")}
+              disabled={isPending}
+              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ border: "1px solid #3B82F6", color: "#3B82F6" }}
+            >
+              ✉️ Confirmar agendamento
+            </button>
+          )}
+          {needsReminder && (
+            <button
+              type="button"
+              onClick={() => handleWhatsapp("reminder")}
+              disabled={isPending}
+              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ border: "1px solid #D4A72C", color: "#D4A72C" }}
+            >
+              🔔 Enviar lembrete
+            </button>
+          )}
+          {needsNoShow && (
+            <button
+              type="button"
+              onClick={() => handleWhatsapp("noshow")}
+              disabled={isPending}
+              className="w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ border: "1px solid #C8102E", color: "#C8102E" }}
+            >
+              ⚠️ Reportar falta
+            </button>
+          )}
+        </div>
+      )}
 
       {canManage && isEditable && (
         <div className="space-y-2 mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>

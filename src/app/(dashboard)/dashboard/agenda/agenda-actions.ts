@@ -1,6 +1,7 @@
 "use server";
 
 import type { AppointmentStatus } from "@prisma/client";
+import type { AppointmentAlert } from "@/hooks/use-appointment-alerts";
 import { revalidatePath } from "next/cache";
 import {
   createAppointmentCore,
@@ -42,6 +43,10 @@ export type AgendaAppointment = {
   clientPhone: string | null;
   notes: string | null;
   professionalId: string;
+  // WhatsApp — timestamps de notificação (ISO ou null)
+  notificationSentAt: string | null;
+  reminderSentAt: string | null;
+  noShowReportedAt: string | null;
   // Campos legado (primeiro serviço) — mantidos para compatibilidade com UI ainda não migrada
   serviceId: string;
   serviceName: string;
@@ -61,6 +66,7 @@ export type AgendaDayData = {
   professionals: AgendaProfessional[];
   appointments: AgendaAppointment[];
   timeBlocks: AgendaTimeBlock[];
+  barbershopName: string;
   userRole: string;
   userProfessionalId: string | null;
   // Null when barbershop has no BusinessHour row for this weekday — caller falls back to defaults.
@@ -87,7 +93,8 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
   const [y, mo, d] = dateStr.split("-").map(Number);
   const dayOfWeek = new Date(Date.UTC(y, mo - 1, d)).getDay();
 
-  const [professionals, appointments, timeBlockRows, businessHourRow] = await Promise.all([
+  const [professionals, appointments, timeBlockRows, businessHourRow, barbershop] =
+    await Promise.all([
     db.professional.findMany({
       where: { barbershopId: membership.barbershopId, isActive: true },
       orderBy: { name: "asc" },
@@ -124,9 +131,14 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       where: { barbershopId: membership.barbershopId, dayOfWeek },
       select: { openTime: true, closeTime: true, isOpen: true },
     }),
+    db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      select: { name: true },
+    }),
   ]);
 
   return {
+    barbershopName: barbershop?.name ?? "",
     professionals: professionals.map((p) => ({
       id: p.id,
       name: p.name,
@@ -143,6 +155,9 @@ export async function getAgendaDay(dateStr: string): Promise<AgendaDayData> {
       clientPhone: a.clientPhone,
       notes: a.notes,
       professionalId: a.professionalId,
+      notificationSentAt: a.notificationSentAt?.toISOString() ?? null,
+      reminderSentAt: a.reminderSentAt?.toISOString() ?? null,
+      noShowReportedAt: a.noShowReportedAt?.toISOString() ?? null,
       serviceId: a.serviceId,
       serviceName: a.service.name,
       serviceDurationMin: a.service.durationMin,
@@ -346,6 +361,7 @@ export type AgendaWeekData = {
   appointmentsByDay: Record<string, AgendaAppointment[]>;
   /** dateKey → time blocks for that day. */
   timeBlocksByDay: Record<string, AgendaTimeBlock[]>;
+  barbershopName: string;
   userRole: string;
   userProfessionalId: string | null;
   /** dayOfWeek (0=Dom … 6=Sab) → BusinessHour, para grades de abertura por dia. */
@@ -371,7 +387,8 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
   const rangeStart = new Date(`${weekDates[0]}T00:00:00-03:00`);
   const rangeEnd   = new Date(`${weekDates[6]}T23:59:59.999-03:00`);
 
-  const [professionals, appointments, timeBlockRows, businessHourRows] = await Promise.all([
+  const [professionals, appointments, timeBlockRows, businessHourRows, barbershop] =
+    await Promise.all([
     db.professional.findMany({
       where: { barbershopId: membership.barbershopId, isActive: true },
       orderBy: { name: "asc" },
@@ -406,6 +423,10 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
       where: { barbershopId: membership.barbershopId },
       select: { dayOfWeek: true, openTime: true, closeTime: true, isOpen: true },
     }),
+    db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      select: { name: true },
+    }),
   ]);
 
   // Group appointments by BRT dateKey.
@@ -427,6 +448,9 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
         clientPhone: a.clientPhone,
         notes: a.notes,
         professionalId: a.professionalId,
+        notificationSentAt: a.notificationSentAt?.toISOString() ?? null,
+        reminderSentAt: a.reminderSentAt?.toISOString() ?? null,
+        noShowReportedAt: a.noShowReportedAt?.toISOString() ?? null,
         serviceId: a.serviceId,
         serviceName: a.service.name,
         serviceDurationMin: a.service.durationMin,
@@ -472,6 +496,7 @@ export async function getAgendaWeek(weekStartDate: string): Promise<AgendaWeekDa
     professionals: professionals.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
     appointmentsByDay,
     timeBlocksByDay,
+    barbershopName: barbershop?.name ?? "",
     userRole: membership.role,
     userProfessionalId: membership.professionalId,
     businessHours,
@@ -485,6 +510,9 @@ export type AgendaMonthSummaryItem = {
   id: string;
   time: string;        // "HH:MM" BRT
   clientName: string;
+  // Alerta WhatsApp pendente de maior urgência (no-show > lembrete > confirmação),
+  // derivado de notificationSentAt/reminderSentAt/noShowReportedAt. null = sem alerta.
+  alert: "confirmation" | "reminder" | "noshow" | null;
 };
 
 export type AgendaMonthSummary = {
@@ -512,9 +540,45 @@ export async function getAgendaMonthSummary(
       date: { gte: rangeStart, lte: rangeEnd },
       status: { notIn: ["cancelled", "no_show"] },
     },
-    select: { id: true, date: true, clientName: true },
+    select: {
+      id: true,
+      date: true,
+      clientName: true,
+      status: true,
+      endTime: true,
+      notificationSentAt: true,
+      reminderSentAt: true,
+      noShowReportedAt: true,
+      service: { select: { durationMin: true } },
+    },
     orderBy: { date: "asc" },
   });
+
+  // Alerta prioritário por agendamento (mesma lógica do card/hook).
+  const nowMs = Date.now();
+  function computeAlert(row: (typeof rows)[number]): AgendaMonthSummaryItem["alert"] {
+    const startMs = row.date.getTime();
+    const endMs = row.endTime
+      ? row.endTime.getTime()
+      : startMs + row.service.durationMin * 60_000;
+    const msUntilStart = startMs - nowMs;
+
+    if (
+      (row.status === "confirmed" || row.status === "pending") &&
+      !row.noShowReportedAt &&
+      nowMs > endMs
+    )
+      return "noshow";
+    if (
+      row.status === "confirmed" &&
+      !row.reminderSentAt &&
+      msUntilStart > 0 &&
+      msUntilStart <= 3 * 60 * 60_000
+    )
+      return "reminder";
+    if (row.status === "confirmed" && !row.notificationSentAt) return "confirmation";
+    return null;
+  }
 
   const daysSummary: Record<string, { count: number; appointments: AgendaMonthSummaryItem[] }> = {};
   for (const row of rows) {
@@ -528,6 +592,7 @@ export async function getAgendaMonthSummary(
         id: row.id,
         time: _isoToTimeBRT(row.date.toISOString()),
         clientName: row.clientName,
+        alert: computeAlert(row),
       });
     }
   }
@@ -784,4 +849,102 @@ export async function searchClientsForAgenda(
     take: 8,
     orderBy: { name: "asc" },
   });
+}
+
+// ─── Alertas WhatsApp — agendamentos de hoje (status confirmed) ──────────────
+// Retorna os agendamentos confirmados de hoje (fuso America/Sao_Paulo) com os
+// timestamps de notificação, para o NotificationBell calcular os alertas ativos.
+// O campo `type` é apenas um placeholder exigido pelo tipo — o tipo real do
+// alerta é derivado pelo hook useAppointmentAlerts.
+export async function getTodayAppointmentsForAlerts(): Promise<
+  AppointmentAlert[]
+> {
+  const membership = await requireMembership();
+
+  // Limites do dia de hoje no fuso de Brasília (en-CA => "YYYY-MM-DD").
+  const brtDateStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+  const start = new Date(`${brtDateStr}T00:00:00-03:00`);
+  const end = new Date(`${brtDateStr}T23:59:59.999-03:00`);
+
+  const rows = await db.appointment.findMany({
+    where: {
+      ...appointmentScope(membership),
+      date: { gte: start, lte: end },
+      status: "confirmed",
+    },
+    include: {
+      professional: { select: { name: true } },
+      service: { select: { name: true, durationMin: true } },
+    },
+    orderBy: { date: "asc" },
+  });
+
+  return rows.map((a) => ({
+    id: a.id,
+    type: "confirmation",
+    clientName: a.clientName,
+    clientPhone: a.clientPhone,
+    professionalName: a.professional.name,
+    serviceName: a.service.name,
+    startTime: a.date,
+    durationMinutes: a.endTime
+      ? Math.max(
+          0,
+          Math.round((a.endTime.getTime() - a.date.getTime()) / 60_000),
+        )
+      : a.service.durationMin,
+    notificationSentAt: a.notificationSentAt,
+    reminderSentAt: a.reminderSentAt,
+    noShowReportedAt: a.noShowReportedAt,
+  }));
+}
+
+// ─── Marcar notificação WhatsApp enviada ─────────────────────────────────────
+// Grava o timestamp correspondente ao tipo. Para "noshow", também muda o status
+// do agendamento para no_show. Ownership garantido por appointmentScope.
+export async function markWhatsappSent(
+  appointmentId: string,
+  type: "confirmation" | "reminder" | "noshow",
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const membership = await requireMembership();
+
+    await db.$transaction(async (tx) => {
+      const appt = await tx.appointment.findFirst({
+        where: { id: appointmentId, ...appointmentScope(membership) },
+        select: { id: true },
+      });
+      if (!appt) throw new Error("not_found");
+
+      const now = new Date();
+
+      if (type === "confirmation") {
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { notificationSentAt: now },
+        });
+      } else if (type === "reminder") {
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { reminderSentAt: now },
+        });
+      } else {
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { noShowReportedAt: now, status: "no_show" },
+        });
+      }
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/agenda");
+    return { success: true };
+  } catch (e) {
+    if (e instanceof Error && e.message === "not_found") {
+      return { success: false, error: "Agendamento não encontrado." };
+    }
+    return { success: false, error: "Erro ao registrar notificação." };
+  }
 }

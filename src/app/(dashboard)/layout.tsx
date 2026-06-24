@@ -2,6 +2,7 @@
 import { headers } from "next/headers";
 import { checkBillingAccess, requireMembership } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 
 // Rotas que não devem ser bloqueadas pelo billing check
@@ -23,16 +24,20 @@ export default async function DashboardLayout({
     await checkBillingAccess(membership.barbershopId);
   }
 
-  const barbershop = await db.barbershop.findUnique({
-    where: { id: membership.barbershopId },
-    select: { name: true },
-  });
+  const [barbershop, alerts] = await Promise.all([
+    db.barbershop.findUnique({
+      where: { id: membership.barbershopId },
+      select: { name: true },
+    }),
+    getTodayAppointmentsForAlerts(),
+  ]);
 
   return (
     <DashboardLayoutClient
       role={membership.role}
       barbershopId={membership.barbershopId}
       barbershopName={barbershop?.name ?? ""}
+      alerts={alerts}
     >
       {children}
     </DashboardLayoutClient>

@@ -196,6 +196,11 @@ model Appointment {
   comanda        Comanda?
   services       AppointmentService[]
 
+  // WhatsApp — timestamps de notificação
+  notificationSentAt  DateTime?
+  reminderSentAt      DateTime?
+  noShowReportedAt    DateTime?
+
   @@index([barbershopId])
   @@index([barbershopId, date])
   @@index([professionalId, date, endTime])

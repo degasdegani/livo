@@ -28,6 +28,7 @@ import {
   deleteAppointment,
   deleteTimeBlock,
   getAgendaWeek,
+  markWhatsappSent,
   moveAppointment,
   rescheduleAppointment,
   updateAppointment,
@@ -501,6 +502,25 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
     });
   }
 
+  function handleMarkWhatsapp(
+    appointment: AgendaAppointment,
+    type: "confirmation" | "reminder" | "noshow",
+  ) {
+    startTransition(async () => {
+      const res = await markWhatsappSent(appointment.id, type);
+      if (res.success) {
+        showToast(
+          type === "noshow" ? "Falta registrada." : "Notificação registrada.",
+          "success",
+        );
+        setModal({ type: "none" });
+        await refreshWeek(weekStart);
+      } else {
+        showToast(res.error ?? "Erro ao registrar notificação.", "error");
+      }
+    });
+  }
+
   function handleMove(appointment: AgendaAppointment, newProfId: string) {
     startTransition(async () => {
       const res = await moveAppointment(appointment.id, newProfId);
@@ -788,6 +808,12 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
           <DetailModal
             appointment={modal.appointment}
             userRole={data.userRole}
+            barbershopName={data.barbershopName}
+            professionalName={
+              data.professionals.find(
+                (p) => p.id === modal.appointment.professionalId,
+              )?.name ?? ""
+            }
             anchorX={modal.anchorX}
             anchorY={modal.anchorY}
             isPending={isPending}
@@ -795,6 +821,7 @@ export default function WeekView({ initialData, initialWeekStart, services }: We
             onEdit={() => setModal({ type: "edit", appointment: modal.appointment })}
             onMove={() => setModal({ type: "move", appointment: modal.appointment })}
             onStatusChange={(status) => handleStatusChange(modal.appointment, status)}
+            onMarkWhatsapp={(type) => handleMarkWhatsapp(modal.appointment, type)}
             onAbrirComanda={() => handleAbrirComanda(modal.appointment)}
             onDelete={() => handleDelete(modal.appointment)}
           />
