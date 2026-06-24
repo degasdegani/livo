@@ -1,11 +1,7 @@
 // src/lib/whatsapp.ts
 // Helpers para montar links wa.me e mensagens de WhatsApp do LIVO.
 // Funções puras — sem "use server", sem dependências externas.
-//
-// IMPORTANTE: os emojis são escritos como escapes Unicode (\u{...}) DE PROPÓSITO.
-// Isso mantém os emojis como ASCII no arquivo e impede a corrupção de encoding
-// (os "") que ocorre ao gravar caracteres de 4 bytes em ambiente Windows.
-// O JavaScript reconstrói o emoji correto em runtime.
+// Mensagens somente texto (sem emojis) para evitar corrupção de encoding.
 
 export type WhatsappMessageData = {
   clientName: string;
@@ -15,19 +11,6 @@ export type WhatsappMessageData = {
   dateLabel: string;
   timeLabel: string;
 };
-
-// Emojis como code points: ASCII no arquivo, emoji real em runtime.
-const EMOJI = {
-  wave: "\u{1F44B}",
-  check: "\u{2705}",
-  calendar: "\u{1F4C5}",
-  clock: "\u{23F0}",
-  barber: "\u{1F488}",
-  scissors: "\u{2702}\u{FE0F}",
-  smile: "\u{1F60A}",
-  wink: "\u{1F609}",
-  pray: "\u{1F64F}",
-} as const;
 
 export function sanitizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -44,30 +27,30 @@ export function buildWhatsappUrl(phone: string, message: string): string {
 
 export function confirmationMessage(d: WhatsappMessageData): string {
   return [
-    `Olá, ${d.clientName}! ${EMOJI.wave}`,
+    `Olá, ${d.clientName}!`,
     ``,
-    `Seu agendamento na *${d.barbershopName}* está confirmado. ${EMOJI.check}`,
+    `Seu agendamento na *${d.barbershopName}* está confirmado.`,
     ``,
-    `${EMOJI.calendar} *Data:* ${d.dateLabel}`,
-    `${EMOJI.clock} *Horário:* ${d.timeLabel}`,
-    `${EMOJI.barber} *Profissional:* ${d.professionalName}`,
-    `${EMOJI.scissors} *Serviço:* ${d.serviceName}`,
+    `*Data:* ${d.dateLabel}`,
+    `*Horário:* ${d.timeLabel}`,
+    `*Profissional:* ${d.professionalName}`,
+    `*Serviço:* ${d.serviceName}`,
     ``,
-    `Qualquer imprevisto, é só nos avisar por aqui. Te esperamos! ${EMOJI.smile}`,
+    `Qualquer imprevisto, é só nos avisar por aqui. Te esperamos!`,
   ].join("\n");
 }
 
 export function reminderMessage(d: WhatsappMessageData): string {
   return [
-    `Olá, ${d.clientName}! ${EMOJI.wave}`,
+    `Olá, ${d.clientName}!`,
     ``,
-    `Passando para lembrar do seu horário hoje na *${d.barbershopName}*. ${EMOJI.wink}`,
+    `Passando para lembrar do seu horário hoje na *${d.barbershopName}*.`,
     ``,
-    `${EMOJI.clock} *Horário:* ${d.timeLabel}`,
-    `${EMOJI.barber} *Profissional:* ${d.professionalName}`,
-    `${EMOJI.scissors} *Serviço:* ${d.serviceName}`,
+    `*Horário:* ${d.timeLabel}`,
+    `*Profissional:* ${d.professionalName}`,
+    `*Serviço:* ${d.serviceName}`,
     ``,
-    `Estamos te esperando! Caso não consiga vir, avise a gente por aqui. ${EMOJI.pray}`,
+    `Estamos te esperando! Caso não consiga vir, é só avisar a gente por aqui.`,
   ].join("\n");
 }
 
@@ -75,10 +58,10 @@ export function noShowMessage(d: WhatsappMessageData): string {
   return [
     `Olá, ${d.clientName}!`,
     ``,
-    `Sentimos sua falta hoje na *${d.barbershopName}*. ${EMOJI.barber}`,
+    `Sentimos sua falta hoje na *${d.barbershopName}*.`,
     ``,
-    `Sabemos que imprevistos acontecem. ${EMOJI.smile} Quando quiser, é só chamar por aqui que encontramos um novo horário pra você.`,
+    `Sabemos que imprevistos acontecem. Quando quiser, é só chamar por aqui que encontramos um novo horário pra você.`,
     ``,
-    `Será um prazer te atender! ${EMOJI.scissors}`,
+    `Será um prazer te atender!`,
   ].join("\n");
 }
