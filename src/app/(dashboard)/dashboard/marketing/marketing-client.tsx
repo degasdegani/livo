@@ -529,7 +529,7 @@ export function MarketingClient({
                   const isUltimo = idx === aniversariantes.length - 1;
                   const anoNascimento = new Date(
                     cliente.birthDate,
-                  ).getFullYear();
+                  ).getUTCFullYear();
                   const idadeCompleta = hoje.getFullYear() - anoNascimento;
                   const mensagem = `Feliz aniversário, ${cliente.name}! 🎉🎂 A equipe da ${nomeBarberaria} deseja um dia incrível pra você! Que tal comemorar com um corte especial? 💈`;
                   const link = gerarLinkWhatsApp(cliente.phone, mensagem);

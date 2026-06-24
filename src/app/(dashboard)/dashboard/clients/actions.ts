@@ -3,6 +3,7 @@
 
 import type { ClientOrigem } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { dateOnlyToUTC } from "@/lib/date-only";
 import { db } from "@/lib/db";
 import { clientScope, requireMembership } from "@/lib/permissions";
 
@@ -162,7 +163,7 @@ export async function createClient(data: {
       phone,
       email: data.email?.trim() || null,
       cpf: data.cpf?.replace(/\D/g, "") || null,
-      birthDate: data.birthDate ? new Date(data.birthDate) : null,
+      birthDate: dateOnlyToUTC(data.birthDate),
       origem: data.origem ? (data.origem as ClientOrigem) : null,
       notes: data.notes?.trim() || null,
       bloqueado: false,
@@ -219,7 +220,7 @@ export async function updateClient(
       phone,
       email: data.email?.trim() || null,
       cpf: data.cpf?.replace(/\D/g, "") || null,
-      birthDate: data.birthDate ? new Date(data.birthDate) : null,
+      birthDate: dateOnlyToUTC(data.birthDate),
       street: data.street?.trim() || null,
       neighborhood: data.neighborhood?.trim() || null,
       cep: data.cep?.replace(/\D/g, "") || null,

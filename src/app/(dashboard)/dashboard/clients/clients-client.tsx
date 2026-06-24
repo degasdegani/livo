@@ -7,6 +7,7 @@ import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { dateOnlyToInputValue, formatDateOnly } from "@/lib/date-only";
 import { maskCPF, maskPhone } from "@/lib/masks";
 import {
   Table,
@@ -209,9 +210,7 @@ export function ClientsClient({
       phone: maskPhone(client.phone),
       email: client.email ?? "",
       cpf: client.cpf ?? "",
-      birthDate: client.birthDate
-        ? new Date(client.birthDate).toISOString().slice(0, 10)
-        : "",
+      birthDate: dateOnlyToInputValue(client.birthDate),
       street: client.street ?? "",
       neighborhood: client.neighborhood ?? "",
       cep: client.cep ?? "",
@@ -948,9 +947,7 @@ export function ClientsClient({
                                   style={{ color: "var(--color-gold)" }}
                                 >
                                   <Cake size={14} className="inline mr-1" style={{ color: "var(--text-tertiary)" }} />
-                                  {new Date(
-                                    client.birthDate,
-                                  ).toLocaleDateString("pt-BR", {
+                                  {formatDateOnly(client.birthDate, {
                                     day: "2-digit",
                                     month: "long",
                                   })}
@@ -1158,7 +1155,7 @@ export function ClientsClient({
                       Nascimento
                     </p>
                     <p style={{ color: "var(--text-primary)" }}>
-                      {formatDate(selectedClient.birthDate)} <Cake size={14} className="inline ml-1" style={{ color: "var(--color-primary)" }} />
+                      {formatDateOnly(selectedClient.birthDate)} <Cake size={14} className="inline ml-1" style={{ color: "var(--color-primary)" }} />
                     </p>
                   </div>
                 )}
