@@ -356,6 +356,21 @@ button {
   cursor: not-allowed;
 }
 
+.date-picker-col {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a33 transparent;
+}
+.date-picker-col::-webkit-scrollbar {
+  width: 6px;
+}
+.date-picker-col::-webkit-scrollbar-track {
+  background: transparent;
+}
+.date-picker-col::-webkit-scrollbar-thumb {
+  background-color: #2a2a33;
+  border-radius: 3px;
+}
+
 .settings-acessos-link {
   border: 1px solid var(--border);
 }

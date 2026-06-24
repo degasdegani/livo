@@ -7,6 +7,7 @@ import { useCallback, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { dateOnlyToInputValue, formatDateOnly } from "@/lib/date-only";
 import { maskCPF, maskPhone } from "@/lib/masks";
 import {
@@ -343,15 +344,26 @@ export function ClientsClient({
             }
           />
 
-          <Input
-            id="create-birthdate"
-            label="Data de nascimento"
-            type="date"
-            value={form.birthDate}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, birthDate: e.target.value }))
-            }
-          />
+          <div>
+            <label
+              htmlFor="create-birthdate"
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
+              }}
+            >
+              Data de nascimento
+            </label>
+            <DatePicker
+              value={dateOnlyToInputValue(form.birthDate)}
+              onChange={(v) => setForm((f) => ({ ...f, birthDate: v }))}
+            />
+          </div>
 
           <div className="col-span-2">
             <label
@@ -489,15 +501,26 @@ export function ClientsClient({
             }
           />
 
-          <Input
-            id="edit-birthdate"
-            label="Data de nascimento"
-            type="date"
-            value={editForm.birthDate}
-            onChange={(e) =>
-              setEditForm((f) => ({ ...f, birthDate: e.target.value }))
-            }
-          />
+          <div>
+            <label
+              htmlFor="edit-birthdate"
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 6,
+              }}
+            >
+              Data de nascimento
+            </label>
+            <DatePicker
+              value={dateOnlyToInputValue(editForm.birthDate)}
+              onChange={(v) => setEditForm((f) => ({ ...f, birthDate: v }))}
+            />
+          </div>
 
           <div className="col-span-2">
             <label
