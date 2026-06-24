@@ -73,8 +73,12 @@ export function DetailModal({
     : startMs + appointment.serviceDurationMin * 60_000;
   const msUntilStart = startMs - nowMs;
 
+  // Confirmação não é bloqueada por status: o objetivo é notificar o cliente
+  // independente do agendamento estar pending ou confirmed, desde que ainda não
+  // tenha sido notificado (notificationSentAt nulo).
   const needsConfirmation =
-    appointment.status === "confirmed" && !appointment.notificationSentAt;
+    (appointment.status === "pending" || appointment.status === "confirmed") &&
+    !appointment.notificationSentAt;
   const needsReminder =
     appointment.status === "confirmed" &&
     !appointment.reminderSentAt &&

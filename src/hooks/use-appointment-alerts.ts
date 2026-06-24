@@ -58,7 +58,10 @@ export function useAppointmentAlerts(
         timeLabel,
       };
 
-      // Fluxo 1 — confirmação: status confirmed + sem notificationSentAt
+      // Fluxo 1 — confirmação: qualquer agendamento ativo sem notificationSentAt.
+      // Não há gate por status aqui — a query (getTodayAppointmentsForAlerts) já
+      // entrega apenas agendamentos ativos (pending + confirmed), então basta
+      // verificar se a notificação ainda não foi enviada.
       if (!apt.notificationSentAt) {
         alerts.push({ ...base, type: "confirmation" });
         continue;

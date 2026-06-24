@@ -30,7 +30,9 @@ function computeAlertStates(
 
   return {
     needsConfirmation:
-      appointment.status === "confirmed" && !appointment.notificationSentAt,
+      (appointment.status === "confirmed" ||
+        appointment.status === "pending") &&
+      !appointment.notificationSentAt,
     needsReminder:
       appointment.status === "confirmed" &&
       !appointment.reminderSentAt &&

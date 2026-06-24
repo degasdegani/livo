@@ -576,7 +576,11 @@ export async function getAgendaMonthSummary(
       msUntilStart <= 3 * 60 * 60_000
     )
       return "reminder";
-    if (row.status === "confirmed" && !row.notificationSentAt) return "confirmation";
+    if (
+      (row.status === "confirmed" || row.status === "pending") &&
+      !row.notificationSentAt
+    )
+      return "confirmation";
     return null;
   }
 
@@ -851,9 +855,11 @@ export async function searchClientsForAgenda(
   });
 }
 
-// ─── Alertas WhatsApp — agendamentos de hoje (status confirmed) ──────────────
-// Retorna os agendamentos confirmados de hoje (fuso America/Sao_Paulo) com os
+// ─── Alertas WhatsApp — agendamentos de hoje (status pending + confirmed) ────
+// Retorna os agendamentos ativos de hoje (fuso America/Sao_Paulo) com os
 // timestamps de notificação, para o NotificationBell calcular os alertas ativos.
+// Inclui pending além de confirmed para que agendamentos recém-criados (que
+// nascem pending) também apareçam no sino. Status cancelled/no_show ficam de fora.
 // O campo `type` é apenas um placeholder exigido pelo tipo — o tipo real do
 // alerta é derivado pelo hook useAppointmentAlerts.
 export async function getTodayAppointmentsForAlerts(): Promise<
@@ -872,7 +878,7 @@ export async function getTodayAppointmentsForAlerts(): Promise<
     where: {
       ...appointmentScope(membership),
       date: { gte: start, lte: end },
-      status: "confirmed",
+      status: { in: ["pending", "confirmed"] },
     },
     include: {
       professional: { select: { name: true } },
