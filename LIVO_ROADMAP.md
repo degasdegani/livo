@@ -128,3 +128,20 @@ Multi-vertical.
 [ ] LIVO Fit
 
 [ ] Marketplace
+
+---
+
+## SPRINT 23/06/2026 — CORREÇÕES + FEATURES
+
+### Concluído
+
+[x] fix: birthDate UTC shift (-1 dia) — date-only.ts
+[x] feat: DatePicker custom (Dia/Mês/Ano)
+[x] fix: badge e resumo de comissões específicas por item
+
+### Em implementação (ordem definida)
+
+[ ] WhatsApp Alerts — 3 fluxos (confirmação, lembrete 3h, no-show)
+[ ] Ranking TV em tempo real — /tv/[token], BarbershopGoal, ProfessionalGoal
+[ ] Pacotes/Combos — Package, PackageItem
+[ ] Planos de Assinatura — modelo Link Externo v1, ClientPlan, ClientSubscription

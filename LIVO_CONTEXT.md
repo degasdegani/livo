@@ -1,5 +1,20 @@
 ## CHANGELOG RECENTE
 
+### 23/06/2026 — CORREÇÕES E NOVAS FUNCIONALIDADES
+
+**Correções entregues:**
+
+- **fix:** bug de fuso horário no campo `birthDate` de clientes — data voltava -1 dia ao salvar (UTC-3 shift). Criado utilitário `src/lib/date-only.ts` com `dateOnlyToUTC`, `dateOnlyToInputValue`, `formatDateOnly`. Aplicado em `clients/actions.ts`, `clients-client.tsx` e `marketing-client.tsx` (getUTCFullYear). Sem migration.
+- **feat:** seletor de data de nascimento custom substituindo o `<input type="date">` nativo. Componente `src/components/ui/date-picker.tsx` com 3 colunas (Dia/Mês/Ano), dark theme LIVO, sem dependências externas.
+- **fix:** badge "Sem comissão configurada" e resumo de comissões na tela de Comissões agora reconhecem overrides por item (`ProfessionalServiceCommission` / `ProfessionalProductCommission`). Badge some quando há overrides por item. Resumo exibe "específicas por item" em vez de "sem comissão".
+
+**Novas funcionalidades planejadas e arquitetadas (implementação pendente, nesta ordem):**
+
+1. **Sistema de notificações WhatsApp (wa.me)** — 3 fluxos: confirmação imediata, lembrete 3h antes, reporte de no-show com marcação automática. Hook `useAppointmentAlerts()` + sino de notificações no header. 3 campos novos em `Appointment`: `notificationSentAt`, `reminderSentAt`, `noShowReportedAt`. Helper criado em `src/lib/whatsapp.ts`.
+2. **Tela de Ranking e Metas em tempo real (`/tv/[token]`)** — ranking por serviços realizados por barbeiro, meta geral da barbearia (valor em R$, exibido só como % na TV), metas individuais por barbeiro (qtd de serviços), efeito META ATINGIDA com confetes e som. Novas tabelas: `BarbershopGoal`, `ProfessionalGoal`.
+3. **Pacotes/Combos** — agrupamento de serviços e produtos com preço fechado. Novas tabelas: `Package`, `PackageItem`.
+4. **Planos de Assinatura do Cliente (modelo Link Externo v1)** — barbearia cadastra plano com link de cobrança recorrente externo (Mercado Pago, Asaas, Stone, Pix Automático). LIVO gerencia plano e status manualmente. Dinheiro nunca passa pelo LIVO. Novas tabelas: `ClientPlan`, `ClientSubscription`. Status: `pending | active | paused | cancelled`.
+
 ### 09/06/2026 — SPRINT P0 + AUDITORIA + GAP-03
 
 **Sprint P0 — Estabilização de Segurança (todos resolvidos):**
