@@ -17,7 +17,15 @@ export default async function ComissoesPage() {
       ? (
           await db.professional.findMany({
             where: { barbershopId: membership.barbershopId, isActive: true },
-            include: { membership: { select: { role: true } } },
+            include: {
+              membership: { select: { role: true } },
+              _count: {
+                select: {
+                  serviceCommissions: true,
+                  productCommissions: true,
+                },
+              },
+            },
           })
         ).map((p) => ({
           id: p.id,
@@ -27,6 +35,8 @@ export default async function ComissoesPage() {
           commissionOnProducts: p.commissionOnProducts,
           commissionServicePct: p.commissionServicePct,
           commissionProductPct: p.commissionProductPct,
+          hasServiceOverrides: p._count.serviceCommissions > 0,
+          hasProductOverrides: p._count.productCommissions > 0,
         }))
       : [];
 

@@ -36,6 +36,8 @@ type ProfessionalCommission = {
   commissionOnProducts: boolean;
   commissionServicePct: unknown;
   commissionProductPct: unknown;
+  hasServiceOverrides: boolean;
+  hasProductOverrides: boolean;
 };
 type Props = {
   resumoInicial: ResumoProf[];
@@ -401,7 +403,10 @@ export function ComissoesClient({
                   (pc) => pc.id === r.professionalId,
                 );
                 const semComissao =
-                  !p?.commissionOnServices && !p?.commissionOnProducts;
+                  !p?.commissionOnServices &&
+                  !p?.commissionOnProducts &&
+                  !p?.hasServiceOverrides &&
+                  !p?.hasProductOverrides;
                 return (
                 <TableRow key={r.professionalId}>
                   <TableCell style={{ padding: "16px 24px", fontWeight: 500 }}>
@@ -562,11 +567,15 @@ export function ComissoesClient({
                   >
                     {p.commissionOnServices
                       ? `Serviços: ${toNumber(p.commissionServicePct)}%`
-                      : "Serviços: sem comissão"}
+                      : p.hasServiceOverrides
+                        ? "Serviços: específicas por item"
+                        : "Serviços: sem comissão"}
                     {" · "}
                     {p.commissionOnProducts
                       ? `Produtos: ${toNumber(p.commissionProductPct)}%`
-                      : "Produtos: sem comissão"}
+                      : p.hasProductOverrides
+                        ? "Produtos: específicas por item"
+                        : "Produtos: sem comissão"}
                   </p>
                 </div>
                 <button
