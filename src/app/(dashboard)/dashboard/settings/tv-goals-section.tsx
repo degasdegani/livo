@@ -45,12 +45,27 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
       : "",
   });
 
+  // Feedback "Salvo" momentâneo por botão (chave única por botão)
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+
+  function markSaved(key: string) {
+    setSavedKeys((prev) => new Set(prev).add(key));
+    setTimeout(() => {
+      setSavedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }, 2000);
+  }
+
   function handleGeneralSave(period: GoalPeriod) {
     const raw = generalInputs[period].replace(",", ".");
     const value = Math.round(parseFloat(raw) * 100);
     if (isNaN(value) || value <= 0) return;
     startTransition(async () => {
       await upsertBarbershopGoal(period, value);
+      markSaved(`general-${period}`);
     });
   }
 
@@ -73,6 +88,7 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
     if (isNaN(value) || value <= 0) return;
     startTransition(async () => {
       await upsertProfessionalGoal(professionalId, period, value);
+      markSaved(`prof-${professionalId}-${period}`);
     });
   }
 
@@ -124,21 +140,40 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
                   width: "10rem",
                 }}
               />
-              <button
-                onClick={() => handleGeneralSave(value)}
-                disabled={isPending}
-                style={{
-                  background: "var(--color-primary)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "0.375rem",
-                  padding: "0.375rem 0.875rem",
-                  cursor: isPending ? "not-allowed" : "pointer",
-                  fontSize: "0.875rem",
-                }}
-              >
-                Salvar
-              </button>
+              {(() => {
+                const key = `general-${value}`;
+                const saved = savedKeys.has(key);
+                return (
+                  <button
+                    onClick={() => handleGeneralSave(value)}
+                    disabled={isPending}
+                    style={{
+                      background: saved ? "#16a34a" : "var(--color-primary)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "0.375rem",
+                      padding: "0.375rem 0.875rem",
+                      cursor: isPending ? "not-allowed" : "pointer",
+                      fontSize: "0.875rem",
+                      transition: "background 0.2s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                      minWidth: "5rem",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {saved ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M2 7l4 4 6-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Salvo
+                      </>
+                    ) : "Salvar"}
+                  </button>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -191,21 +226,40 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
                       width: "7rem",
                     }}
                   />
-                  <button
-                    onClick={() => handleProfSave(prof.id, value)}
-                    disabled={isPending}
-                    style={{
-                      background: "var(--color-primary)",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "0.375rem",
-                      padding: "0.375rem 0.875rem",
-                      cursor: isPending ? "not-allowed" : "pointer",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    Salvar
-                  </button>
+                  {(() => {
+                    const key = `prof-${prof.id}-${value}`;
+                    const saved = savedKeys.has(key);
+                    return (
+                      <button
+                        onClick={() => handleProfSave(prof.id, value)}
+                        disabled={isPending}
+                        style={{
+                          background: saved ? "#16a34a" : "var(--color-primary)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "0.375rem",
+                          padding: "0.375rem 0.875rem",
+                          cursor: isPending ? "not-allowed" : "pointer",
+                          fontSize: "0.875rem",
+                          transition: "background 0.2s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.375rem",
+                          minWidth: "5rem",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {saved ? (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M2 7l4 4 6-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Salvo
+                          </>
+                        ) : "Salvar"}
+                      </button>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
