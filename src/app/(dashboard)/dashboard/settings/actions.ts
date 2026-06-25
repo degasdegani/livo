@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { GoalPeriod } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
@@ -261,4 +262,87 @@ export async function updatePersonalInfo(_: unknown, formData: FormData) {
     log.error("erro ao salvar dados pessoais", { barbershopId: membership.barbershopId }, err);
     return { error: "Erro ao salvar dados pessoais." };
   }
+}
+
+// ── RANKING TV — METAS & PIN ──────────────────────────────────────
+
+// Upsert meta geral da barbearia (valor em centavos)
+export async function upsertBarbershopGoal(
+  period: GoalPeriod,
+  targetInCents: number,
+) {
+  const membership = await requireRole(["owner"]);
+  const barbershopId = membership.barbershopId;
+
+  await db.barbershopGoal.upsert({
+    where: { barbershopId_period: { barbershopId, period } },
+    update: { targetInCents },
+    create: { barbershopId, period, targetInCents },
+  });
+
+  revalidatePath("/dashboard/settings");
+}
+
+// Upsert meta individual de profissional (quantidade de serviços)
+export async function upsertProfessionalGoal(
+  professionalId: string,
+  period: GoalPeriod,
+  targetServices: number,
+) {
+  const membership = await requireRole(["owner"]);
+  const barbershopId = membership.barbershopId;
+
+  // Garante que o profissional pertence à barbearia
+  const professional = await db.professional.findFirst({
+    where: { id: professionalId, barbershopId },
+  });
+  if (!professional) throw new Error("Profissional não encontrado.");
+
+  await db.professionalGoal.upsert({
+    where: { professionalId_period: { professionalId, period } },
+    update: { targetServices },
+    create: { barbershopId, professionalId, period, targetServices },
+  });
+
+  revalidatePath("/dashboard/settings");
+}
+
+// Gera (ou regenera) PIN de 6 dígitos globalmente único para a barbearia
+export async function generateTvPin(): Promise<string> {
+  const membership = await requireRole(["owner"]);
+  const barbershopId = membership.barbershopId;
+
+  let pin: string;
+  let attempts = 0;
+  while (true) {
+    // 6 dígitos: 000000–999999
+    pin = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    const conflict = await db.barbershop.findFirst({
+      where: { tvPin: pin },
+    });
+    if (!conflict || conflict.id === barbershopId) break;
+    if (++attempts > 20) {
+      throw new Error("Não foi possível gerar PIN único. Tente novamente.");
+    }
+  }
+
+  await db.barbershop.update({
+    where: { id: barbershopId },
+    data: { tvPin: pin },
+  });
+
+  revalidatePath("/dashboard/settings");
+  return pin;
+}
+
+// Revoga (deleta) um device TV pareado
+export async function revokeTvDevice(deviceId: string) {
+  const membership = await requireRole(["owner"]);
+  const barbershopId = membership.barbershopId;
+
+  await db.tvDevice.deleteMany({
+    where: { id: deviceId, barbershopId },
+  });
+
+  revalidatePath("/dashboard/settings");
 }

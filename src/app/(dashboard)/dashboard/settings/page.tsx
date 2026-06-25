@@ -5,9 +5,11 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { CopyUrlButton } from "./copy-url-button";
 import { SettingsAccordion } from "./settings-accordion";
+import { TvGoalsSection } from "./tv-goals-section";
 
 export default async function SettingsPage() {
   const membership = await requireRole(MemberRole.owner);
+  const barbershopId = membership.barbershopId;
 
   const [user, barbershop] = await Promise.all([
     db.user.findUnique({
@@ -34,6 +36,31 @@ export default async function SettingsPage() {
   ]);
 
   if (!barbershop || !user) redirect("/onboarding");
+
+  // ── Ranking TV — metas, PIN e dispositivos ──
+  const [barbershopGoals, profGoalsRaw, tvDevices, barbershopForPin, professionalsRaw] =
+    await Promise.all([
+      db.barbershopGoal.findMany({ where: { barbershopId } }),
+      db.professionalGoal.findMany({ where: { barbershopId } }),
+      db.tvDevice.findMany({
+        where: { barbershopId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.barbershop.findUnique({
+        where: { id: barbershopId },
+        select: { tvPin: true },
+      }),
+      db.professional.findMany({
+        where: { barbershopId, isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+  const professionals = professionalsRaw.map((p) => ({
+    ...p,
+    goals: profGoalsRaw.filter((g) => g.professionalId === p.id),
+  }));
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
@@ -166,6 +193,28 @@ export default async function SettingsPage() {
           }}
           hasReopenPin={!!barbershop.reopenPin}
         />
+
+        {/* Ranking TV — metas, PIN e dispositivos */}
+        <section
+          className="p-5 rounded-xl flex flex-col gap-4"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <h2
+            className="text-sm font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Ranking TV
+          </h2>
+          <TvGoalsSection
+            barbershopGoals={barbershopGoals}
+            professionals={professionals}
+            tvPin={barbershopForPin?.tvPin ?? null}
+            devices={tvDevices}
+          />
+        </section>
       </main>
     </div>
   );

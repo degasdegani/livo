@@ -16,6 +16,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Tv,
   Users,
   X,
 } from "lucide-react";
@@ -266,6 +267,51 @@ function SidebarContent({
             onClick={onNavClick}
           />
         ))}
+
+        {/* ── Bônus ───────────────────────────────── */}
+        <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
+          {/* Label não-clicável */}
+          <p style={{
+            padding: "0 0.75rem",
+            marginBottom: "0.25rem",
+            fontSize: "0.7rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--text-tertiary)",
+          }}>
+            Bonus
+          </p>
+
+          {/* LIVO TV — abre /tv em nova aba */}
+          <a
+            href="/tv"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.625rem 0.75rem",
+              borderRadius: "0.5rem",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              color: "var(--text-secondary)",
+              textDecoration: "none",
+              border: "1px solid transparent",
+              transition: "background 150ms ease, color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.04)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+            }}
+          >
+            <Tv size={18} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+            LIVO TV
+          </a>
+        </div>
       </nav>
 
       <div

@@ -85,6 +85,7 @@ model Barbershop {
   neighborhood        String?
   street              String?
   reopenPin           String?
+  tvPin               String?           @unique
   appointments        Appointment[]
   owner               User              @relation("BarbershopOwner", fields: [ownerId], references: [id])
   businessHours       BusinessHour[]
@@ -529,6 +530,12 @@ enum ComandaItemType {
   product
 }
 
+enum GoalPeriod {
+  DAY
+  WEEK
+  MONTH
+}
+
 model PasswordResetToken {
   id        String    @id @default(cuid())
   email     String
@@ -539,4 +546,43 @@ model PasswordResetToken {
 
   @@index([email])
   @@map("password_reset_tokens")
+}
+
+model BarbershopGoal {
+  id            String     @id @default(cuid())
+  barbershopId  String
+  period        GoalPeriod
+  targetInCents Int
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([barbershopId, period])
+  @@index([barbershopId])
+  @@map("barbershop_goals")
+}
+
+model ProfessionalGoal {
+  id             String     @id @default(cuid())
+  barbershopId   String
+  professionalId String
+  period         GoalPeriod
+  targetServices Int
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([professionalId, period])
+  @@index([barbershopId])
+  @@map("professional_goals")
+}
+
+model TvDevice {
+  id           String    @id @default(cuid())
+  barbershopId String
+  token        String    @unique
+  label        String?
+  lastSeenAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([barbershopId])
+  @@map("tv_devices")
 }
