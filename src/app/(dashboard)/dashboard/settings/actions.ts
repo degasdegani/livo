@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
-import { MemberRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { recalcularComissoesPendentes } from "../comissoes/actions";
 
@@ -23,13 +22,9 @@ export async function updateMembershipComissao(data: {
 
   const target = await db.professional.findFirst({
     where: { id: data.professionalId, barbershopId: membership.barbershopId },
-    include: { membership: { select: { role: true } } },
   });
 
   if (!target) throw new Error("Profissional não encontrado.");
-  if (target.membership?.role === MemberRole.owner) {
-    throw new Error("Owner não tem comissão configurável.");
-  }
 
   await db.professional.update({
     where: { id: data.professionalId },

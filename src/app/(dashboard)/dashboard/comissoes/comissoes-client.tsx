@@ -219,10 +219,9 @@ export function ComissoesClient({
     (s, r) => s + r.totalFaturamento,
     0,
   );
-  // Owner nunca aparece na lista de comissões
-  const profissionaisComissionaveis = professionalsComPct.filter(
-    (p) => p.membershipRole !== MemberRole.owner,
-  );
+  // O dono (owner) agora também é configurável, no mesmo fluxo dos colaboradores.
+  // Mantemos a lista com todos os profissionais ativos da barbearia.
+  const profissionaisComissionaveis = professionalsComPct;
 
   return (
     <div className="p-6 space-y-6">
