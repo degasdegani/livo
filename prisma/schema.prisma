@@ -86,6 +86,9 @@ model Barbershop {
   street              String?
   reopenPin           String?
   tvPin               String?           @unique
+  clubEnabled         Boolean           @default(false)
+  clubAsaasWalletId      String?
+  clubAsaasAccountStatus String?
   appointments        Appointment[]
   owner               User              @relation("BarbershopOwner", fields: [ownerId], references: [id])
   businessHours       BusinessHour[]
@@ -140,8 +143,10 @@ model Service {
   updatedAt    DateTime      @updatedAt
   appointments            Appointment[]
   comandaItems            ComandaItem[]
+  comboItems              ComboItem[]
   appointmentServices     AppointmentService[]
   professionalCommissions ProfessionalServiceCommission[]
+  subscriptionPlanItems   SubscriptionPlanItem[]
   barbershop              Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
@@ -169,6 +174,7 @@ model Client {
   appointments Appointment[]
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   comandas     Comanda[]
+  subscriptions ClientSubscription[]
 
   @@unique([phone, barbershopId])
   @@index([barbershopId])
@@ -336,7 +342,9 @@ model Product {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   comandaItems            ComandaItem[]
+  comboItems              ComboItem[]
   professionalCommissions ProfessionalProductCommission[]
+  subscriptionPlanProductDiscounts SubscriptionPlanProductDiscount[]
   barbershop              Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   category                ProductCategory? @relation(fields: [categoryId], references: [id])
   stockMovements          StockMovement[]
@@ -415,11 +423,47 @@ model ComandaItem {
   commissionPct    Decimal?        @db.Decimal(5, 2)
   commissionValue  Int?
   comandaId        String
+  comboId          String?
+  clientSubscriptionId String?
   comanda          Comanda         @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+  combo            Combo?          @relation(fields: [comboId], references: [id], onDelete: SetNull)
+  clientSubscription   ClientSubscription? @relation(fields: [clientSubscriptionId], references: [id], onDelete: SetNull)
   product          Product?        @relation(fields: [productId], references: [id])
   service          Service?        @relation(fields: [serviceId], references: [id])
 
   @@map("comanda_items")
+}
+
+model Combo {
+  id                String        @id @default(cuid())
+  barbershopId      String
+  name              String
+  description       String?
+  priceInCents      Int
+  commissionPercent Float?
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  items             ComboItem[]
+  comandaItems      ComandaItem[]
+
+  @@index([barbershopId])
+  @@map("combos")
+}
+
+model ComboItem {
+  id        String          @id @default(cuid())
+  comboId   String
+  type      ComandaItemType
+  serviceId String?
+  productId String?
+  quantity  Int             @default(1)
+  combo     Combo           @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  service   Service?        @relation(fields: [serviceId], references: [id])
+  product   Product?        @relation(fields: [productId], references: [id])
+
+  @@index([comboId])
+  @@map("combo_items")
 }
 
 model InsightDismissal {
@@ -585,4 +629,114 @@ model TvDevice {
 
   @@index([barbershopId])
   @@map("tv_devices")
+}
+
+enum BarberCommissionMode {
+  fixed
+  none
+}
+
+model SubscriptionPlan {
+  id                   String                            @id @default(cuid())
+  barbershopId         String
+  name                 String
+  description          String?
+  priceInCents         Int
+  billingCycle         String                            @default("monthly")
+  barberCommissionMode BarberCommissionMode              @default(none)
+  platformFeePct       Float?
+  maxSlots             Int?
+  isActive             Boolean                           @default(true)
+  createdAt            DateTime                          @default(now())
+  updatedAt            DateTime                          @updatedAt
+  items                SubscriptionPlanItem[]
+  productDiscounts     SubscriptionPlanProductDiscount[]
+  subscriptions        ClientSubscription[]
+
+  @@index([barbershopId])
+  @@map("subscription_plans")
+}
+
+model SubscriptionPlanItem {
+  id                      String           @id @default(cuid())
+  planId                  String
+  serviceId               String
+  quantityPerCycle        Int              @default(1)
+  barberCommissionInCents Int?
+  plan                    SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  service                 Service          @relation(fields: [serviceId], references: [id])
+
+  @@index([planId])
+  @@map("subscription_plan_items")
+}
+
+model SubscriptionPlanProductDiscount {
+  id              String           @id @default(cuid())
+  planId          String
+  productId       String
+  discountPct     Float?
+  discountInCents Int?
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  product         Product          @relation(fields: [productId], references: [id])
+
+  @@index([planId])
+  @@map("subscription_plan_product_discounts")
+}
+
+enum ClientSubscriptionStatus {
+  pending
+  active
+  suspended
+  cancelled
+}
+
+model ClientSubscription {
+  id                   String                   @id @default(cuid())
+  barbershopId         String
+  clientId             String
+  planId               String
+  status               ClientSubscriptionStatus @default(pending)
+  asaasSubscriptionId  String?                  @unique
+  soldByProfessionalId String?
+  startedAt            DateTime?
+  currentPeriodEnd     DateTime?
+  cancelledAt          DateTime?
+  lastBillingEventAt   DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  plan                 SubscriptionPlan         @relation(fields: [planId], references: [id])
+  client               Client                   @relation(fields: [clientId], references: [id])
+  usages               SubscriptionUsage[]
+  comandaItems         ComandaItem[]
+
+  @@index([barbershopId])
+  @@index([clientId])
+  @@map("client_subscriptions")
+}
+
+model SubscriptionUsage {
+  id             String             @id @default(cuid())
+  subscriptionId String
+  serviceId      String
+  periodStart    DateTime
+  periodEnd      DateTime
+  usedCount      Int                @default(0)
+  subscription   ClientSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@map("subscription_usages")
+}
+
+model ClientVerificationCode {
+  id           String    @id @default(cuid())
+  barbershopId String
+  phone        String
+  codeHash     String
+  expiresAt    DateTime
+  attempts     Int       @default(0)
+  consumedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([barbershopId, phone])
+  @@map("client_verification_codes")
 }
