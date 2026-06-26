@@ -2,6 +2,7 @@
 import { headers } from "next/headers";
 import { checkBillingAccess, requireMembership } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { isClubEnabled } from "@/lib/clube-flag";
 import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 
@@ -24,12 +25,13 @@ export default async function DashboardLayout({
     await checkBillingAccess(membership.barbershopId);
   }
 
-  const [barbershop, alerts] = await Promise.all([
+  const [barbershop, alerts, clubEnabled] = await Promise.all([
     db.barbershop.findUnique({
       where: { id: membership.barbershopId },
       select: { name: true },
     }),
     getTodayAppointmentsForAlerts(),
+    isClubEnabled(membership.barbershopId),
   ]);
 
   return (
@@ -38,6 +40,7 @@ export default async function DashboardLayout({
       barbershopId={membership.barbershopId}
       barbershopName={barbershop?.name ?? ""}
       alerts={alerts}
+      clubEnabled={clubEnabled}
     >
       {children}
     </DashboardLayoutClient>
