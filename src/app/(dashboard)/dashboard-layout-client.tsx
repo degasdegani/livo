@@ -7,6 +7,8 @@ import {
   DollarSign,
   FileText,
   Home,
+  Layers,
+  Lock,
   LogOut,
   Megaphone,
   Menu,
@@ -15,6 +17,7 @@ import {
   Scissors,
   Settings,
   Sparkles,
+  Star,
   Sun,
   Tv,
   Users,
@@ -98,6 +101,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Profissionais",
     href: "/dashboard/profissionais",
     icon: <Scissors size={18} />,
+    roles: ["owner"],
+  },
+  {
+    label: "Combos",
+    href: "/dashboard/combos",
+    icon: <Layers size={18} />,
     roles: ["owner"],
   },
   {
@@ -228,12 +237,14 @@ function SidebarContent({
   theme,
   toggleTheme,
   onNavClick,
+  clubEnabled,
 }: {
   role: MemberRole;
   pathname: string;
   theme: "dark" | "light";
   toggleTheme: () => void;
   onNavClick?: () => void;
+  clubEnabled: boolean;
 }) {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -267,6 +278,58 @@ function SidebarContent({
             onClick={onNavClick}
           />
         ))}
+
+        {/* ── Clube de Assinatura (somente owner) ─────────────── */}
+        {role === "owner" &&
+          (clubEnabled ? (
+            <NavLink
+              item={{
+                label: "Clube",
+                href: "/dashboard/clube",
+                icon: <Star size={18} />,
+                roles: ["owner"],
+              }}
+              pathname={pathname}
+              onClick={onNavClick}
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.625rem 0.75rem",
+                borderRadius: "0.5rem",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                color: "var(--text-tertiary)",
+                border: "1px solid transparent",
+                cursor: "default",
+                userSelect: "none",
+              }}
+            >
+              <Star size={18} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+              Clube
+              <span
+                style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  fontSize: "0.625rem",
+                  fontWeight: 600,
+                  background: "var(--bg-card-elevated)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "0.25rem",
+                  padding: "0.0625rem 0.3125rem",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                <Lock size={9} />
+                Em breve
+              </span>
+            </div>
+          ))}
 
         {/* ── Bônus ───────────────────────────────── */}
         <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
@@ -345,12 +408,14 @@ export function DashboardLayoutClient({
   barbershopId,
   barbershopName,
   alerts,
+  clubEnabled,
 }: {
   children: React.ReactNode;
   role: MemberRole;
   barbershopId: string;
   barbershopName: string;
   alerts: AppointmentAlert[];
+  clubEnabled: boolean;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -395,6 +460,7 @@ export function DashboardLayoutClient({
           pathname={pathname}
           theme={theme}
           toggleTheme={toggle}
+          clubEnabled={clubEnabled}
         />
       </aside>
 
@@ -434,6 +500,7 @@ export function DashboardLayoutClient({
           theme={theme}
           toggleTheme={toggle}
           onNavClick={() => setMobileOpen(false)}
+          clubEnabled={clubEnabled}
         />
       </aside>
 

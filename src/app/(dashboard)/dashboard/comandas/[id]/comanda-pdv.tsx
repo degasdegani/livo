@@ -7,15 +7,21 @@ import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
+  addComboToComanda,
+  addPlanServiceToComanda,
   addProductItem,
   addServiceItem,
   type ComandaWithItems,
+  type ComandaWithSubscription,
   cancelarComanda,
   fecharComanda,
   getComanda,
   reabrirComanda,
   removeItem,
 } from "../actions";
+import { getCombosAtivos } from "../../combos/actions";
+
+type ComandaItem = NonNullable<ComandaWithItems>["items"][number];
 
 type Service = {
   id: string;
@@ -30,7 +36,7 @@ type Product = {
   stockQuantity: number;
 };
 type Props = {
-  comanda: NonNullable<ComandaWithItems>;
+  comanda: ComandaWithSubscription;
   services: Service[];
   products: Product[];
   role: string;
@@ -116,6 +122,13 @@ export default function ComandaPDV({
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [discountStr, setDiscountStr] = useState("");
 
+  // Seletor de combos
+  const [showComboSelector, setShowComboSelector] = useState(false);
+  const [combos, setCombos] = useState<
+    Awaited<ReturnType<typeof getCombosAtivos>>
+  >([]);
+  const [combosLoaded, setCombosLoaded] = useState(false);
+
   // Split payment state
   const [payments, setPayments] = useState<SplitEntry[]>([
     { method: "pix", amountInCents: 0 },
@@ -169,6 +182,52 @@ export default function ComandaPDV({
         await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao remover item");
+      }
+    });
+  }
+
+  async function openComboSelector() {
+    setShowComboSelector(true);
+    if (combosLoaded) return;
+    try {
+      const list = await getCombosAtivos(comanda.id);
+      setCombos(list);
+      setCombosLoaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar combos");
+    }
+  }
+
+  function handleAddCombo(comboId: string) {
+    setError("");
+    startTransition(async () => {
+      try {
+        await addComboToComanda(comanda.id, comboId);
+        setShowComboSelector(false);
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao adicionar combo");
+      }
+    });
+  }
+
+  // Serviço coberto pelo plano: a action retorna { error } (não lança).
+  function handleAddPlanService(serviceId: string) {
+    const sub = comanda.activeSubscription;
+    if (!sub) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await addPlanServiceToComanda(comanda.id, sub.id, serviceId);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        await refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao lançar serviço do plano",
+        );
       }
     });
   }
@@ -250,6 +309,114 @@ export default function ComandaPDV({
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchProduct.toLowerCase()),
   );
+
+  // Agrupamento visual por comboId — transformacao sobre os dados ja carregados,
+  // sem query adicional. Itens sem comboId sao renderizados individualmente.
+  type RenderGroup =
+    | { kind: "single"; item: ComandaItem }
+    | { kind: "combo"; comboId: string; name: string; items: ComandaItem[] }
+    | { kind: "plan"; items: ComandaItem[] };
+
+  const groupedItems: RenderGroup[] = [];
+  const comboGroupIndex = new Map<string, number>();
+  let planGroupIndex: number | null = null;
+  for (const item of comanda.items) {
+    if (item.clientSubscriptionId) {
+      // Itens cobertos pelo plano — agrupados juntos (mesmo padrão dos combos).
+      if (planGroupIndex !== null) {
+        const group = groupedItems[planGroupIndex];
+        if (group.kind === "plan") group.items.push(item);
+      } else {
+        planGroupIndex = groupedItems.length;
+        groupedItems.push({ kind: "plan", items: [item] });
+      }
+    } else if (item.comboId) {
+      const idx = comboGroupIndex.get(item.comboId);
+      if (idx !== undefined) {
+        const group = groupedItems[idx];
+        if (group.kind === "combo") group.items.push(item);
+      } else {
+        comboGroupIndex.set(item.comboId, groupedItems.length);
+        groupedItems.push({
+          kind: "combo",
+          comboId: item.comboId,
+          name: item.combo?.name ?? "Combo",
+          items: [item],
+        });
+      }
+    } else {
+      groupedItems.push({ kind: "single", item });
+    }
+  }
+
+  function renderItemCard(item: ComandaItem) {
+    return (
+      <div
+        key={item.id}
+        className="flex items-center justify-between rounded-lg p-3"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+              style={
+                item.type === "service"
+                  ? { backgroundColor: "var(--color-primary-10)", color: "var(--color-primary)" }
+                  : { backgroundColor: "rgba(212,175,55,0.1)", color: "var(--color-gold)" }
+              }
+            >
+              {item.type === "service" ? "Serviço" : "Produto"}
+            </span>
+            <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              {item.type === "service" ? item.serviceName : item.productName}
+            </p>
+          </div>
+          <p className="mt-0.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+            {item.quantity}× {formatCents(item.unitPriceInCents)}
+          </p>
+        </div>
+        <div className="ml-3 flex items-center gap-3">
+          {item.clientSubscriptionId ? (
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+              style={{
+                backgroundColor: "rgba(0,212,160,0.1)",
+                color: "var(--status-green)",
+              }}
+            >
+              {formatCents(0)} — Plano
+            </span>
+          ) : (
+            <span className="font-medium" style={{ color: "var(--text-primary)" }}>
+              {formatCents(item.totalInCents)}
+            </span>
+          )}
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={() => handleRemoveItem(item.id)}
+              disabled={isPending}
+              className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
+              style={{ color: "var(--text-tertiary)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-primary-10)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "var(--text-tertiary)";
+              }}
+            >
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -367,60 +534,71 @@ export default function ComandaPDV({
             </div>
           ) : (
             <div className="space-y-2">
-              {comanda.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg p-3"
-                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
-                        style={
-                          item.type === "service"
-                            ? { backgroundColor: "var(--color-primary-10)", color: "var(--color-primary)" }
-                            : { backgroundColor: "rgba(212,175,55,0.1)", color: "var(--color-gold)" }
-                        }
-                      >
-                        {item.type === "service" ? "Serviço" : "Produto"}
-                      </span>
-                      <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                        {item.type === "service" ? item.serviceName : item.productName}
-                      </p>
+              {groupedItems.map((group) => {
+                if (group.kind === "single") return renderItemCard(group.item);
+
+                if (group.kind === "plan") {
+                  return (
+                    <div
+                      key="plan-group"
+                      className="rounded-lg p-2"
+                      style={{
+                        border: "1px solid rgba(0,212,160,0.2)",
+                        backgroundColor: "rgba(0,212,160,0.08)",
+                      }}
+                    >
+                      <div className="mb-2 flex items-center justify-between px-1">
+                        <span
+                          className="text-xs font-semibold uppercase"
+                          style={{
+                            color: "var(--status-green)",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Coberto pelo plano
+                        </span>
+                        <span
+                          className="text-sm font-semibold"
+                          style={{ color: "var(--status-green)" }}
+                        >
+                          {formatCents(0)}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {group.items.map((item) => renderItemCard(item))}
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-                      {item.quantity}× {formatCents(item.unitPriceInCents)}
-                    </p>
-                  </div>
-                  <div className="ml-3 flex items-center gap-3">
-                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>
-                      {formatCents(item.totalInCents)}
-                    </span>
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(item.id)}
-                        disabled={isPending}
-                        className="flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
-                        style={{ color: "var(--text-tertiary)" }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "var(--color-primary-10)";
-                          e.currentTarget.style.color = "var(--color-primary)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "transparent";
-                          e.currentTarget.style.color = "var(--text-tertiary)";
-                        }}
+                  );
+                }
+
+                return (
+                  <div
+                    key={`combo-${group.comboId}`}
+                    className="rounded-lg p-2"
+                    style={{
+                      border: "1px solid var(--color-primary-20)",
+                      backgroundColor: "var(--color-primary-10)",
+                    }}
+                  >
+                    <div className="mb-2 flex items-center justify-between px-1">
+                      <span
+                        className="text-xs font-semibold uppercase"
+                        style={{ color: "var(--color-primary)", letterSpacing: "0.05em" }}
                       >
-                        <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
+                        Combo · {group.name}
+                      </span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        {formatCents(
+                          group.items.reduce((s, it) => s + it.totalInCents, 0),
+                        )}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {group.items.map((item) => renderItemCard(item))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -470,8 +648,87 @@ export default function ComandaPDV({
               ))}
             </div>
 
+            <button
+              type="button"
+              onClick={openComboSelector}
+              disabled={isPending}
+              className="mb-4 flex w-full items-center justify-center gap-1 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{
+                border: "1px solid var(--color-primary-20)",
+                backgroundColor: "var(--color-primary-10)",
+                color: "var(--color-primary)",
+              }}
+            >
+              + Combo
+            </button>
+
             {tab === "services" && (
               <>
+                {comanda.activeSubscription && (
+                  <div
+                    className="mb-4 rounded-lg p-3"
+                    style={{
+                      border: "1px solid rgba(0,212,160,0.2)",
+                      backgroundColor: "rgba(0,212,160,0.08)",
+                    }}
+                  >
+                    <p
+                      className="mb-2 text-xs font-semibold uppercase"
+                      style={{ color: "var(--status-green)", letterSpacing: "0.05em" }}
+                    >
+                      Coberto pelo plano — {comanda.activeSubscription.plan.name}
+                    </p>
+                    <div className="space-y-2">
+                      {comanda.activeSubscription.plan.items.map((planItem) => {
+                        const usage = comanda.activeSubscription?.usages.find(
+                          (u) => u.serviceId === planItem.serviceId,
+                        );
+                        const remaining = Math.max(
+                          0,
+                          planItem.quantityPerCycle - (usage?.usedCount ?? 0),
+                        );
+                        const disabled = remaining <= 0 || isPending;
+                        return (
+                          <button
+                            key={planItem.id}
+                            type="button"
+                            onClick={() => handleAddPlanService(planItem.serviceId)}
+                            disabled={disabled}
+                            className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:cursor-not-allowed"
+                            style={{
+                              border: "1px solid var(--border)",
+                              backgroundColor: "var(--bg-card)",
+                              opacity: remaining <= 0 ? 0.55 : 1,
+                            }}
+                          >
+                            <p
+                              className="truncate text-sm font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {planItem.service.name}
+                            </p>
+                            <span
+                              className="ml-3 shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+                              style={
+                                remaining > 0
+                                  ? {
+                                      backgroundColor: "rgba(0,212,160,0.1)",
+                                      color: "var(--status-green)",
+                                    }
+                                  : {
+                                      backgroundColor: "var(--bg-card-elevated)",
+                                      color: "var(--text-tertiary)",
+                                    }
+                              }
+                            >
+                              {remaining} de {planItem.quantityPerCycle}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <input
                   type="text"
                   placeholder="Buscar serviço..."
@@ -888,6 +1145,76 @@ export default function ComandaPDV({
             O estoque e as comissões não serão revertidos — reabrir serve apenas para correção dos itens.
           </p>
         </div>
+      </Modal>
+
+      {/* Modal Seletor de Combos */}
+      <Modal
+        open={showComboSelector}
+        onClose={() => setShowComboSelector(false)}
+        title="Adicionar Combo"
+        description="Selecione um combo para adicionar à comanda."
+        size="md"
+      >
+        {!combosLoaded ? (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
+            Carregando combos...
+          </p>
+        ) : combos.length === 0 ? (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
+            Nenhum combo ativo disponível.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {combos.map((combo) => {
+              const listTotal = combo.items.reduce(
+                (sum, it) =>
+                  sum +
+                  (it.service?.priceInCents ?? it.product?.priceInCents ?? 0),
+                0,
+              );
+              const savings = listTotal - combo.priceInCents;
+              const savingsPct =
+                listTotal > 0 ? Math.round((savings / listTotal) * 100) : 0;
+              return (
+                <button
+                  key={combo.id}
+                  type="button"
+                  onClick={() => handleAddCombo(combo.id)}
+                  disabled={isPending}
+                  className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:opacity-50"
+                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      {combo.name}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {combo.items.length} {combo.items.length === 1 ? "item" : "itens"}
+                    </p>
+                  </div>
+                  <div className="ml-3 text-right">
+                    {listTotal > combo.priceInCents && (
+                      <p
+                        className="text-xs"
+                        style={{ color: "var(--text-tertiary)", textDecoration: "line-through" }}
+                      >
+                        {formatCents(listTotal)}
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold" style={{ color: "var(--color-primary)" }}>
+                      {formatCents(combo.priceInCents)}
+                    </p>
+                    {savings > 0 && (
+                      <p className="text-xs font-medium" style={{ color: "var(--status-green)" }}>
+                        -{formatCents(savings)} ({savingsPct}%)
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -34,7 +34,7 @@ export type ComandaWithItems = Prisma.ComandaGetPayload<{
         id: true;
       };
     };
-    items: true;
+    items: { include: { combo: { select: { name: true } } } };
   };
 }>;
 
@@ -96,12 +96,51 @@ export async function getComanda(id: string) {
       appointment: { select: { id: true } },
       items: {
         orderBy: { id: "asc" },
+        include: { combo: { select: { name: true } } },
       },
     },
   });
 
-  return comanda;
+  if (!comanda) return null;
+
+  // Assinatura ativa do cliente da comanda (se houver) — para o PDV oferecer
+  // os serviços cobertos pelo plano e exibir o saldo do ciclo corrente.
+  const now = new Date();
+  const activeSubscription = comanda.clientId
+    ? await db.clientSubscription.findFirst({
+        where: {
+          clientId: comanda.clientId,
+          barbershopId: membership.barbershopId,
+          status: "active",
+        },
+        include: {
+          plan: {
+            include: {
+              items: {
+                include: {
+                  service: {
+                    select: { id: true, name: true, priceInCents: true },
+                  },
+                },
+              },
+            },
+          },
+          usages: {
+            where: {
+              periodStart: { lte: now },
+              periodEnd: { gte: now },
+            },
+          },
+        },
+      })
+    : null;
+
+  return { ...comanda, activeSubscription };
 }
+
+export type ComandaWithSubscription = NonNullable<
+  Awaited<ReturnType<typeof getComanda>>
+>;
 
 // ─── ABRIR COMANDA ───────────────────────────────────────────────────────────
 
@@ -346,7 +385,9 @@ export async function fecharComanda(
       barbershopId: membership.barbershopId,
       status: ComandaStatus.open,
     },
-    include: { items: true },
+    include: {
+      items: { include: { combo: { select: { commissionPercent: true } } } },
+    },
   });
 
   if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
@@ -397,7 +438,44 @@ export async function fecharComanda(
       let pct: number | null = null;
       let value: number | null = null;
 
-      if (item.type === "service") {
+      // Camada combo: se o item pertence a um combo com commissionPercent
+      // configurado, esse valor tem precedencia sobre override/global do
+      // profissional. Sem comboId ou sem commissionPercent => comportamento
+      // identico ao atual (override -> global).
+      const comboPct =
+        item.comboId && item.combo?.commissionPercent != null
+          ? item.combo.commissionPercent
+          : null;
+
+      if (comboPct != null) {
+        pct = comboPct;
+        value = Math.round((item.totalInCents * pct) / 100);
+      } else if (item.clientSubscriptionId) {
+        // Camada plano de assinatura: serviço coberto pela mensalidade.
+        // barberCommissionMode "fixed" => valor fixo por atendimento do
+        // SubscriptionPlanItem; "none" => sem comissao. Tem precedencia sobre
+        // override/global, depois do combo. Mantem pct = null (comissao em valor).
+        const planItem = await tx.subscriptionPlanItem.findFirst({
+          where: {
+            plan: {
+              subscriptions: { some: { id: item.clientSubscriptionId } },
+            },
+            serviceId: item.serviceId ?? undefined,
+          },
+          select: {
+            barberCommissionInCents: true,
+            plan: { select: { barberCommissionMode: true } },
+          },
+        });
+
+        if (planItem) {
+          pct = null;
+          value =
+            planItem.plan.barberCommissionMode === "fixed"
+              ? planItem.barberCommissionInCents ?? 0
+              : 0;
+        }
+      } else if (item.type === "service") {
         const override = item.serviceId ? serviceOverrides.get(item.serviceId) : undefined;
         if (override !== undefined) {
           pct = override;
@@ -846,4 +924,256 @@ export async function getProductsForPDV() {
       name: "asc",
     },
   });
+}
+
+// ─── addComboToComanda ────────────────────────────────────────────────────────
+// Explode um combo em ComandaItems individuais, rateando o preco do combo
+// proporcionalmente ao preco de lista de cada componente. A soma dos itens
+// criados e sempre exatamente igual ao priceInCents do combo.
+
+export async function addComboToComanda(comandaId: string, comboId: string) {
+  // Mesma regra das actions addServicoItem/addProdutoItem: requireMembership.
+  const membership = await requireMembership();
+  const barbershopId = membership.barbershopId;
+
+  // Validar ownership da comanda (mesmo padrao das demais actions de item)
+  const comanda = await db.comanda.findFirst({
+    where: {
+      id: comandaId,
+      barbershopId,
+      status: ComandaStatus.open,
+    },
+  });
+  if (!comanda) throw new Error("Comanda não encontrada ou já fechada.");
+
+  // Carregar combo com componentes e precos atuais
+  const combo = await db.combo.findFirst({
+    where: { id: comboId, barbershopId, isActive: true },
+    include: {
+      items: {
+        include: {
+          service: { select: { id: true, name: true, priceInCents: true } },
+          product: { select: { id: true, name: true, priceInCents: true } },
+        },
+      },
+    },
+  });
+  if (!combo) throw new Error("Combo não encontrado ou inativo.");
+  if (combo.items.length === 0) throw new Error("Combo sem itens válidos.");
+
+  // Calcular preco de lista total
+  const listTotal = combo.items.reduce((sum, item) => {
+    const price = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
+    return sum + price;
+  }, 0);
+  if (listTotal <= 0) throw new Error("Combo sem itens válidos para venda.");
+
+  const comboPrice = combo.priceInCents;
+
+  // ── Algoritmo de rateio proporcional ──────────────────────────────────────
+  // alloc_i = round(p_i / listTotal * comboPrice)
+  // residual somado ao item de maior preco (garante soma exata = comboPrice)
+  const allocs = combo.items.map((item) => {
+    const p = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
+    return Math.round((p / listTotal) * comboPrice);
+  });
+
+  const allocSum = allocs.reduce((a, b) => a + b, 0);
+  const residual = comboPrice - allocSum;
+
+  if (residual !== 0) {
+    // Somar residual ao item de maior preco (desempate: primeiro)
+    let maxIdx = 0;
+    let maxPrice = 0;
+    combo.items.forEach((item, idx) => {
+      const p = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
+      if (p > maxPrice) {
+        maxPrice = p;
+        maxIdx = idx;
+      }
+    });
+    allocs[maxIdx] += residual;
+  }
+
+  // ── Comissao do combo (campo separado, adicional as comissoes por item) ────
+  // Se combo.commissionPercent != null: propaga para commissionPct de cada item
+  // explodido. O fecharComanda hoje recalcula commissionPct/commissionValue a
+  // partir das configuracoes do Professional; a integracao da comissao do combo
+  // na engine de fechamento e tratada em etapa posterior. Aqui apenas gravamos.
+  const comboCommission =
+    combo.commissionPercent != null ? combo.commissionPercent : null;
+
+  await db.$transaction(async (tx) => {
+    // Criar um ComandaItem por componente do combo, com preco rateado
+    for (let i = 0; i < combo.items.length; i++) {
+      const item = combo.items[i];
+      const allocatedPrice = allocs[i];
+      const isService = item.type === "service";
+
+      await tx.comandaItem.create({
+        data: {
+          comandaId,
+          type: item.type,
+          serviceId: isService ? item.serviceId ?? null : null,
+          productId: isService ? null : item.productId ?? null,
+          serviceName: isService ? item.service?.name ?? "Serviço" : "",
+          servicePrice: isService ? allocatedPrice : 0,
+          productName: isService ? "" : item.product?.name ?? "Produto",
+          productPrice: isService ? 0 : allocatedPrice,
+          quantity: 1,
+          unitPriceInCents: allocatedPrice,
+          totalInCents: allocatedPrice,
+          comboId: combo.id,
+          ...(comboCommission != null && { commissionPct: comboCommission }),
+        },
+      });
+    }
+
+    // Recalcular total da comanda — mesmo padrao incremental das demais actions.
+    // A soma dos itens criados e exatamente comboPrice (rateio garante isso).
+    await tx.comanda.update({
+      where: { id: comandaId },
+      data: { totalInCents: { increment: comboPrice } },
+    });
+  });
+
+  revalidatePath(`/dashboard/comandas/${comandaId}`);
+}
+
+// ---------------------------------------------------------------------------
+// addPlanServiceToComanda — lança serviço coberto pelo plano na comanda
+// ---------------------------------------------------------------------------
+
+export async function addPlanServiceToComanda(
+  comandaId: string,
+  subscriptionId: string,
+  serviceId: string
+) {
+  const { barbershopId } = await requireRole(["owner", "reception", "barber"]);
+
+  const now = new Date();
+
+  // Início e fim do ciclo atual (mês corrente, UTC)
+  const periodStart = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    1
+  ));
+  const periodEnd = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    0,
+    23, 59, 59, 999
+  ));
+
+  const result = await db.$transaction(async (tx) => {
+    // 1. Verificar comanda pertence à barbearia e está aberta
+    const comanda = await tx.comanda.findFirst({
+      where: { id: comandaId, barbershopId, status: "open" },
+      select: { id: true, clientId: true },
+    });
+    if (!comanda) {
+      return { error: "Comanda nao encontrada ou ja fechada." };
+    }
+
+    // 2. Verificar assinatura ativa pertence ao cliente da comanda
+    const subscription = await tx.clientSubscription.findFirst({
+      where: {
+        id: subscriptionId,
+        barbershopId,
+        clientId: comanda.clientId ?? undefined,
+        status: "active",
+      },
+      include: {
+        plan: {
+          include: {
+            items: {
+              where: { serviceId },
+              select: {
+                id: true,
+                quantityPerCycle: true,
+                barberCommissionInCents: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!subscription) {
+      return { error: "Assinatura ativa nao encontrada para este cliente." };
+    }
+
+    const planItem = subscription.plan.items[0];
+    if (!planItem) {
+      return { error: "Este servico nao esta incluido no plano do cliente." };
+    }
+
+    // 3. Verificar saldo do ciclo atual
+    const usage = await tx.subscriptionUsage.findFirst({
+      where: {
+        subscriptionId,
+        serviceId,
+        periodStart: { lte: now },
+        periodEnd: { gte: now },
+      },
+      select: { id: true, usedCount: true },
+    });
+
+    const usedCount = usage?.usedCount ?? 0;
+    if (usedCount >= planItem.quantityPerCycle) {
+      return {
+        error: `Cota esgotada para este servico neste ciclo (${usedCount}/${planItem.quantityPerCycle} usados).`,
+      };
+    }
+
+    // 4. Buscar dados do serviço para o item
+    const service = await tx.service.findUnique({
+      where: { id: serviceId },
+      select: { name: true, priceInCents: true },
+    });
+    if (!service) {
+      return { error: "Servico nao encontrado." };
+    }
+
+    // 5. Criar ComandaItem coberto (R$0 para o cliente)
+    await tx.comandaItem.create({
+      data: {
+        comandaId,
+        type: "service",
+        serviceId,
+        serviceName: service.name,
+        quantity: 1,
+        unitPriceInCents: 0,
+        totalInCents: 0,
+        clientSubscriptionId: subscriptionId,
+        // Comissão será resolvida no fecharComanda (Fase F4)
+      },
+    });
+
+    // 6. Incrementar SubscriptionUsage (upsert)
+    if (usage) {
+      await tx.subscriptionUsage.update({
+        where: { id: usage.id },
+        data: { usedCount: { increment: 1 } },
+      });
+    } else {
+      await tx.subscriptionUsage.create({
+        data: {
+          subscriptionId,
+          serviceId,
+          periodStart,
+          periodEnd,
+          usedCount: 1,
+        },
+      });
+    }
+
+    return { success: true };
+  });
+
+  if ("error" in result) return { error: result.error };
+
+  revalidatePath("/dashboard/comandas");
+  return { success: true };
 }
