@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { requestClientCode, verifyClientCode } from "./actions";
+import { SeloAsaas } from "@/components/ui/selo-asaas";
 
 interface Props {
   barbershopId: string;
@@ -240,6 +241,10 @@ export function LoginCliente({ barbershopId, barbershopName, onSuccess }: Props)
             </button>
           </>
         )}
+
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "24px" }}>
+          <SeloAsaas variant="dark" />
+        </div>
       </div>
     </div>
   );
