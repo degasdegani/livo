@@ -95,9 +95,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
+      // Login recém-feito: o user acabou de ser autenticado, existe com certeza.
       if (user) {
         token.id = user.id;
+        return token;
       }
+
+      // Requisições seguintes: se o user foi deletado do banco mas o cookie JWT
+      // ainda existe, retornar null invalida a sessão (Auth.js limpa o cookie e
+      // redireciona para /login), evitando P2025 em Server Components.
+      if (token.sub) {
+        const userExists = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { id: true },
+        });
+        if (!userExists) {
+          return null;
+        }
+      }
+
       return token;
     },
 
