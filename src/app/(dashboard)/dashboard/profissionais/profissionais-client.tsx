@@ -125,20 +125,26 @@ function ProfessionalModal({
 
     const fd = new FormData();
     fd.append("avatar", file);
-    const result: AvatarUploadResult = await uploadProfessionalAvatar(
-      professional.id,
-      fd,
-    );
 
-    URL.revokeObjectURL(objectUrl);
-    setLocalPreview(null);
-    setUploadingAvatar(false);
-
-    if (result.success) {
-      setCurrentAvatarUrl(result.avatarUrl);
-      onAvatarChange?.(result.message);
-    } else {
-      setAvatarError(result.error);
+    try {
+      const result: AvatarUploadResult = await uploadProfessionalAvatar(
+        professional.id,
+        fd,
+      );
+      URL.revokeObjectURL(objectUrl);
+      setLocalPreview(null);
+      setUploadingAvatar(false);
+      if (result.success) {
+        setCurrentAvatarUrl(result.avatarUrl);
+        onAvatarChange?.(result.message);
+      } else {
+        setAvatarError(result.error);
+      }
+    } catch {
+      URL.revokeObjectURL(objectUrl);
+      setLocalPreview(null);
+      setUploadingAvatar(false);
+      setAvatarError("Erro ao enviar a imagem. Tente novamente.");
     }
   }
 

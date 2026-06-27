@@ -262,20 +262,25 @@ export async function uploadProfessionalAvatar(
   }
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const blob = await put(
-    `professionals/${membership.barbershopId}/${professionalId}.${ext}`,
-    file,
-    { access: "public", addRandomSuffix: true },
-  );
 
-  await db.professional.update({
-    where: { id: professionalId },
-    data: { avatarUrl: blob.url },
-  });
+  try {
+    const blob = await put(
+      `professionals/${membership.barbershopId}/${professionalId}.${ext}`,
+      file,
+      { access: "public", addRandomSuffix: true },
+    );
 
-  revalidatePath("/dashboard/profissionais");
+    await db.professional.update({
+      where: { id: professionalId },
+      data: { avatarUrl: blob.url },
+    });
 
-  return { success: true, message: "Foto atualizada com sucesso.", avatarUrl: blob.url };
+    revalidatePath("/dashboard/profissionais");
+
+    return { success: true, message: "Foto atualizada.", avatarUrl: blob.url };
+  } catch {
+    return { success: false, error: "Falha ao enviar a imagem. Tente novamente." };
+  }
 }
 
 export async function removeProfessionalAvatar(
