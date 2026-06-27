@@ -42,10 +42,19 @@ export async function canAddMember(barbershopId: string): Promise<{
 }> {
   const shop = await db.barbershop.findUnique({
     where: { id: barbershopId },
-    select: { plan: true },
+    select: { plan: true, seatLimitOverride: true },
   });
 
-  const limit = shop ? PLAN_SEAT_LIMITS[shop.plan] : 0;
+  const limit = !shop
+    ? 0
+    : shop.seatLimitOverride === -1
+      ? Number.POSITIVE_INFINITY
+      : shop.seatLimitOverride != null && shop.seatLimitOverride > 0
+        ? shop.seatLimitOverride
+        : shop.plan
+          ? PLAN_SEAT_LIMITS[shop.plan]
+          : 0;
+
   const current = await db.membership.count({
     where: { barbershopId, isActive: true },
   });

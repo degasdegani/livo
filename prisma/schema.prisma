@@ -87,6 +87,7 @@ model Barbershop {
   reopenPin           String?
   tvPin               String?           @unique
   clubEnabled         Boolean           @default(false)
+  seatLimitOverride   Int?
   clubAsaasWalletId      String?
   clubAsaasAccountStatus String?
   appointments        Appointment[]
