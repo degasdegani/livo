@@ -34,15 +34,17 @@ POLIMENTO
 Objetivo:
 Produto pronto para crescimento.
 
-## P1
+## P1 (atualizado 26/06/2026)
 
-[ ] Unificar Design System
+[x] Unificar Design System ✅ 26/06/2026
 
-[ ] Fonte Satoshi
+[x] Fonte Satoshi ✅ 26/06/2026
 
 [ ] CRUD Serviços
 
-[~] CRUD Profissionais ← 75% — Etapas 1–3 concluídas, Etapa 4 (nav) pendente
+[x] CRUD Profissionais ✅ completo
+
+[x] Upload de imagens ✅ 26/06/2026 (foto de profissional via Vercel Blob)
 
 [ ] Horários de funcionamento
 
@@ -58,7 +60,21 @@ Produto pronto para crescimento.
 
 [ ] Persistência da Lívia
 
-[ ] Upload de imagens
+[x] Upload de imagens ✅ 26/06/2026
+
+---
+
+## ADICIONADO — Novas features entregues
+
+[x] Combos/Pacotes ✅ 25/06/2026
+
+[x] Clube de Assinatura (Fases A–G) ✅ 26/06/2026
+
+[x] Conformidade BaaS Asaas ✅ 26/06/2026
+
+[x] LIVO TV (Ranking TV) ✅
+
+[x] Insights + Motor de Recomendações (GAP-07 a GAP-09) ✅
 
 ---
 
@@ -142,6 +158,6 @@ Multi-vertical.
 ### Em implementação (ordem definida)
 
 [ ] WhatsApp Alerts — 3 fluxos (confirmação, lembrete 3h, no-show)
-[ ] Ranking TV em tempo real — /tv/[token], BarbershopGoal, ProfessionalGoal
-[ ] Pacotes/Combos — Package, PackageItem
-[ ] Planos de Assinatura — modelo Link Externo v1, ClientPlan, ClientSubscription
+[x] Ranking TV em tempo real — /tv/[token], BarbershopGoal, ProfessionalGoal ✅
+[x] Pacotes/Combos — Package, PackageItem ✅ 25/06/2026
+[x] Planos de Assinatura → Clube de Assinatura (Fases A–G) ✅ 26/06/2026

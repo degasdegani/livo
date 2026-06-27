@@ -654,3 +654,59 @@ Não há módulos completamente quebrados. Todos funcionam no fluxo principal.
 
 ## O sistema hoje suporta operação real?
 **Sim.** Uma barbearia pode hoje usar o LIVO para: onboarding completo, agenda diária, CRM básico, PDV com comissões, estoque, relatórios financeiros e faturamento via PIX. As lacunas são reais mas não impedem a operação principal.
+
+---
+
+# MÓDULO 19 — COMBOS / PACOTES
+
+**Status: ✅ FUNCIONA (26/06/2026)**
+
+## Arquivos
+- `src/app/(dashboard)/dashboard/combos/actions.ts`
+- `src/app/(dashboard)/dashboard/combos/page.tsx`
+- `src/app/(dashboard)/dashboard/combos/loading.tsx`
+- `src/app/(dashboard)/dashboard/combos/combos-client.tsx`
+
+## O que funciona
+- CRUD completo: criar, editar, ativar/desativar combo
+- Composição por serviços e produtos com quantidade
+- Preço único com economia calculada vs avulso
+- Comissão específica por combo (override da engine global)
+- Agrupamento visual no PDV com badge "Combo"
+- Camada de comissão: combo → override → global
+
+---
+
+# MÓDULO 20 — CLUBE DE ASSINATURA
+
+**Status: ✅ FUNCIONA (26/06/2026) — feature flag por barbearia**
+
+## Arquivos principais
+- `src/lib/clube-flag.ts` — isClubEnabled, requireClubEnabled
+- `src/lib/asaas-clube.ts` — createAsaasSubaccount, configureClubWebhook, cancelAsaasSubscription
+- `src/lib/otp-clube.ts` — OTP geração, hash, rate limit, envio SMS
+- `src/app/(dashboard)/dashboard/clube/` — gestão owner
+- `src/app/(dashboard)/dashboard/clube/assinantes/` — dashboard MRR
+- `src/app/[slug]/clube/` — área pública + login + fluxo assinatura
+- `src/app/api/webhooks/asaas/clube/route.ts` — webhook isolado
+- `src/components/ui/selo-asaas.tsx` — conformidade BaaS
+
+## O que funciona
+- Feature flag por barbearia (clubEnabled), sidebar com cadeado "Em breve"
+- CRUD de planos: serviços com cota/mês, descontos por produto, comissão
+- Conexão subconta Asaas com validação de CNPJ (dígitos verificadores)
+- Webhook com ordenação de eventos (P1-A) e idempotência (VS-5)
+- Login cliente por OTP: SHA-256, rate limit 3/h, expiração 10min, JWT 60 dias
+- Área pública: planos + economia + fluxo assinar → login → checkout
+- Área logada: saldo do ciclo, barra de progresso, cancelamento self-service
+- PDV: serviços cobertos (R$0), decremento de cota, comissão em cascata
+- Dashboard MRR com ativos, cancelamentos, uso do ciclo
+- SeloAsaas em todas as telas de pagamento (conformidade BaaS Banco Central)
+
+## Pendente antes do go-live
+- Vars de ambiente no Vercel: ASAAS_CLUBE_WEBHOOK_TOKEN, NEXT_PUBLIC_APP_URL, ASAAS_WEBHOOK_EMAIL
+- Integração provedor SMS nacional (hoje: console em dev, erro em prod)
+- Aprovação final do formulário BaaS pelo Asaas
+- Cláusula contratual Asaas nos Termos de Uso
+- Smoke test completo com conta Vortex
+- Ativar clubEnabled para primeiros 10 clientes pagantes

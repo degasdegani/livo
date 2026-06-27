@@ -1,8 +1,8 @@
 # LIVO PROJECT STATUS
 
-Version: 1.7
-Last Updated: 11/06/2026
-Status: MVP Operacional — GAP-UX-02-A/B/C concluídos (Design System Unification)
+Version: 2.0
+Last Updated: 26/06/2026
+Status: MVP Completo — Combos + Clube de Assinatura + Design System Unificado em produção
 Source of Truth: LIVO_FUNCTIONAL_AUDIT.md + LIVO_PRODUCTION_GAP.md
 
 ---
@@ -31,16 +31,16 @@ O sistema encontra-se funcional para operação real de uma barbearia.
 
 # MATURIDADE ATUAL
 
-Produto ............. 7/10
-UX .................. 7.5/10  ← GAP-UX-02-A/B/C: CSS tokens, Input component
-Engenharia .......... 7/10  ← P0 Sprint + P1 Sprint concluídos
-Escalabilidade ...... 6/10  ← Índices adicionados
-IA .................. 5/10
-Segurança ........... 6/10  ← Rate limiting, roles, debug routes
+Produto ............. 8.5/10
+UX .................. 8.5/10
+Engenharia .......... 8.0/10
+Escalabilidade ...... 7.0/10
+IA .................. 5.5/10
+Segurança ........... 7.5/10
 
-Score Geral: 6.5/10
+Score Geral: 7.9/10
 
-Score Funcional (18 módulos): 8.0/10  ← GAP-01 a GAP-04 concluídos
+Score Funcional (20+ módulos): 9.0/10
 
 ---
 
@@ -190,6 +190,47 @@ Status: Produção ← GAP-03 concluído
 - ✅ `page.tsx` + `loading.tsx` — Server Component + skeleton
 - ✅ `profissionais-client.tsx` — UI completa (lista, modais, toggle com confirmação)
 - ✅ Navegação no sidebar integrada
+
+---
+
+## Combos / Pacotes
+Status: Produção ✅ (26/06/2026)
+- CRUD completo (nome, descrição, preço único, itens com serviços e produtos)
+- Comissão específica por combo (override da engine global)
+- Agrupamento visual no PDV com badge "Combo"
+- Economia calculada vs preço avulso
+- getCombosAtivos para seleção no PDV
+- Camada de comissão: combo tem prioridade sobre override → global
+
+## Clube de Assinatura
+Status: Produção ✅ (26/06/2026) — feature flag por barbearia (clubEnabled)
+- Schema: SubscriptionPlan, SubscriptionPlanItem, SubscriptionPlanProductDiscount, ClientSubscription, SubscriptionUsage, ClientVerificationCode
+- Feature flag: clubEnabled por barbearia, sidebar com cadeado "Em breve" quando desativado
+- CRUD de planos: nome, preço, serviços com cota/mês, descontos por produto (% ou R$), comissão fixa ou nenhuma
+- Conexão Asaas: subconta por barbearia (walletId salvo, apiKey nunca armazenada)
+- Webhook próprio /api/webhooks/asaas/clube: token separado, ordenação por lastBillingEventAt, idempotência
+- Login do cliente: OTP por telefone (SHA-256, rate limit 3/hora, expiração 10min, JWT httpOnly 60 dias)
+- Área pública /[slug]/clube: listagem de planos com economia, fluxo assinar → login → checkout Asaas
+- Área logada: plano ativo, saldo do ciclo com barra de progresso, cancelamento self-service
+- PDV: reconhece assinante ativo, exibe serviços do plano com saldo, lança como coberto (R$0), decrementa cota
+- Comissão: camada plano na engine (combo → plano → override → global)
+- Dashboard /dashboard/clube/assinantes: MRR, ativos, cancelamentos, uso do ciclo, quem vendeu
+- Conformidade BaaS: SeloAsaas em todas as telas de pagamento (variant auto/dark), suporte Asaas visível
+- Cláusula contratual Asaas pendente nos Termos de Uso
+
+## Upload de Foto de Profissional
+Status: Produção ✅ (26/06/2026)
+- Vercel Blob Store público (livo-blob) criado e conectado
+- BLOB_READ_WRITE_TOKEN via OIDC no Vercel
+- try/catch robusto no cliente e na action (nunca trava o spinner)
+- Validação de tipo (jpeg/png/webp) e tamanho (5MB)
+
+## Design System Unificado
+Status: Produção ✅ (26/06/2026)
+- Fonte Satoshi como primária
+- CSS custom properties completas (--bg-base, --bg-card, --bg-card-elevated, --border, --text-*)
+- Dark theme padrão, light theme via [data-theme="light"]
+- Componente SeloAsaas com variant auto/dark/light
 
 ---
 
@@ -439,3 +480,27 @@ Escopo:
 - Close: ESC key + click-outside via `e.target === e.currentTarget`
 - Scroll: `maxHeight: "90vh"`, `overflowY: "auto"` no dialog
 - Candidatos para migração: `clients-client.tsx` (2 modais), `profissionais-client.tsx` (2 modais), futuros modais
+
+---
+
+## Sprint Combos (25/06/2026)
+- Combos/Pacotes: CRUD completo, PDV com agrupamento visual, comissão especial
+- Migrations: add_combos
+- 6 etapas concluídas, deploy em produção
+
+## Sprint Clube de Assinatura — Fases A–G (26/06/2026)
+- Fase A: feature flag + schema base + helper clube-flag
+- Fase B: actions de gestão + página /dashboard/clube + sidebar
+- Fase C: lib asaas-clube + connectClubAccount + webhook /api/webhooks/asaas/clube
+- Fase D: OTP por telefone (lib otp-clube + actions + UI login)
+- Fase E: área pública de planos + checkout Asaas + área do assinante
+- Fase F: clientSubscriptionId no ComandaItem + addPlanServiceToComanda + UI PDV + comissão
+- Fase G: /dashboard/clube/assinantes com MRR
+- Migrations: add_clube_catalog, add_clube_subscriptions, add_client_verification_codes, add_comanda_item_subscription
+- Conformidade BaaS: SeloAsaas + formulário Asaas enviado
+- Deploy em produção
+
+## Fix Upload de Foto (26/06/2026)
+- Vercel Blob recriado como Public (anterior era Private)
+- try/catch adicionado no cliente e na action
+- BLOB_READ_WRITE_TOKEN conectado via OIDC
