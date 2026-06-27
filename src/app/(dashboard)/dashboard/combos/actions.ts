@@ -10,6 +10,7 @@ export type ComboItemInput = {
   type: "service" | "product";
   serviceId?: string;
   productId?: string;
+  quantity?: number;
 };
 
 export type ComboFormData = {
@@ -21,6 +22,15 @@ export type ComboFormData = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Quantidade do item de combo: inteiro >= 1. Lanca erro se invalido.
+function normalizeComboQuantity(raw: number | undefined): number {
+  const value = raw === undefined ? 1 : raw;
+  if (!Number.isFinite(value)) throw new Error("Quantidade do item inválida.");
+  const int = Math.trunc(value);
+  if (int < 1) throw new Error("Quantidade do item deve ser no mínimo 1.");
+  return int;
+}
 
 function validateComboData(data: ComboFormData) {
   if (!data.name?.trim()) throw new Error("Nome do combo é obrigatório.");
@@ -112,7 +122,7 @@ export async function createCombo(data: ComboFormData) {
         type: item.type,
         serviceId: item.serviceId ?? null,
         productId: item.productId ?? null,
-        quantity: 1,
+        quantity: normalizeComboQuantity(item.quantity),
       })),
     });
   });
@@ -168,7 +178,7 @@ export async function updateCombo(comboId: string, data: ComboFormData) {
         type: item.type,
         serviceId: item.serviceId ?? null,
         productId: item.productId ?? null,
-        quantity: 1,
+        quantity: normalizeComboQuantity(item.quantity),
       })),
     });
   });

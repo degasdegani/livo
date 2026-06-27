@@ -970,34 +970,33 @@ export async function addComboToComanda(comandaId: string, comboId: string) {
   if (!combo) throw new Error("Combo não encontrado ou inativo.");
   if (combo.items.length === 0) throw new Error("Combo sem itens válidos.");
 
-  // Calcular preco de lista total
-  const listTotal = combo.items.reduce((sum, item) => {
-    const price = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
-    return sum + price;
-  }, 0);
+  // Peso de cada item = preco_unitario x quantity. Permite o mesmo servico/
+  // produto repetido (quantity > 1) e mantem o rateio fiel ao valor avulso.
+  const weights = combo.items.map((item) => {
+    const unit = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
+    const qty = item.quantity > 0 ? item.quantity : 1;
+    return unit * qty;
+  });
+  const listTotal = weights.reduce((a, b) => a + b, 0);
   if (listTotal <= 0) throw new Error("Combo sem itens válidos para venda.");
 
   const comboPrice = combo.priceInCents;
 
-  // ── Algoritmo de rateio proporcional ──────────────────────────────────────
-  // alloc_i = round(p_i / listTotal * comboPrice)
-  // residual somado ao item de maior preco (garante soma exata = comboPrice)
-  const allocs = combo.items.map((item) => {
-    const p = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
-    return Math.round((p / listTotal) * comboPrice);
-  });
+  // ── Rateio proporcional PONDERADO por (preco x quantity) ───────────────────
+  // alloc_i = round(peso_i / listTotal * comboPrice)
+  // residual somado a linha de MAIOR peso (garante soma exata = comboPrice)
+  const allocs = weights.map((w) => Math.round((w / listTotal) * comboPrice));
 
   const allocSum = allocs.reduce((a, b) => a + b, 0);
   const residual = comboPrice - allocSum;
 
   if (residual !== 0) {
-    // Somar residual ao item de maior preco (desempate: primeiro)
+    // Somar residual a linha de maior peso (desempate: primeira)
     let maxIdx = 0;
-    let maxPrice = 0;
-    combo.items.forEach((item, idx) => {
-      const p = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
-      if (p > maxPrice) {
-        maxPrice = p;
+    let maxWeight = -1;
+    weights.forEach((w, idx) => {
+      if (w > maxWeight) {
+        maxWeight = w;
         maxIdx = idx;
       }
     });
@@ -1013,10 +1012,14 @@ export async function addComboToComanda(comandaId: string, comboId: string) {
     combo.commissionPercent != null ? combo.commissionPercent : null;
 
   await db.$transaction(async (tx) => {
-    // Criar um ComandaItem por componente do combo, com preco rateado
+    // Criar um ComandaItem por componente do combo, com preco rateado.
+    // allocs[i] e o valor rateado da LINHA inteira (todas as N unidades).
+    // unitPriceInCents/servicePrice/productPrice ficam por unidade.
     for (let i = 0; i < combo.items.length; i++) {
       const item = combo.items[i];
-      const allocatedPrice = allocs[i];
+      const lineTotal = allocs[i];
+      const qty = item.quantity > 0 ? item.quantity : 1;
+      const unitPrice = Math.round(lineTotal / qty);
       const isService = item.type === "service";
 
       await tx.comandaItem.create({
@@ -1026,12 +1029,12 @@ export async function addComboToComanda(comandaId: string, comboId: string) {
           serviceId: isService ? item.serviceId ?? null : null,
           productId: isService ? null : item.productId ?? null,
           serviceName: isService ? item.service?.name ?? "Serviço" : "",
-          servicePrice: isService ? allocatedPrice : 0,
+          servicePrice: isService ? unitPrice : 0,
           productName: isService ? "" : item.product?.name ?? "Produto",
-          productPrice: isService ? 0 : allocatedPrice,
-          quantity: 1,
-          unitPriceInCents: allocatedPrice,
-          totalInCents: allocatedPrice,
+          productPrice: isService ? 0 : unitPrice,
+          quantity: qty,
+          unitPriceInCents: unitPrice,
+          totalInCents: lineTotal,
           comboId: combo.id,
           ...(comboCommission != null && { commissionPct: comboCommission }),
         },

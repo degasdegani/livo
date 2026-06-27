@@ -43,7 +43,8 @@ type CombosData = Awaited<ReturnType<typeof getCombosData>>;
 function calcListTotal(items: ComboItemWithDetails[]): number {
   return items.reduce((sum, item) => {
     const price = item.service?.priceInCents ?? item.product?.priceInCents ?? 0;
-    return sum + price;
+    const qty = item.quantity > 0 ? item.quantity : 1;
+    return sum + price * qty;
   }, 0);
 }
 
@@ -88,40 +89,50 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
       type: i.type,
       serviceId: i.serviceId ?? undefined,
       productId: i.productId ?? undefined,
+      quantity: i.quantity > 0 ? i.quantity : 1,
     })) ?? []
   );
   const [error, setError] = useState("");
 
-  // Calcula preço de lista atual dos itens selecionados
+  // Calcula preço de lista atual (avulso) ponderado por quantity.
   function calcCurrentListTotal(): number {
     return selectedItems.reduce((sum, item) => {
+      const qty = item.quantity ?? 1;
       if (item.type === "service" && item.serviceId) {
         const svc = services.find((s) => s.id === item.serviceId);
-        return sum + (svc?.priceInCents ?? 0);
+        return sum + (svc?.priceInCents ?? 0) * qty;
       }
       if (item.type === "product" && item.productId) {
         const prd = products.find((p) => p.id === item.productId);
-        return sum + (prd?.priceInCents ?? 0);
+        return sum + (prd?.priceInCents ?? 0) * qty;
       }
       return sum;
     }, 0);
   }
 
+  // Permite o mesmo servico/produto mais de uma vez (sem trava de duplicata).
   function addItem(type: "service" | "product", id: string) {
-    const alreadyIn = selectedItems.some(
-      (i) =>
-        (type === "service" && i.serviceId === id) ||
-        (type === "product" && i.productId === id)
-    );
-    if (alreadyIn) return;
     setSelectedItems((prev) => [
       ...prev,
-      type === "service" ? { type, serviceId: id } : { type, productId: id },
+      type === "service"
+        ? { type, serviceId: id, quantity: 1 }
+        : { type, productId: id, quantity: 1 },
     ]);
   }
 
   function removeItem(index: number) {
     setSelectedItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateQuantity(index: number, delta: number) {
+    setSelectedItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const current = item.quantity ?? 1;
+        const next = Math.max(1, current + delta);
+        return { ...item, quantity: next };
+      })
+    );
   }
 
   function getItemLabel(item: ComboItemInput): string {
@@ -180,12 +191,10 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
   const comboPrice = Math.round(parseFloat(priceStr.replace(",", ".")) * 100) || 0;
   const { savings, pct } = calcSavings(listTotal, comboPrice);
 
-  const availableServices = services.filter(
-    (s) => !selectedItems.some((i) => i.serviceId === s.id)
-  );
-  const availableProducts = products.filter(
-    (p) => !selectedItems.some((i) => i.productId === p.id)
-  );
+  // Lista todos os servicos/produtos ativos, mesmo os ja escolhidos — o mesmo
+  // item pode entrar mais de uma vez (ou ter quantity > 1 na linha).
+  const availableServices = services;
+  const availableProducts = products;
 
   return (
     <div
@@ -346,11 +355,52 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
                 fontSize: "0.875rem",
               }}
             >
-              <span style={{ color: "var(--text-primary)" }}>
+              <span style={{ color: "var(--text-primary)", flex: 1, minWidth: 0 }}>
                 {getItemLabel(item)}
               </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginRight: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={() => updateQuantity(idx, -1)}
+                  disabled={(item.quantity ?? 1) <= 1}
+                  aria-label="Diminuir quantidade"
+                  style={{
+                    width: "1.5rem",
+                    height: "1.5rem",
+                    borderRadius: "0.375rem",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                    cursor: (item.quantity ?? 1) <= 1 ? "not-allowed" : "pointer",
+                    opacity: (item.quantity ?? 1) <= 1 ? 0.5 : 1,
+                    lineHeight: 1,
+                  }}
+                >
+                  -
+                </button>
+                <span style={{ color: "var(--text-primary)", minWidth: "1.25rem", textAlign: "center" }}>
+                  {item.quantity ?? 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => updateQuantity(idx, 1)}
+                  aria-label="Aumentar quantidade"
+                  style={{
+                    width: "1.5rem",
+                    height: "1.5rem",
+                    borderRadius: "0.375rem",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                    cursor: "pointer",
+                    lineHeight: 1,
+                  }}
+                >
+                  +
+                </button>
+              </div>
               <span style={{ color: "var(--text-secondary)", marginRight: "0.75rem" }}>
-                {formatBRL(getItemPrice(item))}
+                {formatBRL(getItemPrice(item) * (item.quantity ?? 1))}
               </span>
               <button
                 onClick={() => removeItem(idx)}

@@ -370,6 +370,7 @@ export default function ComandaPDV({
             </span>
             <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
               {item.type === "service" ? item.serviceName : item.productName}
+              {item.quantity > 1 ? ` x${item.quantity}` : ""}
             </p>
           </div>
           <p className="mt-0.5 text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -1169,7 +1170,8 @@ export default function ComandaPDV({
               const listTotal = combo.items.reduce(
                 (sum, it) =>
                   sum +
-                  (it.service?.priceInCents ?? it.product?.priceInCents ?? 0),
+                  (it.service?.priceInCents ?? it.product?.priceInCents ?? 0) *
+                    (it.quantity > 0 ? it.quantity : 1),
                 0,
               );
               const savings = listTotal - combo.priceInCents;
