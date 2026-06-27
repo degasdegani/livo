@@ -401,18 +401,12 @@ button {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
-/* Selo Asaas — alterna entre dark (padrão) e light theme.
-   Tema controlado via [data-theme="light"] no <html>. */
-.selo-asaas-dark {
-  display: inline-block;
-}
-.selo-asaas-light {
-  display: none;
-}
+/* Selo Asaas — dark é padrão, light via data-theme ou .light */
+.selo-asaas-dark  { display: inline-block; }
+.selo-asaas-light { display: none; }
 
-[data-theme="light"] .selo-asaas-dark {
-  display: none;
-}
-[data-theme="light"] .selo-asaas-light {
-  display: inline-block;
-}
+[data-theme="light"] .selo-asaas-dark  { display: none; }
+[data-theme="light"] .selo-asaas-light { display: inline-block; }
+
+.light .selo-asaas-dark  { display: none; }
+.light .selo-asaas-light { display: inline-block; }
