@@ -820,6 +820,15 @@ export async function getComissoesData(
     }
   }
 
+  // Barbeiro nunca recebe faturamento agregado (nem o próprio): zeramos no
+  // payload para que nenhum valor R$ de faturamento trafegue ou seja exibido.
+  // A comissão (própria) permanece intacta.
+  if (membership.role === MemberRole.barber) {
+    for (const resumoProf of Object.values(porProfissional)) {
+      resumoProf.totalFaturamento = 0;
+    }
+  }
+
   return {
     resumo: Object.values(porProfissional).sort(
       (a, b) => b.totalComissao - a.totalComissao,

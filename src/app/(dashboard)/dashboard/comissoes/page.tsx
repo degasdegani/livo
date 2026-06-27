@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/permissions";
+import { getProfessionalMonthlyCounts } from "@/lib/professional-counts";
 import { MemberRole } from "@prisma/client";
 import { getComissoesData } from "../comandas/actions";
 import { ComissoesClient } from "./comissoes-client";
@@ -9,6 +10,15 @@ export default async function ComissoesPage() {
 
   const { resumo, profissionais, dataInicio, dataFim } =
     await getComissoesData("mes_atual");
+
+  // Barbeiro vê a própria produção (serviços/produtos) no lugar do faturamento.
+  const meusCounts =
+    membership.role === MemberRole.barber && membership.professionalId
+      ? await getProfessionalMonthlyCounts(
+          membership.barbershopId,
+          membership.professionalId,
+        )
+      : null;
 
   // Comissão vive em Professional agora — busca todos os profissionais ativos
   // da barbearia (não só os que têm Membership/login vinculado).
@@ -49,6 +59,8 @@ export default async function ComissoesPage() {
       dataFim={dataFim}
       role={membership.role}
       myProfessionalId={membership.professionalId}
+      meusServicosCount={meusCounts?.servicosCount ?? 0}
+      meusProdutosCount={meusCounts?.produtosCount ?? 0}
     />
   );
 }

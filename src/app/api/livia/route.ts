@@ -1,5 +1,6 @@
 // src/app/api/livia/route.ts
 
+import { MemberRole } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentMembership } from "@/lib/permissions";
 import { db } from "@/lib/db";
@@ -104,25 +105,31 @@ export async function POST(req: NextRequest) {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [faturamentoMes, totalAgendamentos] = await Promise.all([
-      db.comanda.aggregate({
+    const isOwner = membership.role === MemberRole.owner;
+
+    const totalAgendamentos = await db.appointment.count({
+      where: {
+        barbershopId: membership.barbershopId,
+        date: { gte: monthStart },
+        status: { notIn: ["cancelled", "no_show"] },
+      },
+    });
+
+    // Faturamento agregado e exclusivo do owner — nao computamos nem expomos
+    // para barber/recepcao para que nunca chegue ao prompt da Lívia.
+    let faturamentoLinha = "";
+    if (isOwner) {
+      const faturamentoMes = await db.comanda.aggregate({
         where: {
           barbershopId: membership.barbershopId,
           status: "closed",
           closedAt: { gte: monthStart },
         },
         _sum: { totalInCents: true },
-      }),
-      db.appointment.count({
-        where: {
-          barbershopId: membership.barbershopId,
-          date: { gte: monthStart },
-          status: { notIn: ["cancelled", "no_show"] },
-        },
-      }),
-    ]);
-
-    const faturamento = (faturamentoMes._sum.totalInCents ?? 0) / 100;
+      });
+      const faturamento = (faturamentoMes._sum.totalInCents ?? 0) / 100;
+      faturamentoLinha = `- Faturamento este mês: R$${faturamento.toFixed(2)}\n`;
+    }
 
     const systemPrompt = `Você é a Lívia, assistente de inteligência artificial do sistema LIVO — a plataforma de gestão para barbearias modernas.
 
@@ -149,8 +156,7 @@ Dados da barbearia (use para contextualizar suas respostas):
 - Total de clientes cadastrados: ${barbershop._count.clients}
 - Profissionais ativos: ${barbershop.professionals.map((p) => p.name).join(", ") || "Nenhum"}
 - Serviços: ${barbershop.services.map((s) => `${s.name} (R$${(s.priceInCents / 100).toFixed(0)}, ${s.durationMin}min)`).join(" | ") || "Nenhum"}
-- Faturamento este mês: R$${faturamento.toFixed(2)}
-- Agendamentos este mês: ${totalAgendamentos}
+${faturamentoLinha}- Agendamentos este mês: ${totalAgendamentos}
 `
     : ""
 }

@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getCurrentMembership } from "@/lib/permissions";
 import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
+import { getProfessionalMonthlyCounts } from "@/lib/professional-counts";
 import { getDashboardAnalytics } from "./actions";
 import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
@@ -130,15 +131,20 @@ export default async function DashboardPage() {
 
   // Fonte oficial de receita: Comandas fechadas (comanda.totalInCents).
   // Appointments não representam receita realizada.
-  const { _sum: todaySum } = await db.comanda.aggregate({
-    where: {
-      barbershopId: barbershop.id,
-      status: "closed",
-      closedAt: { gte: todayStart, lte: todayEnd },
-    },
-    _sum: { totalInCents: true },
-  });
-  const todayRevenue = todaySum.totalInCents ?? 0;
+  // Faturamento agregado é exclusivo do owner — para barber/recepção não é
+  // computado nem passado adiante (evita vazar valor R$ no payload).
+  let todayRevenue = 0;
+  if (membership.role === MemberRole.owner) {
+    const { _sum: todaySum } = await db.comanda.aggregate({
+      where: {
+        barbershopId: barbershop.id,
+        status: "closed",
+        closedAt: { gte: todayStart, lte: todayEnd },
+      },
+      _sum: { totalInCents: true },
+    });
+    todayRevenue = todaySum.totalInCents ?? 0;
+  }
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -154,6 +160,16 @@ export default async function DashboardPage() {
   const comissoesDoMes =
     membership.role === MemberRole.barber && membership.professionalId
       ? await getComissoesData("mes_atual", membership.professionalId)
+      : null;
+
+  // Contagem de serviços/produtos realizados pelo próprio barbeiro no mês.
+  // Substitui o faturamento agregado (que o barbeiro não pode ver).
+  const meusCounts =
+    membership.role === MemberRole.barber && membership.professionalId
+      ? await getProfessionalMonthlyCounts(
+          membership.barbershopId,
+          membership.professionalId,
+        )
       : null;
 
   const analytics =
@@ -296,32 +312,56 @@ export default async function DashboardPage() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {
-              label: "HOJE",
-              value: todayAppointments.length.toString(),
-              sub: "agendamentos",
-              color: "var(--color-primary)",
-            },
-            {
-              label: "RECEITA",
-              value: `R$${(todayRevenue / 100).toFixed(0)}`,
-              sub: "hoje",
-              color: "var(--status-green)",
-            },
-            {
-              label: "CLIENTES",
-              value: barbershop._count.clients.toString(),
-              sub: "cadastrados",
-              color: "var(--color-cyan)",
-            },
-            {
-              label: "MÊS",
-              value: monthAppointments.toString(),
-              sub: "agendamentos",
-              color: "var(--color-purple)",
-            },
-          ].map((kpi) => (
+          {(
+            [
+              {
+                label: "HOJE",
+                value: todayAppointments.length.toString(),
+                sub: "agendamentos",
+                color: "var(--color-primary)",
+              },
+              // RECEITA (faturamento agregado) só para owner.
+              ...(membership.role === MemberRole.owner
+                ? [
+                    {
+                      label: "RECEITA",
+                      value: `R$${(todayRevenue / 100).toFixed(0)}`,
+                      sub: "hoje",
+                      color: "var(--status-green)",
+                    },
+                  ]
+                : []),
+              // Barbeiro vê a própria produção (sem valor R$).
+              ...(membership.role === MemberRole.barber
+                ? [
+                    {
+                      label: "MEUS SERVIÇOS",
+                      value: (meusCounts?.servicosCount ?? 0).toString(),
+                      sub: "este mês",
+                      color: "var(--status-green)",
+                    },
+                    {
+                      label: "MEUS PRODUTOS",
+                      value: (meusCounts?.produtosCount ?? 0).toString(),
+                      sub: "este mês",
+                      color: "var(--color-gold)",
+                    },
+                  ]
+                : []),
+              {
+                label: "CLIENTES",
+                value: barbershop._count.clients.toString(),
+                sub: "cadastrados",
+                color: "var(--color-cyan)",
+              },
+              {
+                label: "MÊS",
+                value: monthAppointments.toString(),
+                sub: "agendamentos",
+                color: "var(--color-purple)",
+              },
+            ] as { label: string; value: string; sub: string; color: string }[]
+          ).map((kpi) => (
             <div
               key={kpi.label}
               className="rounded-2xl p-5"
@@ -382,16 +422,6 @@ export default async function DashboardPage() {
                       sub: "fechadas",
                       color: "var(--text-primary)",
                       size: "32px",
-                    },
-                    {
-                      label: "FATURAMENTO",
-                      value: (meu.totalFaturamento / 100).toLocaleString(
-                        "pt-BR",
-                        { style: "currency", currency: "BRL" },
-                      ),
-                      sub: "no período",
-                      color: "var(--text-primary)",
-                      size: "26px",
                     },
                     {
                       label: "COM. SERVIÇOS",

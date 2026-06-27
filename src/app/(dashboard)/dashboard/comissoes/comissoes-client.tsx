@@ -47,6 +47,8 @@ type Props = {
   dataFim: Date;
   role: MemberRole;
   myProfessionalId: string | null;
+  meusServicosCount: number;
+  meusProdutosCount: number;
 };
 
 const PERIODOS = [
@@ -77,6 +79,8 @@ export function ComissoesClient({
   dataFim,
   role,
   myProfessionalId,
+  meusServicosCount,
+  meusProdutosCount,
 }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>("mes_atual");
   const [filtroProf, setFiltroProf] = useState<string>("todos");
@@ -219,6 +223,8 @@ export function ComissoesClient({
     (s, r) => s + r.totalFaturamento,
     0,
   );
+  // Barbeiro nunca vê faturamento (R$) — nem nos KPIs nem na coluna da tabela.
+  const showFaturamento = role !== MemberRole.barber;
   // O dono (owner) agora também é configurável, no mesmo fluxo dos colaboradores.
   // Mantemos a lista com todos os profissionais ativos da barbearia.
   const profissionaisComissionaveis = professionalsComPct;
@@ -315,26 +321,45 @@ export function ComissoesClient({
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {[
-          {
-            label: "Total de Comissões",
-            value: fmt(totalGeral),
-            color: "var(--color-gold)",
-          },
-          {
-            label: "Faturamento Período",
-            value: fmt(totalFaturamento),
-            color: "var(--text-primary)",
-          },
-          {
-            label: "% Médio sobre fat.",
-            value:
-              totalFaturamento > 0
-                ? ((totalGeral / totalFaturamento) * 100).toFixed(1) + "%"
-                : "—",
-            color: "var(--text-primary)",
-          },
-        ].map((k) => (
+        {(role === MemberRole.barber
+          ? [
+              {
+                label: "Total de Comissões",
+                value: fmt(totalGeral),
+                color: "var(--color-gold)",
+              },
+              {
+                label: "Meus serviços (mês)",
+                value: meusServicosCount.toString(),
+                color: "var(--text-primary)",
+              },
+              {
+                label: "Meus produtos (mês)",
+                value: meusProdutosCount.toString(),
+                color: "var(--text-primary)",
+              },
+            ]
+          : [
+              {
+                label: "Total de Comissões",
+                value: fmt(totalGeral),
+                color: "var(--color-gold)",
+              },
+              {
+                label: "Faturamento Período",
+                value: fmt(totalFaturamento),
+                color: "var(--text-primary)",
+              },
+              {
+                label: "% Médio sobre fat.",
+                value:
+                  totalFaturamento > 0
+                    ? ((totalGeral / totalFaturamento) * 100).toFixed(1) + "%"
+                    : "—",
+                color: "var(--text-primary)",
+              },
+            ]
+        ).map((k) => (
           <div
             key={k.label}
             className="rounded-xl p-4"
@@ -378,7 +403,7 @@ export function ComissoesClient({
                 {[
                   "Profissional",
                   "Comandas",
-                  "Faturamento",
+                  ...(showFaturamento ? ["Faturamento"] : []),
                   "Com. Serviços",
                   "Com. Produtos",
                   "Total Comissão",
@@ -435,9 +460,11 @@ export function ComissoesClient({
                   <TableCell align="right" muted style={{ padding: "16px" }}>
                     {r.totalComandas}
                   </TableCell>
-                  <TableCell align="right" style={{ padding: "16px" }}>
-                    {fmt(r.totalFaturamento)}
-                  </TableCell>
+                  {showFaturamento && (
+                    <TableCell align="right" style={{ padding: "16px" }}>
+                      {fmt(r.totalFaturamento)}
+                    </TableCell>
+                  )}
                   <TableCell align="right" style={{ padding: "16px" }}>
                     {r.totalComissaoServicos > 0 ? (
                       <span style={{ color: "var(--status-green)" }}>
@@ -489,9 +516,11 @@ export function ComissoesClient({
                   <TableCell align="right" muted>
                     {resumoFiltrado.reduce((s, r) => s + r.totalComandas, 0)}
                   </TableCell>
-                  <TableCell align="right" style={{ fontWeight: 700 }}>
-                    {fmt(totalFaturamento)}
-                  </TableCell>
+                  {showFaturamento && (
+                    <TableCell align="right" style={{ fontWeight: 700 }}>
+                      {fmt(totalFaturamento)}
+                    </TableCell>
+                  )}
                   <TableCell
                     align="right"
                     style={{ color: "var(--status-green)", fontWeight: 700 }}
