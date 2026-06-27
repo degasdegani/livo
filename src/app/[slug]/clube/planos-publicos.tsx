@@ -173,7 +173,7 @@ export function PlanosPublicos({ plans, barbershopName, onAssinar }: Props) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "center", marginTop: "32px", paddingBottom: "24px" }}>
-        <SeloAsaas />
+        <SeloAsaas variant="dark" />
       </div>
     </div>
   );
