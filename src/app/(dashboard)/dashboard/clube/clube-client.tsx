@@ -1115,7 +1115,7 @@ export function ClubeDashboard({ data }: { data: ClubData }) {
 
       {data.clubEnabled && (
         <div style={{ display: "flex", justifyContent: "center", marginTop: "32px", paddingBottom: "24px" }}>
-          <SeloAsaas variant="dark" />
+          <SeloAsaas variant="auto" />
         </div>
       )}
     </div>

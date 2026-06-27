@@ -36,8 +36,8 @@ export function SeloAsaas({ style, variant = "auto" }: Props) {
       {variant === "light" && renderImg(SELO_AZUL)}
       {variant === "auto" && (
         <a href="https://asaas.com" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-          <img src={SELO_BRANCO} alt="Servicos financeiros Asaas" width={160} height={48} style={imgStyle} className="selo-asaas-dark" />
-          <img src={SELO_AZUL} alt="Servicos financeiros Asaas" width={160} height={48} style={imgStyle} className="selo-asaas-light" />
+          <img src={SELO_BRANCO} alt="Servicos financeiros Asaas" width={160} height={48} className="selo-asaas-dark" />
+          <img src={SELO_AZUL} alt="Servicos financeiros Asaas" width={160} height={48} className="selo-asaas-light" />
         </a>
       )}
       <p style={{ fontSize: "10px", color: "var(--text-tertiary)", textAlign: "center", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>
