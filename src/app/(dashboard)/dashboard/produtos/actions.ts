@@ -212,18 +212,34 @@ export async function addStockMovement(input: AddStockInput) {
   // Garante que o produto pertence à barbearia
   const product = await db.product.findFirst({
     where: { id: input.productId, barbershopId: membership.barbershopId },
+    select: { id: true },
   });
   if (!product) throw new Error("Produto não encontrado.");
 
-  const newStock = product.stockQuantity + input.quantity;
-  if (newStock < 0) {
-    throw new Error(
-      `Estoque insuficiente. Estoque atual: ${product.stockQuantity} unidades.`,
-    );
-  }
+  await db.$transaction(async (tx) => {
+    // Ajuste atômico do estoque (evita TOCTOU com vendas concorrentes).
+    // input.quantity é sinalizado: positivo = entrada, negativo = saída.
+    if (input.quantity > 0) {
+      await tx.product.update({
+        where: { id: input.productId, barbershopId: membership.barbershopId },
+        data: { stockQuantity: { increment: input.quantity } },
+      });
+    } else {
+      const saida = Math.abs(input.quantity);
+      const stockUpdated = await tx.product.updateMany({
+        where: {
+          id: input.productId,
+          barbershopId: membership.barbershopId,
+          stockQuantity: { gte: saida },
+        },
+        data: { stockQuantity: { decrement: saida } },
+      });
+      if (stockUpdated.count === 0) {
+        throw new Error("Estoque insuficiente para o ajuste.");
+      }
+    }
 
-  await db.$transaction([
-    db.stockMovement.create({
+    await tx.stockMovement.create({
       data: {
         quantity: input.quantity,
         reason: input.reason,
@@ -231,12 +247,8 @@ export async function addStockMovement(input: AddStockInput) {
         productId: input.productId,
         barbershopId: membership.barbershopId,
       },
-    }),
-    db.product.update({
-      where: { id: input.productId },
-      data: { stockQuantity: newStock },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath("/dashboard/produtos");
   return { ok: true };
