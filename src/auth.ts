@@ -101,7 +101,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        // Grava no campo padrao do Auth.js (token.sub), que e o mesmo lido pelo
+        // callback session abaixo. Sem campo orfao. Edge-safe: nada de Prisma/DB.
+        token.sub = user.id;
       }
       return token;
     },

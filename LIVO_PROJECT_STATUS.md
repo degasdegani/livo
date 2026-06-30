@@ -576,3 +576,33 @@ Escopo:
 - Pendencias anotadas para A2.3: (i) loop de redirect /dashboard -> /login para
   user Google novo sem membership; (ii) P2025 no onboarding para sessao zumbi;
   (iii) limpeza token.id vs token.sub no callback jwt.
+
+### v2026.06.30 — 2026-06-30 (A2.3 + fecha A2)
+
+- A2.3 concluida e validada em producao: corrigida a causa 2 do bug de login
+  (roteamento + sessao-zumbi). Bug de login encerrado por completo (A2 inteira).
+- src/lib/permissions.ts (requireMembership): passa a distinguir dois casos
+  antes tratados como o mesmo redirect /login: sem sessao -> /login; logado SEM
+  membership -> /onboarding. Elimina o loop /dashboard <-> /login. Roda em Node
+  (le o banco), nunca no Edge. Confirmado que /onboarding nao chama
+  requireMembership (sem auto-loop) e que o middleware autoriza logado em
+  /onboarding (sem recriar loop).
+- src/app/(onboarding)/onboarding/actions.ts: import de Prisma e signOut; o
+  tx.user.update agora trata P2025 (user de sessao inexistente) com
+  signOut({ redirectTo: "/login" }) -> logout limpo em vez de crash no error
+  boundary. signOut lanca NEXT_REDIRECT que propaga (sem catch ao redor). catch
+  generico preservado para erros nao-P2025.
+- Validacao em producao: conta orfa (contatodegani) -> caiu em /onboarding e
+  completou o cadastro virando barbearia (fluxo completo OK); conta com
+  barbearia (Barbearia Degas, via Google) -> entrou direto no dashboard, sem
+  efeito colateral.
+- NAO tocados: middleware (nao editado, nao renomeado para proxy), callbacks
+  jwt/session (seguem sem Prisma), provider Google/Credentials, schema/migration.
+- Contas orfas restantes: vitoriasantos.def e cassarofernando240 (eram 3;
+  contatodegani concluiu o onboarding). Resolvem-se ao logar; nada deletado.
+- Parte 2 (P2025) validada por revisao de codigo, nao por teste: reproduzir
+  exige apagar user com sessao aberta. Pior caso degrada para o comportamento
+  antigo (tela de erro), sem risco de regressao.
+- Itens de housekeeping pendentes (separados de proposito): limpeza token.id vs
+  token.sub no callback jwt; migracao middleware -> proxy (Next 16). Build tambem
+  sinalizou update disponivel Prisma 5 -> 7.
