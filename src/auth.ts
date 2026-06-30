@@ -54,6 +54,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
       checks: ["pkce", "state"],
+      // Vincula automaticamente o login Google a uma conta de mesmo e-mail
+      // ja existente (ex.: criada por credenciais). Habilitado SOMENTE aqui
+      // porque o Google sempre verifica o e-mail retornado, anulando o risco
+      // de takeover. NAO habilitar esta flag em nenhum outro provider.
+      allowDangerousEmailAccountLinking: true,
     }),
 
     Credentials({

@@ -73,6 +73,7 @@ Status: Produção ⚠️ Integração GAP-05 em andamento
   - availability.ts e day-calendar.tsx sincronizados
 
 **Pendente GAP-05:**
+
 - ⏳ B1: Fix timezone em slotToDateISO (sufixo Z hardcoded = UTC)
 - ⏳ B2: Fix clientEmail: "" → null em createQuickAppointment
 - ⏳ B3: @@index([professionalId, date, endTime]) migration
@@ -194,7 +195,9 @@ Status: Produção ← GAP-03 concluído
 ---
 
 ## Combos / Pacotes
+
 Status: Produção ✅ (26/06/2026)
+
 - CRUD completo (nome, descrição, preço único, itens com serviços e produtos)
 - Comissão específica por combo (override da engine global)
 - Agrupamento visual no PDV com badge "Combo"
@@ -203,7 +206,9 @@ Status: Produção ✅ (26/06/2026)
 - Camada de comissão: combo tem prioridade sobre override → global
 
 ## Clube de Assinatura
+
 Status: Produção ✅ (26/06/2026) — feature flag por barbearia (clubEnabled)
+
 - Schema: SubscriptionPlan, SubscriptionPlanItem, SubscriptionPlanProductDiscount, ClientSubscription, SubscriptionUsage, ClientVerificationCode
 - Feature flag: clubEnabled por barbearia, sidebar com cadeado "Em breve" quando desativado
 - CRUD de planos: nome, preço, serviços com cota/mês, descontos por produto (% ou R$), comissão fixa ou nenhuma
@@ -219,16 +224,20 @@ Status: Produção ✅ (26/06/2026) — feature flag por barbearia (clubEnabled)
 - Cláusula contratual Asaas pendente nos Termos de Uso
 
 ## Upload de Foto de Profissional
+
 Status: Produção ✅ (26/06/2026)
+
 - Vercel Blob Store público (livo-blob) criado e conectado
 - BLOB_READ_WRITE_TOKEN via OIDC no Vercel
 - try/catch robusto no cliente e na action (nunca trava o spinner)
 - Validação de tipo (jpeg/png/webp) e tamanho (5MB)
 
 ## Design System Unificado
+
 Status: Produção ✅ (26/06/2026)
+
 - Fonte Satoshi como primária
-- CSS custom properties completas (--bg-base, --bg-card, --bg-card-elevated, --border, --text-*)
+- CSS custom properties completas (--bg-base, --bg-card, --bg-card-elevated, --border, --text-\*)
 - Dark theme padrão, light theme via [data-theme="light"]
 - Componente SeloAsaas com variant auto/dark/light
 
@@ -334,6 +343,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 ## Sprint GAP-05 — Integração Total da Agenda (10/06/2026 — em andamento)
 
 **Fases A concluídas (10/06/2026) — commit 52be849:**
+
 - A0: src/lib/slot-config.ts criado como fonte única de configuração de slots
 - A1: Migração para 10 minutos (SLOT_MINUTES=10, SLOT_HEIGHT=20, TOTAL_SLOTS=72)
   - agenda-board.tsx: constantes migradas, TimeColumn labels a cada 60min (i%6)
@@ -349,33 +359,40 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 ### Concluído:
 
 **E2 — Navegação bidirecional Appointment ↔ Comanda (10/06/2026):**
+
 - `agenda-board.tsx`: botão "Ver Comanda" quando `comandaId` existe; "Abrir Comanda" oculto se já existe comanda
 - `comandas/actions.ts`: deduplicação em `abrirComanda` — redireciona para comanda existente se `appointmentId` já vinculado
 
 **F1 — Remoção segura de /dashboard/agenda/new (10/06/2026):**
+
 - Deletados: `agenda/new/actions.ts`, `agenda/new/new-appointment-form.tsx`, `agenda/new/page.tsx` (678 linhas)
 - Zero callers externos confirmados antes da deleção
 
 **GAP-05 FIX B — Sincronização bidirecional Appointment ↔ Comanda (10/06/2026):**
+
 - `fecharComanda`: sincroniza appointment vinculado para `completed` (idempotente, `notIn: ["completed","cancelled"]`)
 - `cancelarComanda`: sincroniza appointment vinculado para `cancelled`
 - `updateAppointmentStatusCore`: sincroniza comanda aberta para `cancelled` quando appointment cancelado
 - Anti-loop: cada direção escreve direto no DB sem chamar a função da outra direção
 
 **GAP-06-A — Receita unificada no dashboard/page.tsx (10/06/2026):**
+
 - `todayRevenue` agora usa `comanda.aggregate(_sum.totalInCents)` onde `status="closed"` e `closedAt` dentro do dia
 - Removido uso de `appointment.service.priceInCents` como receita
 
 **GAP-06-B/C — CRM baseado em comandas fechadas (10/06/2026):**
+
 - Removido `totalVisits`/`lastVisitAt` de `createAppointmentCore`
 - `fecharComanda`: step 5 = `client.update({ totalVisits: { increment: 1 }, lastVisitAt: new Date() })` para clientId não-null
 - Walk-ins com `clientId` agora são contabilizados corretamente ao fechar comanda
 
 **GAP-06-D — Deduplicação de clientes por clientId FK (10/06/2026):**
+
 - `relatorios/actions.ts`: `clientesUnicos` usa `new Set(comandas.map(c => c.clientId).filter(id => id !== null)).size`
 - Removida deduplicação por `clientName.toLowerCase().trim()`
 
 **GAP-07 — Camada de inteligência de cliente (11/06/2026):**
+
 - Criado: `src/app/(dashboard)/dashboard/analytics/client-intelligence.ts`
 - `getClientIntelligence(thresholds?)`: KPIs por cliente — status (ativo/em_risco/inativo), diasSemVisita, ticketMedio, intervaloMedioVisitas (dinâmico por cliente)
 - `getAgendaIntelligence(periodo?)`: slots por hora (quente/normal/ocioso), ranking profissionais, melhorHorario
@@ -383,6 +400,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 - Leitura pura — zero writes ao CRM, Comanda, Appointment ou agenda
 
 **GAP-08 — Motor de recomendações acionáveis (11/06/2026):**
+
 - Criado: `src/app/(dashboard)/dashboard/analytics/recommendation-engine.ts`
 - `getRecommendations(barbershopId, thresholds?, periodo?)`: função pura — orquestra GAP-07 + engine em paralelo
 - 4 tipos de recomendação: `VIP_RISK`, `REACTIVATION`, `REVENUE_OPTIMIZATION`, `CAPACITY_OPTIMIZATION`
@@ -391,6 +409,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 - Leitura pura — zero writes, zero automação, zero auth
 
 **GAP-09 — UI de Insights (11/06/2026) ✅ CONCLUÍDO:**
+
 - `src/app/(dashboard)/dashboard/insights/loading.tsx`: skeleton animate-pulse, 3 blocos (VIP + Reativação + Otimização)
 - `src/app/(dashboard)/dashboard/insights/page.tsx`: Server Component com `requireRole(["owner","reception"])`, `getRecommendations(barbershopId)`, 3 seções + empty state
   - Auth boundary exclusivo em page.tsx; engine 100% puro
@@ -403,11 +422,13 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 ### Concluído (continuação):
 
 **GAP-12 — Integridade completa do CRM (11/06/2026) ✅:**
+
 - `updateAppointmentStatusCore`: guard `shouldUpdateCRM = appointment.status !== "completed" && status === "completed"`
 - Antes de incrementar `totalVisits`/`lastVisitAt`, verifica comanda vinculada (`open` ou `closed`): se existe, `fecharComanda` já foi responsável → nenhum incremento
 - Zero double-count quando appointment é concluído manualmente após comanda fechada
 
 **GAP-06-E — Conflict check em moveAppointment (11/06/2026) ✅:**
+
 - Criado `moveAppointmentCore` em `src/lib/appointment-core.ts` (linhas 283–353)
   - Guard de status: `completed | cancelled | no_show` → erro imediato
   - Guard idempotente: mesmo `professionalId` → `{ success: true }` sem write
@@ -419,6 +440,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 ### Pendente:
 
 **GAP-06-F — Consolidação do wrapper updateAppointmentStatus (11/06/2026) ✅:**
+
 - `dashboard/actions.ts`: wrapper atualizado — `AppointmentStatus` (full enum), `Promise<{ success, error }>`, `revalidatePath` em `/dashboard` + `/dashboard/agenda`
 - `agenda-actions.ts`: `updateAppointmentStatus` e `updateAppointmentStatusCore` removidos
 - `agenda-board.tsx`: import migrado de `./agenda-actions` para `../actions`
@@ -433,6 +455,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 ### Concluído:
 
 **GAP-UX-02-A — CSS Specificity Fix (11/06/2026) ✅:**
+
 - `dashboard-layout-client.tsx`: removido `color: "var(--text-secondary)"` inline dos NavLinks, ThemeToggle e logout button
 - `globals.css`: adicionadas classes `.nav-link { color: var(--text-secondary) }` e `.nav-link:hover { color: var(--text-primary); background-color: rgba(255,255,255,0.04) }`
 - Eliminado `!important` em `.nav-link:hover` e `.settings-acessos-link:hover` — ambos agora resolvem por CSS cascade natural
@@ -440,6 +463,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 - Tailwind 4 canônico: `group-hover:!text-[...]` → `group-hover:text-(...)!`
 
 **GAP-UX-02-B — CSS Variable Unification (11/06/2026) ✅:**
+
 - `:root` unificado: 11 pares duplicados resolvidos via `var()` bridging
   - `--bg-card`, `--bg-card-elevated`, `--border`, `--text-primary/secondary/tertiary`, `--status-green/yellow/red` agora propagam de `@theme inline`
 - `[data-theme="light"]`: 6 linhas removidas (propagam automaticamente via var chains)
@@ -448,6 +472,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 - `dashboard/page.tsx`: 5 hardcodes (#00D4FF, #7C3AED, borderRadius:12) → tokens CSS
 
 **GAP-UX-02-C — Shared Input Component (11/06/2026) ✅:**
+
 - Criado: `src/components/ui/input.tsx` — wrapper com `label`, `error`, `required`; classe `.livo-input` no CSS
 - Migrados: `basic-info-form.tsx`, `services-manager.tsx`, `profissionais-client.tsx`, `clients-client.tsx`
 - Eliminados: todos os `inputStyle` const e `labelStyle` const nos 4 arquivos
@@ -460,6 +485,7 @@ GAP-04: PaymentMethod enum drift — 8 métodos de pagamento mapeados
 **GAP-UX-02-C2 — Input Rollout (pendente):**
 
 Arquivos ainda com `inputStyle` local ou `<input style={{}}>` direto:
+
 - `agenda-board.tsx`
 - `nova-comanda-form.tsx`
 - `comanda-pdv.tsx`
@@ -475,6 +501,7 @@ Arquivos ainda com `inputStyle` local ou `<input style={{}}>` direto:
 Objetivo: criar `src/components/ui/modal.tsx` e migrar modais existentes.
 
 Escopo:
+
 - Props: `open`, `onClose`, `title`, `description?`, `size?` (`sm`/`md`/`lg`)
 - Backdrop: `fixed inset-0 z-[var(--z-modal)] flex items-center justify-center`
 - Close: ESC key + click-outside via `e.target === e.currentTarget`
@@ -484,11 +511,13 @@ Escopo:
 ---
 
 ## Sprint Combos (25/06/2026)
+
 - Combos/Pacotes: CRUD completo, PDV com agrupamento visual, comissão especial
 - Migrations: add_combos
 - 6 etapas concluídas, deploy em produção
 
 ## Sprint Clube de Assinatura — Fases A–G (26/06/2026)
+
 - Fase A: feature flag + schema base + helper clube-flag
 - Fase B: actions de gestão + página /dashboard/clube + sidebar
 - Fase C: lib asaas-clube + connectClubAccount + webhook /api/webhooks/asaas/clube
@@ -501,6 +530,31 @@ Escopo:
 - Deploy em produção
 
 ## Fix Upload de Foto (26/06/2026)
+
 - Vercel Blob recriado como Public (anterior era Private)
 - try/catch adicionado no cliente e na action
 - BLOB_READ_WRITE_TOKEN conectado via OIDC
+
+### v2026.06.30 — 2026-06-30
+
+- A1 concluida (validada no preview Vercel): mascaras de telefone BR, moeda
+  (estilo caixa registradora) e CPF aplicadas em todo o sistema.
+- Novos arquivos: src/lib/masks.ts (reescrito; funcoes puras onlyDigits,
+  formatPhoneBR, formatCentsToBRL, parseInputToCents, formatCPF, isValidCPF;
+  aliases legados maskPhone/maskCPF/unmask mantidos) e componentes
+  src/components/ui/{phone-input,currency-input,cpf-input}.tsx (emitem
+  digitos/centavos; hidden input opcional para forms via FormData).
+- Telefone -> PhoneInput: booking publico, onboarding, settings (pessoal+
+  basico), clients (criar/editar), agenda create-modal, vip, login OTP do clube.
+- CPF -> CPFInput (validacao inline + bloqueio do passo 1 do onboarding):
+  onboarding (dono), settings pessoal, assinar, clients (criar/editar).
+- Preco -> CurrencyInput: produtos, services-manager, combos, clube (preco do
+  plano + comissao R$ + desconto R$), comanda-pdv (desconto + split), tv-goals.
+- Persistencia (sem schema): updateBasicInfo e vip createLead passam a gravar
+  telefone como digitos; parsePriceToCents le inteiro de centavos; exibicao
+  publica de telefone via formatPhoneBR (idempotente, cobre legado).
+- Sem schema/migration. Sem constraint de CPF (fica para B4). Engine de comissao
+  intacta (item.totalInCents). Convencao \*InCents preservada. tsc=0; build OK.
+- Pendencia conhecida: telefone legado da barbearia / whatsapp do vip ainda
+  gravados formatados; exibicao ja normalizada. Se um dia normalizar os dados,
+  NAO tocar nos 14 WaitlistLead.
