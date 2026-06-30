@@ -558,3 +558,21 @@ Escopo:
 - Pendencia conhecida: telefone legado da barbearia / whatsapp do vip ainda
   gravados formatados; exibicao ja normalizada. Se um dia normalizar os dados,
   NAO tocar nos 14 WaitlistLead.
+
+### v2026.06.30 — 2026-06-30 (A2.2)
+
+- A2.2 concluida e validada no preview/producao: corrigido OAuthAccountNotLinked.
+- src/auth.ts: adicionada allowDangerousEmailAccountLinking: true APENAS no
+  provider Google (Google verifica o e-mail; risco de takeover nulo). NAO
+  habilitar em outros providers. Comentario em PT no codigo.
+- Resultado: conta de credenciais existente entra com "Entrar com Google" do
+  mesmo e-mail e VINCULA na conta existente (mesma conta, mesmas configuracoes),
+  sem criar conta nova. Validado com vortexsage7 (login Google entrou normal).
+- Callbacks jwt/session, Credentials, roteamento, schema: NAO tocados. tsc=0;
+  build OK.
+- CORRECAO DE FATO: o projeto roda Next.js 16 (nao 14). Build mostra 38 rotas e
+  aviso de middleware->proxy (deprecado, nao quebrado). Atualizar string "14"
+  para "16" nos docs.
+- Pendencias anotadas para A2.3: (i) loop de redirect /dashboard -> /login para
+  user Google novo sem membership; (ii) P2025 no onboarding para sessao zumbi;
+  (iii) limpeza token.id vs token.sub no callback jwt.

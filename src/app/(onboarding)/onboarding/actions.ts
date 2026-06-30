@@ -1,9 +1,9 @@
 // src/app/(onboarding)/onboarding/actions.ts
 "use server";
 
-import { PlanStatus } from "@prisma/client";
+import { Prisma, PlanStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { PRESET_SERVICES } from "./data";
@@ -167,6 +167,20 @@ export async function createBarbershop(formData: FormData) {
       });
     });
   } catch (err) {
+    // Sessao-zumbi: JWT valido apontando para um user que nao existe mais no
+    // banco. O tx.user.update lanca P2025. Em vez de quebrar no error boundary,
+    // faz logout limpo e manda para /login. signOut lanca NEXT_REDIRECT
+    // (controle de fluxo), que propaga normalmente — nao ha catch ao redor
+    // deste bloco que possa engoli-lo.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2025"
+    ) {
+      log.onboarding.warn("sessao invalida no onboarding (user inexistente)", {
+        userId,
+      });
+      await signOut({ redirectTo: "/login" });
+    }
     log.onboarding.error("erro ao criar barbearia", { userId, slug }, err);
     throw err;
   }

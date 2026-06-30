@@ -43,8 +43,16 @@ export async function getCurrentMembership(): Promise<MembershipContext | null> 
 }
 
 export async function requireMembership(): Promise<MembershipContext> {
+  // Distingue dois casos antes tratados como o mesmo redirect para /login:
+  // - sem sessao (nao logado) -> /login
+  // - logado porem sem membership (barbearia ainda nao montada) -> /onboarding
+  // Antes ambos caiam em /login, gerando loop /dashboard <-> /login para quem
+  // estava logado sem barbearia. Roda em Node (le o banco), nunca no Edge.
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const m = await getCurrentMembership();
-  if (!m) redirect("/login");
+  if (!m) redirect("/onboarding");
   return m;
 }
 
