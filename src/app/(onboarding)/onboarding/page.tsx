@@ -2,14 +2,12 @@
 "use client";
 
 import { useState } from "react";
-import { maskCPF, maskPhone } from "@/lib/masks";
+import { CPFInput } from "@/components/ui/cpf-input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { isValidCPF } from "@/lib/masks";
 import { createBarbershop } from "./actions";
 
 // Funções de máscara
-function maskLandline(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 10);
-  return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
 function maskCEP(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 8);
   return d.replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
@@ -149,11 +147,10 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>CPF *</label>
-                    <input
+                    <CPFInput
                       className={inputClass}
-                      placeholder="000.000.000-00"
                       value={cpf}
-                      onChange={(e) => setCpf(maskCPF(e.target.value))}
+                      onChange={setCpf}
                       required
                       maxLength={14}
                     />
@@ -173,24 +170,22 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>Celular *</label>
-                    <input
+                    <PhoneInput
                       className={inputClass}
                       placeholder="(00) 00000-0000"
                       value={phone}
-                      onChange={(e) => setPhone(maskPhone(e.target.value))}
+                      onChange={setPhone}
                       required
                       maxLength={15}
                     />
                   </div>
                   <div>
                     <label className={labelClass}>Telefone fixo</label>
-                    <input
+                    <PhoneInput
                       className={inputClass}
                       placeholder="(00) 0000-0000"
                       value={landline}
-                      onChange={(e) =>
-                        setLandline(maskLandline(e.target.value))
-                      }
+                      onChange={setLandline}
                       maxLength={14}
                     />
                   </div>
@@ -201,6 +196,10 @@ export default function OnboardingPage() {
                   onClick={() => {
                     if (!fullName || !cpf || !birthDate || !phone) {
                       setError("Preencha todos os campos obrigatórios.");
+                      return;
+                    }
+                    if (!isValidCPF(cpf)) {
+                      setError("CPF inválido.");
                       return;
                     }
                     // Valida se a data está completa (DD/MM/AAAA = 10 chars)

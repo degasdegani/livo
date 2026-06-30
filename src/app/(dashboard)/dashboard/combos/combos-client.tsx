@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useToast } from "@/components/ui/toast";
 import {
   createCombo,
@@ -78,9 +79,7 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
 
   const [name, setName] = useState(combo?.name ?? "");
   const [description, setDescription] = useState(combo?.description ?? "");
-  const [priceStr, setPriceStr] = useState(
-    combo ? (combo.priceInCents / 100).toFixed(2) : ""
-  );
+  const [priceInCents, setPriceInCents] = useState(combo?.priceInCents ?? 0);
   const [commissionStr, setCommissionStr] = useState(
     combo?.commissionPercent != null ? String(combo.commissionPercent) : ""
   );
@@ -157,7 +156,6 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
 
   function handleSubmit() {
     setError("");
-    const priceInCents = Math.round(parseFloat(priceStr.replace(",", ".")) * 100);
     const commissionPercent =
       commissionStr.trim() !== "" ? parseFloat(commissionStr) : undefined;
 
@@ -188,7 +186,7 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
   }
 
   const listTotal = calcCurrentListTotal();
-  const comboPrice = Math.round(parseFloat(priceStr.replace(",", ".")) * 100) || 0;
+  const comboPrice = priceInCents;
   const { savings, pct } = calcSavings(listTotal, comboPrice);
 
   // Lista todos os servicos/produtos ativos, mesmo os ja escolhidos — o mesmo
@@ -267,11 +265,10 @@ function ComboModal({ combo, services, products, onClose, onSuccess }: ModalProp
         {/* Preco + Comissao */}
         <div style={{ display: "flex", gap: "0.75rem" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Preco do Combo (R$) *</label>
-            <input
-              value={priceStr}
-              onChange={(e) => setPriceStr(e.target.value)}
-              placeholder="0,00"
+            <label style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Preco do Combo *</label>
+            <CurrencyInput
+              valueInCents={priceInCents}
+              onChange={setPriceInCents}
               style={{
                 background: "var(--bg-card-elevated)",
                 border: "1px solid var(--border)",

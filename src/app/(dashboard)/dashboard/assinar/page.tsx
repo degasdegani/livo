@@ -4,8 +4,8 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
+import { CPFInput } from "@/components/ui/cpf-input";
 import { useToast } from "@/components/ui/toast";
-import { maskCPF } from "@/lib/masks";
 import { createSubscription } from "./actions";
 
 function SubmitButton({ billingType }: { billingType: "monthly" | "yearly" }) {
@@ -371,12 +371,10 @@ export default function AssinarPage() {
             >
               CPF do responsável *
             </label>
-            <input
+            <CPFInput
               name="cpfCnpj"
-              type="text"
-              inputMode="numeric"
               value={cpf}
-              onChange={(e) => setCpf(maskCPF(e.target.value))}
+              onChange={setCpf}
               placeholder="000.000.000-00"
               required
               className="w-full px-4 py-3 rounded-xl text-sm outline-none"

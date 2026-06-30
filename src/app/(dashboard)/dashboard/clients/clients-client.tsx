@@ -4,12 +4,14 @@
 import type { ClientOrigem } from "@prisma/client";
 import { Cake, Check, Pencil, Users, X } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
+import { CPFInput } from "@/components/ui/cpf-input";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { dateOnlyToInputValue, formatDateOnly } from "@/lib/date-only";
-import { maskCPF, maskPhone } from "@/lib/masks";
+import { formatPhoneBR } from "@/lib/masks";
 import {
   Table,
   TableBody,
@@ -208,7 +210,7 @@ export function ClientsClient({
   function openEditModal(client: Client) {
     setEditForm({
       name: client.name,
-      phone: maskPhone(client.phone),
+      phone: client.phone,
       email: client.email ?? "",
       cpf: client.cpf ?? "",
       birthDate: dateOnlyToInputValue(client.birthDate),
@@ -312,16 +314,14 @@ export function ClientsClient({
             />
           </div>
 
-          <Input
+          <PhoneInput
             id="create-phone"
             label="Telefone"
             required
             placeholder="(11) 99999-9999"
             maxLength={15}
             value={form.phone}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))
-            }
+            onChange={(digits) => setForm((f) => ({ ...f, phone: digits }))}
           />
 
           <Input
@@ -333,15 +333,13 @@ export function ClientsClient({
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
           />
 
-          <Input
+          <CPFInput
             id="create-cpf"
             label="CPF"
             placeholder="000.000.000-00"
             maxLength={14}
             value={form.cpf}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, cpf: maskCPF(e.target.value) }))
-            }
+            onChange={(digits) => setForm((f) => ({ ...f, cpf: digits }))}
           />
 
           <div>
@@ -467,16 +465,14 @@ export function ClientsClient({
             />
           </div>
 
-          <Input
+          <PhoneInput
             id="edit-phone"
             label="Telefone"
             required
             placeholder="(11) 99999-9999"
             maxLength={15}
             value={editForm.phone}
-            onChange={(e) =>
-              setEditForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))
-            }
+            onChange={(digits) => setEditForm((f) => ({ ...f, phone: digits }))}
           />
 
           <Input
@@ -490,15 +486,13 @@ export function ClientsClient({
             }
           />
 
-          <Input
+          <CPFInput
             id="edit-cpf"
             label="CPF"
             placeholder="000.000.000-00"
             maxLength={14}
             value={editForm.cpf}
-            onChange={(e) =>
-              setEditForm((f) => ({ ...f, cpf: maskCPF(e.target.value) }))
-            }
+            onChange={(digits) => setEditForm((f) => ({ ...f, cpf: digits }))}
           />
 
           <div>
@@ -984,7 +978,7 @@ export function ClientsClient({
                             className="text-sm"
                             style={{ color: "var(--text-primary)" }}
                           >
-                            {maskPhone(client.phone)}
+                            {formatPhoneBR(client.phone)}
                           </p>
                           {client.email && (
                             <p
@@ -1140,7 +1134,7 @@ export function ClientsClient({
                     Contato
                   </p>
                   <p style={{ color: "var(--text-primary)" }}>
-                    {maskPhone(selectedClient.phone)}
+                    {formatPhoneBR(selectedClient.phone)}
                   </p>
                   {selectedClient.email && (
                     <p style={{ color: "var(--text-secondary)" }}>

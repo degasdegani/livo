@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -45,12 +46,6 @@ function formatMoney(cents: number) {
     style: "currency",
     currency: "BRL",
   });
-}
-function parseMoney(value: string): number {
-  return parseInt(value.replace(/[^\d]/g, "") || "0", 10);
-}
-function formatMoneyInput(cents: number): string {
-  return (cents / 100).toFixed(2).replace(".", ",");
 }
 
 const REASON_LABELS: Record<StockMovementReason, string> = {
@@ -146,12 +141,8 @@ function ProductModal({
 }) {
   const [name, setName] = useState(product?.name || "");
   const [description, setDescription] = useState(product?.description || "");
-  const [costStr, setCostStr] = useState(
-    product ? formatMoneyInput(product.costInCents) : "0,00",
-  );
-  const [priceStr, setPriceStr] = useState(
-    product ? formatMoneyInput(product.priceInCents) : "0,00",
-  );
+  const [costInCents, setCostInCents] = useState(product?.costInCents ?? 0);
+  const [priceInCents, setPriceInCents] = useState(product?.priceInCents ?? 0);
   const [stock, setStock] = useState(
     product ? String(product.stockQuantity) : "0",
   );
@@ -162,11 +153,6 @@ function ProductModal({
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
-
-  function handleMoneyInput(value: string, setter: (v: string) => void) {
-    const digits = value.replace(/[^\d]/g, "");
-    setter(formatMoneyInput(parseInt(digits || "0", 10)));
-  }
 
   function handleSubmit() {
     if (!name.trim()) {
@@ -180,8 +166,8 @@ function ProductModal({
             id: product.id,
             name,
             description,
-            costInCents: parseMoney(costStr),
-            priceInCents: parseMoney(priceStr),
+            costInCents,
+            priceInCents,
             minStockAlert: parseInt(minAlert || "0", 10),
             isActive,
             categoryId: categoryId || undefined,
@@ -190,8 +176,8 @@ function ProductModal({
           await createProduct({
             name,
             description,
-            costInCents: parseMoney(costStr),
-            priceInCents: parseMoney(priceStr),
+            costInCents,
+            priceInCents,
             stockQuantity: parseInt(stock || "0", 10),
             minStockAlert: parseInt(minAlert || "0", 10),
             categoryId: categoryId || undefined,
@@ -255,19 +241,15 @@ function ProductModal({
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Custo (R$)"
-            type="text"
-            inputMode="numeric"
-            value={costStr}
-            onChange={(e) => handleMoneyInput(e.target.value, setCostStr)}
+          <CurrencyInput
+            label="Custo"
+            valueInCents={costInCents}
+            onChange={setCostInCents}
           />
-          <Input
-            label="Venda (R$) *"
-            type="text"
-            inputMode="numeric"
-            value={priceStr}
-            onChange={(e) => handleMoneyInput(e.target.value, setPriceStr)}
+          <CurrencyInput
+            label="Venda *"
+            valueInCents={priceInCents}
+            onChange={setPriceInCents}
           />
         </div>
         {!product && (

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { formatPhoneBR } from "@/lib/masks";
 import { requestClientCode, verifyClientCode } from "./actions";
 import { SeloAsaas } from "@/components/ui/selo-asaas";
 
@@ -19,15 +21,8 @@ export function LoginCliente({ barbershopId, barbershopName, onSuccess }: Props)
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function formatPhone(value: string): string {
-    const digits = value.replace(/\D/g, "").slice(0, 11);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  }
-
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPhone(formatPhone(e.target.value));
+  function handlePhoneChange(digits: string) {
+    setPhone(digits);
     setError(null);
   }
 
@@ -166,7 +161,7 @@ export function LoginCliente({ barbershopId, barbershopName, onSuccess }: Props)
           >
             {step === "phone"
               ? "Digite seu telefone para receber um código de acesso."
-              : `Enviamos um código de 6 dígitos para ${phone}.`}
+              : `Enviamos um código de 6 dígitos para ${formatPhoneBR(phone)}.`}
           </p>
         </div>
 
@@ -176,9 +171,8 @@ export function LoginCliente({ barbershopId, barbershopName, onSuccess }: Props)
             <label style={labelStyle} htmlFor="phone">
               Telefone (com DDD)
             </label>
-            <input
+            <PhoneInput
               id="phone"
-              type="tel"
               inputMode="numeric"
               placeholder="(11) 99999-9999"
               value={phone}

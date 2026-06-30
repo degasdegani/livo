@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Popover } from "@/components/ui/popover";
 import { Select } from "@/components/ui/select";
-import { maskPhone } from "@/lib/masks";
 import type {
   AgendaClientResult,
   AgendaService,
@@ -346,13 +346,12 @@ export function CreateModal({
               onChange={(e) => cs.setManualName(e.target.value)}
               required
             />
-            <Input
+            <PhoneInput
               id="create-manual-phone"
               label="Telefone"
-              type="tel"
               inputMode="numeric"
               value={cs.manualPhone}
-              onChange={(e) => cs.setManualPhone(maskPhone(e.target.value))}
+              onChange={cs.setManualPhone}
               placeholder="(11) 99999-9999"
               required
             />

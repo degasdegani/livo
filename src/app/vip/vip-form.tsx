@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { maskPhone } from "@/lib/masks";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { createLead } from "./actions";
 
 // Coloque aqui o link do grupo de WhatsApp (ou deixe "" para esconder o botão)
@@ -107,11 +107,11 @@ export function VipForm() {
       </div>
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", color: "#9A9AA6", fontSize: 12.5, fontWeight: 600, margin: "0 0 6px 2px" }}>WhatsApp</label>
-        <input
+        <PhoneInput
           style={{ width: "100%", background: "#1F1F27", border: "1px solid #2A2A33", borderRadius: 10, padding: "13px 14px", color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
           value={whatsapp}
           inputMode="numeric"
-          onChange={(e) => setWhatsapp(maskPhone(e.target.value))}
+          onChange={setWhatsapp}
           placeholder="(16) 99999-9999"
         />
       </div>

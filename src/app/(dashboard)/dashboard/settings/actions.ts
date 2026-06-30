@@ -50,8 +50,10 @@ export async function updateMembershipComissao(data: {
 
 // ─── SERVIÇOS ─────────────────────────────────────────────────────────────────
 
+// O input de preço (CurrencyInput) já envia o valor como inteiro de centavos
+// via campo hidden. Mantemos apenas os dígitos por segurança.
 function parsePriceToCents(price: string): number {
-  return Math.round(Number(price.replace(/\./g, "").replace(",", ".")) * 100);
+  return parseInt(price.replace(/\D/g, ""), 10) || 0;
 }
 
 export async function addService(_: unknown, formData: FormData) {
@@ -151,7 +153,8 @@ export async function updateBasicInfo(_: unknown, formData: FormData) {
 
   try {
     const name = String(formData.get("name") || "").trim();
-    const phone = String(formData.get("phone") || "").trim();
+    // Telefone persistido como dígitos (o PhoneInput já envia dígitos).
+    const phone = String(formData.get("phone") || "").replace(/\D/g, "");
     const city = String(formData.get("city") || "").trim();
 
     if (!name) return { error: "Nome da barbearia é obrigatório." };

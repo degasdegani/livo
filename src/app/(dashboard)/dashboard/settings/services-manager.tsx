@@ -3,6 +3,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import {
   addService,
@@ -10,16 +11,6 @@ import {
   toggleServiceActive,
   updateService,
 } from "./actions";
-
-function maskCurrency(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (!digits || digits === "0") return "0,00";
-  const amount = parseInt(digits, 10);
-  return (amount / 100).toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function formatPrice(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -50,7 +41,7 @@ function SubmitButton({
 
 function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
   const [state, action] = useActionState(addService, null);
-  const [price, setPrice] = useState("0,00");
+  const [priceInCents, setPriceInCents] = useState(0);
 
   useEffect(() => {
     if (state?.success) onSuccess();
@@ -80,13 +71,11 @@ function AddServiceForm({ onSuccess }: { onSuccess: () => void }) {
             defaultValue="30"
             required
           />
-          <Input
-            label="Preço (R$)"
+          <CurrencyInput
+            label="Preço"
             name="price"
-            type="text"
-            inputMode="numeric"
-            value={price}
-            onChange={(e) => setPrice(maskCurrency(e.target.value))}
+            valueInCents={priceInCents}
+            onChange={setPriceInCents}
             required
             style={{ textAlign: "right", fontFamily: "monospace" }}
           />
@@ -122,7 +111,7 @@ function EditServiceForm({
   onCancel: () => void;
 }) {
   const [state, action] = useActionState(updateService, null);
-  const [price, setPrice] = useState(formatPrice(service.priceInCents));
+  const [priceInCents, setPriceInCents] = useState(service.priceInCents);
 
   useEffect(() => {
     if (state?.success) onSuccess();
@@ -142,13 +131,11 @@ function EditServiceForm({
             min="5"
             required
           />
-          <Input
-            label="Preço (R$)"
+          <CurrencyInput
+            label="Preço"
             name="price"
-            type="text"
-            inputMode="numeric"
-            value={price}
-            onChange={(e) => setPrice(maskCurrency(e.target.value))}
+            valueInCents={priceInCents}
+            onChange={setPriceInCents}
             required
             style={{ textAlign: "right", fontFamily: "monospace" }}
           />

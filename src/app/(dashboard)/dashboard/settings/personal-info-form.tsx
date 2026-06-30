@@ -4,8 +4,9 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
+import { CPFInput } from "@/components/ui/cpf-input";
 import { Input } from "@/components/ui/input";
-import { maskCPF, maskPhone } from "@/lib/masks";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { updatePersonalInfo } from "./actions";
 
 type PersonalInfoResult = { success?: boolean; error?: string } | null;
@@ -44,8 +45,8 @@ export function PersonalInfoForm({
     updatePersonalInfo,
     null,
   );
-  const [cpfValue, setCpfValue] = useState(cpf ? maskCPF(cpf) : "");
-  const [phoneValue, setPhoneValue] = useState(phone ? maskPhone(phone) : "");
+  const [cpfValue, setCpfValue] = useState(cpf ?? "");
+  const [phoneValue, setPhoneValue] = useState(phone ?? "");
 
   const birthDateFormatted = birthDate
     ? new Date(birthDate).toISOString().split("T")[0]
@@ -87,13 +88,11 @@ export function PersonalInfoForm({
           </p>
         </div>
 
-        <Input
+        <CPFInput
           label="CPF"
           name="cpf"
-          type="text"
-          inputMode="numeric"
           value={cpfValue}
-          onChange={(e) => setCpfValue(maskCPF(e.target.value))}
+          onChange={setCpfValue}
           placeholder="000.000.000-00"
           onFocus={(e) =>
             (e.currentTarget.style.borderColor = "var(--color-primary)")
@@ -117,12 +116,11 @@ export function PersonalInfoForm({
         />
 
         <div className="sm:col-span-2">
-          <Input
+          <PhoneInput
             label="Celular"
             name="phone"
-            type="tel"
             value={phoneValue}
-            onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
+            onChange={setPhoneValue}
             placeholder="(16) 99999-9999"
             onFocus={(e) =>
               (e.currentTarget.style.borderColor = "var(--color-primary)")

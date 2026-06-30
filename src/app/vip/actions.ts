@@ -15,12 +15,13 @@ export async function createLead(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const name = data.name?.trim();
-    const whatsapp = data.whatsapp?.trim();
+    // WhatsApp persistido como dígitos (o PhoneInput já envia dígitos).
+    const whatsapp = (data.whatsapp ?? "").replace(/\D/g, "");
     const email = data.email?.trim().toLowerCase();
 
     if (!name || name.length < 2)
       return { error: "Informe seu nome completo." };
-    if (!whatsapp || whatsapp.replace(/\D/g, "").length < 10)
+    if (!whatsapp || whatsapp.length < 10)
       return { error: "Informe um WhatsApp válido." };
     if (!email || !email.includes("@"))
       return { error: "Informe um e-mail válido." };

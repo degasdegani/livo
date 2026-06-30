@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { maskPhone } from "@/lib/masks";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { updateBasicInfo } from "./actions";
 
 function SaveButton() {
@@ -30,7 +30,7 @@ interface Props {
 
 export function BasicInfoForm({ name, phone, city }: Props) {
   const [state, action] = useActionState(updateBasicInfo, null);
-  const [phoneValue, setPhoneValue] = useState(maskPhone(phone));
+  const [phoneValue, setPhoneValue] = useState(phone ?? "");
 
   return (
     <section
@@ -70,13 +70,12 @@ export function BasicInfoForm({ name, phone, city }: Props) {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
+            <PhoneInput
               id="basic-phone"
               name="phone"
-              type="tel"
               label="Telefone"
               value={phoneValue}
-              onChange={(e) => setPhoneValue(maskPhone(e.target.value))}
+              onChange={setPhoneValue}
               placeholder="(16) 99999-9999"
             />
             <Input

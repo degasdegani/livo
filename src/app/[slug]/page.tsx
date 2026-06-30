@@ -2,6 +2,7 @@
 
 import { BarbershopMap } from "@/components/barbershop-map";
 import { db } from "@/lib/db";
+import { formatPhoneBR } from "@/lib/masks";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServicePicker } from "./service-picker";
@@ -147,7 +148,7 @@ export default async function BarbershopPage({
                 className="flex items-center gap-1.5 text-sm"
                 style={{ color: "#A1A1AA" }}
               >
-                📞 {barbershop.phone}
+                📞 {formatPhoneBR(barbershop.phone)}
               </span>
             )}
           </div>

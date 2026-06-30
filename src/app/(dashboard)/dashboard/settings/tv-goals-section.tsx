@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { GoalPeriod } from "@prisma/client";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   upsertBarbershopGoal,
   upsertProfessionalGoal,
@@ -32,17 +33,11 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
   const [isPending, startTransition] = useTransition();
   const [pin, setPin] = useState(tvPin);
 
-  // ── Meta geral ──────────────────────────────────────────────────
-  const [generalInputs, setGeneralInputs] = useState<Record<GoalPeriod, string>>({
-    DAY: (barbershopGoals.find((g) => g.period === "DAY")?.targetInCents ?? 0) > 0
-      ? String((barbershopGoals.find((g) => g.period === "DAY")!.targetInCents) / 100)
-      : "",
-    WEEK: (barbershopGoals.find((g) => g.period === "WEEK")?.targetInCents ?? 0) > 0
-      ? String((barbershopGoals.find((g) => g.period === "WEEK")!.targetInCents) / 100)
-      : "",
-    MONTH: (barbershopGoals.find((g) => g.period === "MONTH")?.targetInCents ?? 0) > 0
-      ? String((barbershopGoals.find((g) => g.period === "MONTH")!.targetInCents) / 100)
-      : "",
+  // ── Meta geral (valores em centavos) ────────────────────────────
+  const [generalInputs, setGeneralInputs] = useState<Record<GoalPeriod, number>>({
+    DAY: barbershopGoals.find((g) => g.period === "DAY")?.targetInCents ?? 0,
+    WEEK: barbershopGoals.find((g) => g.period === "WEEK")?.targetInCents ?? 0,
+    MONTH: barbershopGoals.find((g) => g.period === "MONTH")?.targetInCents ?? 0,
   });
 
   // Feedback "Salvo" momentâneo por botão (chave única por botão)
@@ -60,8 +55,7 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
   }
 
   function handleGeneralSave(period: GoalPeriod) {
-    const raw = generalInputs[period].replace(",", ".");
-    const value = Math.round(parseFloat(raw) * 100);
+    const value = generalInputs[period];
     if (isNaN(value) || value <= 0) return;
     startTransition(async () => {
       await upsertBarbershopGoal(period, value);
@@ -122,14 +116,10 @@ export function TvGoalsSection({ barbershopGoals, professionals, tvPin, devices 
           {PERIODS.map(({ value, label }) => (
             <div key={value} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <span style={{ color: "var(--text-secondary)", width: "5rem", fontSize: "0.875rem" }}>{label}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Ex: 5000.00"
-                value={generalInputs[value]}
-                onChange={(e) =>
-                  setGeneralInputs((prev) => ({ ...prev, [value]: e.target.value }))
+              <CurrencyInput
+                valueInCents={generalInputs[value]}
+                onChange={(cents) =>
+                  setGeneralInputs((prev) => ({ ...prev, [value]: cents }))
                 }
                 style={{
                   background: "var(--bg-card-elevated)",

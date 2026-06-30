@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useToast } from "@/components/ui/toast";
 import { BarberCommissionMode } from "@prisma/client";
 import { SeloAsaas } from "@/components/ui/selo-asaas";
@@ -30,12 +31,6 @@ function formatBRL(cents: number): string {
   });
 }
 
-function reaisToCents(value: string): number {
-  const parsed = parseFloat(value.replace(",", "."));
-  if (Number.isNaN(parsed)) return 0;
-  return Math.round(parsed * 100);
-}
-
 // Economia mensal: soma do preco de tabela (servico x quantidade) menos o preco do plano.
 function calcPlanSavings(
   items: { quantityPerCycle: number; priceInCents: number }[],
@@ -53,7 +48,7 @@ function calcPlanSavings(
 type FormItem = {
   serviceId: string;
   quantityPerCycle: number;
-  barberCommissionStr: string;
+  barberCommissionInCents: number;
 };
 
 type DiscountMode = "pct" | "cents";
@@ -61,7 +56,8 @@ type DiscountMode = "pct" | "cents";
 type FormDiscount = {
   productId: string;
   mode: DiscountMode;
-  valueStr: string;
+  // pct: número de porcentagem; cents: inteiro de centavos
+  value: number;
 };
 
 // ─── Modal criar/editar ──────────────────────────────────────────────────────────
@@ -80,9 +76,7 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
 
   const [name, setName] = useState(plan?.name ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
-  const [priceStr, setPriceStr] = useState(
-    plan ? (plan.priceInCents / 100).toFixed(2) : "",
-  );
+  const [priceInCents, setPriceInCents] = useState(plan?.priceInCents ?? 0);
   const [commissionMode, setCommissionMode] = useState<BarberCommissionMode>(
     plan?.barberCommissionMode ?? BarberCommissionMode.none,
   );
@@ -95,23 +89,18 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
     plan?.items.map((i) => ({
       serviceId: i.serviceId,
       quantityPerCycle: i.quantityPerCycle,
-      barberCommissionStr:
-        i.barberCommissionInCents != null
-          ? (i.barberCommissionInCents / 100).toFixed(2)
-          : "",
+      barberCommissionInCents: i.barberCommissionInCents ?? 0,
     })) ?? [],
   );
 
   const [discounts, setDiscounts] = useState<FormDiscount[]>(
     plan?.productDiscounts.map((d) => ({
       productId: d.productId,
-      mode: d.discountInCents != null ? "cents" : "pct",
-      valueStr:
+      mode: (d.discountInCents != null ? "cents" : "pct") as DiscountMode,
+      value:
         d.discountInCents != null
-          ? (d.discountInCents / 100).toFixed(2)
-          : d.discountPct != null
-            ? String(d.discountPct)
-            : "",
+          ? d.discountInCents
+          : d.discountPct ?? 0,
     })) ?? [],
   );
 
@@ -128,7 +117,7 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
       if (exists) return prev.filter((i) => i.serviceId !== serviceId);
       return [
         ...prev,
-        { serviceId, quantityPerCycle: 1, barberCommissionStr: "" },
+        { serviceId, quantityPerCycle: 1, barberCommissionInCents: 0 },
       ];
     });
   }
@@ -143,10 +132,12 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
     );
   }
 
-  function updateItemCommission(serviceId: string, value: string) {
+  function updateItemCommission(serviceId: string, cents: number) {
     setItems((prev) =>
       prev.map((i) =>
-        i.serviceId === serviceId ? { ...i, barberCommissionStr: value } : i,
+        i.serviceId === serviceId
+          ? { ...i, barberCommissionInCents: cents }
+          : i,
       ),
     );
   }
@@ -157,7 +148,7 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
     setDiscounts((prev) => {
       const exists = prev.find((d) => d.productId === productId);
       if (exists) return prev.filter((d) => d.productId !== productId);
-      return [...prev, { productId, mode: "pct", valueStr: "" }];
+      return [...prev, { productId, mode: "pct" as DiscountMode, value: 0 }];
     });
   }
 
@@ -167,17 +158,15 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
     );
   }
 
-  function updateDiscountValue(productId: string, value: string) {
+  function updateDiscountValue(productId: string, value: number) {
     setDiscounts((prev) =>
-      prev.map((d) =>
-        d.productId === productId ? { ...d, valueStr: value } : d,
-      ),
+      prev.map((d) => (d.productId === productId ? { ...d, value } : d)),
     );
   }
 
   // ─── Economia ao vivo ─────────────────────────────────────────────────────────
 
-  const planPriceCents = reaisToCents(priceStr);
+  const planPriceCents = priceInCents;
   const savings = useMemo(() => {
     const enriched = items.map((i) => {
       const svc = services.find((s) => s.id === i.serviceId);
@@ -197,14 +186,14 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
       quantityPerCycle: i.quantityPerCycle,
       barberCommissionInCents:
         commissionMode === BarberCommissionMode.fixed
-          ? reaisToCents(i.barberCommissionStr)
+          ? i.barberCommissionInCents
           : null,
     }));
 
     const productDiscounts: PlanProductDiscountInput[] = discounts.map((d) => ({
       productId: d.productId,
-      discountPct: d.mode === "pct" ? parseFloat(d.valueStr) || 0 : null,
-      discountInCents: d.mode === "cents" ? reaisToCents(d.valueStr) : null,
+      discountPct: d.mode === "pct" ? d.value : null,
+      discountInCents: d.mode === "cents" ? d.value : null,
     }));
 
     return {
@@ -330,12 +319,10 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
               gap: "0.25rem",
             }}
           >
-            <label style={labelStyle}>Preco mensal (R$) *</label>
-            <input
-              value={priceStr}
-              onChange={(e) => setPriceStr(e.target.value)}
-              placeholder="0,00"
-              inputMode="decimal"
+            <label style={labelStyle}>Preco mensal *</label>
+            <CurrencyInput
+              valueInCents={priceInCents}
+              onChange={setPriceInCents}
               style={inputStyle}
             />
           </div>
@@ -531,12 +518,10 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
                         >
                           Comissao (R$)
                         </span>
-                        <input
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          value={item.barberCommissionStr}
-                          onChange={(e) =>
-                            updateItemCommission(s.id, e.target.value)
+                        <CurrencyInput
+                          valueInCents={item.barberCommissionInCents}
+                          onChange={(cents) =>
+                            updateItemCommission(s.id, cents)
                           }
                           style={{ ...inputStyle, width: "120px" }}
                         />
@@ -641,15 +626,28 @@ function PlanModal({ plan, services, products, onClose }: ModalProps) {
                           <option value="pct">% desconto</option>
                           <option value="cents">R$ desconto</option>
                         </select>
-                        <input
-                          inputMode="decimal"
-                          placeholder={disc.mode === "pct" ? "0" : "0,00"}
-                          value={disc.valueStr}
-                          onChange={(e) =>
-                            updateDiscountValue(p.id, e.target.value)
-                          }
-                          style={{ ...inputStyle, width: "120px" }}
-                        />
+                        {disc.mode === "cents" ? (
+                          <CurrencyInput
+                            valueInCents={disc.value}
+                            onChange={(cents) =>
+                              updateDiscountValue(p.id, cents)
+                            }
+                            style={{ ...inputStyle, width: "120px" }}
+                          />
+                        ) : (
+                          <input
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={disc.value ? String(disc.value) : ""}
+                            onChange={(e) =>
+                              updateDiscountValue(
+                                p.id,
+                                parseInt(e.target.value.replace(/\D/g, ""), 10) || 0,
+                              )
+                            }
+                            style={{ ...inputStyle, width: "120px" }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>

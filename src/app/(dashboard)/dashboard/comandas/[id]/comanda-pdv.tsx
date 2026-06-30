@@ -4,6 +4,7 @@
 import type { PaymentMethod } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -96,11 +97,6 @@ function formatCents(cents: number) {
   });
 }
 
-function parseCentsInput(val: string): number {
-  const cleaned = val.replace(/[^\d,.]/g, "").replace(",", ".");
-  const float = parseFloat(cleaned);
-  return Number.isNaN(float) ? 0 : Math.round(float * 100);
-}
 
 export default function ComandaPDV({
   comanda: initial,
@@ -120,7 +116,7 @@ export default function ComandaPDV({
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
-  const [discountStr, setDiscountStr] = useState("");
+  const [discountInCents, setDiscountInCents] = useState(0);
 
   // Seletor de combos
   const [showComboSelector, setShowComboSelector] = useState(false);
@@ -133,7 +129,6 @@ export default function ComandaPDV({
   const [payments, setPayments] = useState<SplitEntry[]>([
     { method: "pix", amountInCents: 0 },
   ]);
-  const [paymentAmountStrs, setPaymentAmountStrs] = useState<string[]>(["0"]);
 
   // PIN de reabertura
   const [reopenPin, setReopenPin] = useState("");
@@ -233,38 +228,34 @@ export default function ComandaPDV({
   }
 
   function openCloseModal() {
-    const totalLiq = Math.max(0, totalBruto - parseCentsInput(discountStr));
-    const defaultAmountStr = (totalLiq / 100).toFixed(2).replace(".", ",");
+    const totalLiq = Math.max(0, totalBruto - discountInCents);
     setPayments([{ method: "pix", amountInCents: totalLiq }]);
-    setPaymentAmountStrs([defaultAmountStr]);
     setShowCloseModal(true);
   }
 
   function addPaymentLine() {
     setPayments((prev) => [...prev, { method: "pix", amountInCents: 0 }]);
-    setPaymentAmountStrs((prev) => [...prev, "0"]);
   }
 
   function removePaymentLine(idx: number) {
     setPayments((prev) => prev.filter((_, i) => i !== idx));
-    setPaymentAmountStrs((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function updatePaymentMethod(idx: number, method: PaymentMethod) {
     setPayments((prev) => prev.map((p, i) => (i === idx ? { ...p, method } : p)));
   }
 
-  function updatePaymentAmount(idx: number, str: string) {
-    setPaymentAmountStrs((prev) => prev.map((s, i) => (i === idx ? str : s)));
-    const cents = parseCentsInput(str);
-    setPayments((prev) => prev.map((p, i) => (i === idx ? { ...p, amountInCents: cents } : p)));
+  function updatePaymentAmount(idx: number, cents: number) {
+    setPayments((prev) =>
+      prev.map((p, i) => (i === idx ? { ...p, amountInCents: cents } : p)),
+    );
   }
 
   function handleClose() {
     setError("");
     startTransition(async () => {
       try {
-        await fecharComanda(comanda.id, payments, parseCentsInput(discountStr));
+        await fecharComanda(comanda.id, payments, discountInCents);
         setShowCloseModal(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao fechar comanda");
@@ -297,7 +288,7 @@ export default function ComandaPDV({
     }
   }
 
-  const discountCents = parseCentsInput(discountStr);
+  const discountCents = discountInCents;
   const totalBruto = comanda.items.reduce((sum, item) => sum + item.totalInCents, 0);
   const totalLiquido = Math.max(0, totalBruto - discountCents);
   const sumPaid = payments.reduce((s, p) => s + p.amountInCents, 0);
@@ -973,20 +964,16 @@ export default function ComandaPDV({
 
         {/* Desconto */}
         <div className="mb-5">
-          <Input
-            label="Desconto (R$)"
+          <CurrencyInput
+            label="Desconto"
             id="discount-input"
-            type="text"
-            placeholder="0,00"
-            value={discountStr}
-            onChange={(e) => {
-              setDiscountStr(e.target.value);
+            valueInCents={discountInCents}
+            onChange={(cents) => {
+              setDiscountInCents(cents);
               // Atualiza o primeiro pagamento para totalLíquido quando há só um
               if (payments.length === 1) {
-                const newTotal = Math.max(0, totalBruto - parseCentsInput(e.target.value));
-                const str = (newTotal / 100).toFixed(2).replace(".", ",");
+                const newTotal = Math.max(0, totalBruto - cents);
                 setPayments([{ method: payments[0].method, amountInCents: newTotal }]);
-                setPaymentAmountStrs([str]);
               }
             }}
           />
@@ -1014,12 +1001,9 @@ export default function ComandaPDV({
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={paymentAmountStrs[idx] ?? ""}
-                  onChange={(e) => updatePaymentAmount(idx, e.target.value)}
+                <CurrencyInput
+                  valueInCents={entry.amountInCents}
+                  onChange={(cents) => updatePaymentAmount(idx, cents)}
                   className="w-28 rounded-lg px-3 py-2 text-sm outline-none text-right"
                   style={{
                     border: "1px solid var(--border)",

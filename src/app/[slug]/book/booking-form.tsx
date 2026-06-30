@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
+import { PhoneInput } from "@/components/ui/phone-input";
 import type { SlotInfo } from "@/lib/availability";
+import { formatPhoneBR } from "@/lib/masks";
 import { createAppointment, getAvailableSlots } from "./actions";
 
 // ── Constantes ────────────────────────────────────────────────
@@ -42,13 +44,6 @@ interface Props {
 // ── Helpers ───────────────────────────────────────────────────
 function formatCents(cents: number): string {
   return `R$ ${(cents / 100).toFixed(0)}`;
-}
-
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
 function formatDate(dateStr: string): string {
@@ -252,7 +247,7 @@ export function BookingForm({
             { icon: "📅", label: "Data", value: formatDate(selectedDate) },
             { icon: "🕐", label: "Horário", value: selectedTime },
             { icon: "👤", label: "Cliente", value: clientName },
-            { icon: "📞", label: "Telefone", value: clientPhone },
+            { icon: "📞", label: "Telefone", value: formatPhoneBR(clientPhone) },
             ...(selectedProf ? [{ icon: "💈", label: "Profissional", value: selectedProf.name }] : []),
           ].map((item) => (
             <div
@@ -595,11 +590,9 @@ export function BookingForm({
           <label className="block text-xs font-semibold mb-2" style={{ color: "#A1A1AA" }}>
             Telefone (WhatsApp) *
           </label>
-          <input
-            type="tel"
+          <PhoneInput
             value={clientPhone}
-            onChange={(e) => setClientPhone(applyPhoneMask(e.target.value))}
-            placeholder="(16) 99999-9999"
+            onChange={setClientPhone}
             maxLength={15}
             className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
