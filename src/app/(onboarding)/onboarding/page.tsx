@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isValidCPF } from "@/lib/masks";
-import { createBarbershop } from "./actions";
+import { createBarbershop, validateCpfStepAction } from "./actions";
 
 // Funções de máscara
 function maskCEP(v: string) {
@@ -43,6 +43,7 @@ async function fetchCEP(cep: string) {
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [stepLoading, setStepLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [fullName, setFullName] = useState("");
@@ -110,6 +111,39 @@ export default function OnboardingPage() {
       // redige a mensagem; por isso o caminho amigável usa retorno, não throw.
       setError(err instanceof Error ? err.message : "Erro ao criar barbearia.");
       setLoading(false);
+    }
+  }
+
+  // Passo 1 → 2: valida campos localmente e, antes de avançar, checa no servidor
+  // (Node) se o CPF já pertence a outra conta — evita o usuário só descobrir no
+  // fim do Passo 2. A checagem final em actions.ts permanece como rede de segurança.
+  async function handleNext() {
+    if (!fullName || !cpf || !birthDate || !phone) {
+      setError("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    if (!isValidCPF(cpf)) {
+      setError("CPF inválido.");
+      return;
+    }
+    if (birthDate.length < 10) {
+      setError("Data de nascimento incompleta.");
+      return;
+    }
+
+    setError("");
+    setStepLoading(true);
+    try {
+      const result = await validateCpfStepAction(cpf);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setStep(2);
+    } catch {
+      setError("Não foi possível validar o CPF agora. Tente novamente.");
+    } finally {
+      setStepLoading(false);
     }
   }
 
@@ -202,26 +236,11 @@ export default function OnboardingPage() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!fullName || !cpf || !birthDate || !phone) {
-                      setError("Preencha todos os campos obrigatórios.");
-                      return;
-                    }
-                    if (!isValidCPF(cpf)) {
-                      setError("CPF inválido.");
-                      return;
-                    }
-                    // Valida se a data está completa (DD/MM/AAAA = 10 chars)
-                    if (birthDate.length < 10) {
-                      setError("Data de nascimento incompleta.");
-                      return;
-                    }
-                    setError("");
-                    setStep(2);
-                  }}
-                  className="w-full bg-[#C8102E] hover:bg-[#E0263D] text-white font-semibold py-3 rounded-lg transition-colors"
+                  onClick={handleNext}
+                  disabled={stepLoading}
+                  className="w-full bg-[#C8102E] hover:bg-[#E0263D] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
                 >
-                  Próximo →
+                  {stepLoading ? "Verificando..." : "Próximo →"}
                 </button>
               </>
             )}

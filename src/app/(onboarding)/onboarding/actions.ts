@@ -5,8 +5,22 @@ import { Prisma, PlanStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
+import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
 import { PRESET_SERVICES } from "./data";
+
+// Checagem antecipada de CPF para o Passo 1 do onboarding: permite bloquear o
+// avanço para o Passo 2 antes do usuário preencher o endereço inteiro. Reusa a
+// mesma query/mensagem da checagem final. Server Action (Node), chamada pelo
+// client no clique de "Próximo".
+export async function validateCpfStepAction(
+  cpf: string,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  const userId = session?.user?.id as string | undefined;
+  const { available } = await checkCpfAvailable(cpf, userId);
+  return available ? {} : { error: CPF_TAKEN_MESSAGE };
+}
 
 function slugify(text: string): string {
   return text
@@ -72,12 +86,10 @@ export async function createBarbershop(
   }
 
   if (cpfRaw) {
-    const cpfExisting = await db.user.findUnique({ where: { cpf: cpfRaw } });
-    if (cpfExisting && cpfExisting.id !== userId) {
-      return {
-        error:
-          "Este CPF já está cadastrado em outra conta. Faça login ou entre em contato com o suporte.",
-      };
+    // Rede de segurança (também cobre corrida entre Passo 1 e submissão).
+    const { available } = await checkCpfAvailable(cpfRaw, userId);
+    if (!available) {
+      return { error: CPF_TAKEN_MESSAGE };
     }
   }
   if (birthDateRaw && birthDateRaw.length < 10) {
@@ -227,10 +239,7 @@ export async function createBarbershop(
         redirect("/dashboard");
       }
       if (hits("cpf")) {
-        return {
-          error:
-            "Este CPF já está cadastrado em outra conta. Faça login ou entre em contato com o suporte.",
-        };
+        return { error: CPF_TAKEN_MESSAGE };
       }
       if (hits("slug")) {
         return {

@@ -632,3 +632,37 @@ Escopo:
 - Pendencias de housekeeping (nao-bloqueantes, separadas de proposito):
   middleware -> proxy (Next 16); update Prisma 5 -> 7. Adiadas ate haver folego.
 - Correcao de fato registrada: projeto roda Next.js 16 (nao 14).
+
+### v2026.07.01 — 2026-07-01 (Incidente de onboarding — RESOLVIDO)
+
+- INCIDENTE EM PRODUCAO detectado via Sentry (usuarios reais bloqueados de
+  concluir onboarding): erro "CPF ja cadastrado no sistema." e falhas
+  correlatas de slug/ownerId caiam no error boundary generico ("Algo deu
+  errado"), sem mensagem amigavel. Causa raiz: Next.js redige mensagens de
+  erros LANCADOS (throw) por Server Actions em producao; apenas valores
+  RETORNADOS preservam a mensagem no cliente.
+- src/app/(onboarding)/onboarding/actions.ts: pre-checagens de campos/
+  endereco/slug/cpf convertidas de throw Error para return { error }, lidas
+  pelo estado de erro ja existente em page.tsx (reuso do mecanismo, sem novo
+  contrato de UI).
+- NOVA pre-checagem de Barbershop.ownerId (@unique) ANTES da transacao:
+  usuario que ja possui barbearia e reenvia onboarding -> redirect("/dashboard")
+  (estado valido, nao erro). Elimina P2002 nao tratado em ownerId.
+- catch: tratamento de P2002 (rede de seguranca para corrida entre pre-check e
+  INSERT) via err.meta.target, mapeando ownerId/cpf/slug para redirect ou
+  mensagem amigavel. P2025/signOut (A2.3) mantido INTACTO, nao tocado.
+  Catch-all preservado para erros verdadeiramente inesperados.
+- error.tsx: mensagem levemente mais util (orientacao de suporte via
+  contato@livobarber.com.br) mantendo error.message oculto (sem vazar
+  detalhes tecnicos/coluna de banco).
+- Validado em producao (Sentry + teste real): mensagem "Este CPF ja esta
+  cadastrado em outra conta. Faca login ou entre em contato com o suporte."
+  exibida inline, sem crash. tsc=0; build OK.
+- NAO alterado: schema/migration (constraint de cpf @unique ja existia antes
+  deste incidente), middleware, callbacks jwt/session, providers, TX Barbearia,
+  14 WaitlistLead.
+- Nota para backlog (nao urgente): Sentry revelou outros erros de validacao
+  com o mesmo padrao de "throw cru -> tela generica" (ex.: "Preco do combo
+  deve ser maior que zero", erro de Vercel Blob em upload de foto de
+  profissional). Mesma familia de problema; candidatos a correcao futura,
+  fora do escopo deste incidente.
