@@ -2,10 +2,12 @@
 
 import { BarbershopMap } from "@/components/barbershop-map";
 import { db } from "@/lib/db";
+import { isEmailGateBlocked } from "@/lib/email-gate";
 import { formatPhoneBR } from "@/lib/masks";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServicePicker } from "./service-picker";
+import { PublicUnavailable } from "./unavailable";
 
 // Gera o título da aba dinamicamente para cada barbearia
 export async function generateMetadata({
@@ -64,10 +66,22 @@ export default async function BarbershopPage({
       services: { where: { isActive: true }, orderBy: { priceInCents: "asc" } },
       professionals: { where: { isActive: true } },
       businessHours: { orderBy: { dayOfWeek: "asc" } },
+      owner: { select: { emailVerified: true } },
     },
   });
 
   if (!barbershop) notFound();
+
+  // Portão suave: dono sem e-mail confirmado (exceto lifetime) → página oculta.
+  // Tela neutra ao público, sem expor o motivo interno.
+  if (
+    isEmailGateBlocked({
+      planStatus: barbershop.planStatus,
+      emailVerified: barbershop.owner.emailVerified,
+    })
+  ) {
+    return <PublicUnavailable />;
+  }
 
   const todayDayOfWeek = new Date().getDay();
   const todayHours = barbershop.businessHours.find(

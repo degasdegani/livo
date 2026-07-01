@@ -3,6 +3,7 @@
 
 import { MemberRole, PlanStatus } from "@prisma/client";
 import { getCurrentMembership } from "@/lib/permissions";
+import { isEmailGateBlocked } from "@/lib/email-gate";
 import {
   createAsaasCustomer,
   createAsaasSubscription,
@@ -65,6 +66,21 @@ export async function createSubscription(
       return {
         error:
           "Assinatura suspensa por inadimplência. Pague a fatura pendente para reativar o acesso automaticamente.",
+      };
+    }
+
+    // Portão suave de confirmação de e-mail (B1.3): bloqueia o INÍCIO da
+    // cobrança até o dono confirmar o e-mail. lifetime já retornou acima;
+    // Google entra confirmado (events.createUser). owner já veio no include.
+    if (
+      isEmailGateBlocked({
+        planStatus: barbershop.planStatus,
+        emailVerified: barbershop.owner.emailVerified,
+      })
+    ) {
+      return {
+        error:
+          "Confirme seu e-mail antes de assinar. Acesse /verify-email para reenviar a confirmação.",
       };
     }
 

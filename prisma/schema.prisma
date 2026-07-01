@@ -23,6 +23,7 @@ model User {
   sentInvitations Invitation[] @relation("InvitedBy")
   memberships     Membership[]
   sessions        Session[]
+  termsAcceptances TermsAcceptance[]
 
   @@map("users")
 }
@@ -603,6 +604,20 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@map("email_verification_tokens")
+}
+
+model TermsAcceptance {
+  id           String   @id @default(cuid())
+  userId       String
+  documentType String
+  version      String
+  acceptedAt   DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("terms_acceptances")
 }
 
 model BarbershopGoal {

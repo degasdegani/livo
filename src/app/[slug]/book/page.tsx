@@ -1,7 +1,9 @@
 // Server Component — busca dados no banco e passa para o formulário
 import { db } from "@/lib/db";
+import { isEmailGateBlocked } from "@/lib/email-gate";
 import { notFound, redirect } from "next/navigation";
 import { BookingForm } from "./booking-form";
+import { PublicUnavailable } from "../unavailable";
 
 export default async function BookPage({
   params,
@@ -30,10 +32,21 @@ export default async function BookPage({
       services: {
         where: { id: { in: serviceIdsList }, isActive: true },
       },
+      owner: { select: { emailVerified: true } },
     },
   });
 
   if (!barbershop) notFound();
+
+  // Portão suave: mesma checagem da página pública pai (query própria aqui).
+  if (
+    isEmailGateBlocked({
+      planStatus: barbershop.planStatus,
+      emailVerified: barbershop.owner.emailVerified,
+    })
+  ) {
+    return <PublicUnavailable />;
+  }
 
   const professionals = barbershop.professionals;
   const services = barbershop.services;

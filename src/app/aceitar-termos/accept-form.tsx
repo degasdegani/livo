@@ -1,0 +1,71 @@
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { acceptTermsAction } from "./actions";
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+      style={{ background: "#FF2D55", boxShadow: "0 8px 24px rgba(255,45,85,0.3)" }}
+    >
+      {pending ? "Confirmando..." : "Li e aceito, continuar"}
+    </button>
+  );
+}
+
+export function AcceptForm() {
+  const [state, action] = useActionState(acceptTermsAction, null);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <label
+        className="flex items-start gap-2.5 text-sm"
+        style={{ color: "#A1A1AA", lineHeight: 1.5 }}
+      >
+        <input
+          name="accept"
+          type="checkbox"
+          className="mt-0.5 shrink-0"
+          style={{ accentColor: "#FF2D55" }}
+        />
+        <span>
+          Li e aceito os{" "}
+          <a
+            href="/termos"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#FF2D55" }}
+          >
+            Termos de Uso
+          </a>{" "}
+          e a{" "}
+          <a
+            href="/privacidade"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#FF2D55" }}
+          >
+            Política de Privacidade
+          </a>
+          .
+        </span>
+      </label>
+
+      {state?.error && (
+        <p
+          className="text-xs text-center py-2 px-3 rounded-lg"
+          style={{ color: "#FF2D55", background: "rgba(255,45,85,0.08)" }}
+        >
+          {state.error}
+        </p>
+      )}
+
+      <SubmitButton />
+    </form>
+  );
+}

@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { isEmailGateBlocked } from "@/lib/email-gate";
 import { getClientSession, getClientArea, getClubPageData } from "./actions";
 import { AreaCliente } from "./area-cliente";
 import { FluxoAssinatura } from "./fluxo-assinatura";
+import { PublicUnavailable } from "../unavailable";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,11 +21,23 @@ export default async function ClubePage({ params }: Props) {
       name: true,
       clubEnabled: true,
       clubAsaasAccountStatus: true,
+      planStatus: true,
+      owner: { select: { emailVerified: true } },
     },
   });
 
   if (!barbershop || !barbershop.clubEnabled) {
     notFound();
+  }
+
+  // Portão suave: mesma checagem das demais páginas públicas (query própria).
+  if (
+    isEmailGateBlocked({
+      planStatus: barbershop.planStatus,
+      emailVerified: barbershop.owner.emailVerified,
+    })
+  ) {
+    return <PublicUnavailable />;
   }
 
   // Verificar sessão existente

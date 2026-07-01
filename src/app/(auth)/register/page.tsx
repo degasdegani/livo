@@ -187,6 +187,39 @@ export default function RegisterPage() {
           />
         </div>
 
+        <label
+          className="flex items-start gap-2.5 text-xs"
+          style={{ color: "#A1A1AA", lineHeight: 1.5 }}
+        >
+          <input
+            name="acceptTerms"
+            type="checkbox"
+            className="mt-0.5 shrink-0"
+            style={{ accentColor: "#FF2D55" }}
+          />
+          <span>
+            Li e aceito os{" "}
+            <a
+              href="/termos"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#FF2D55" }}
+            >
+              Termos de Uso
+            </a>{" "}
+            e a{" "}
+            <a
+              href="/privacidade"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#FF2D55" }}
+            >
+              Política de Privacidade
+            </a>
+            .
+          </span>
+        </label>
+
         {state?.error && (
           <p
             className="text-xs text-center py-2 px-3 rounded-lg"

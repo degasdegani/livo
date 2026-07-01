@@ -696,3 +696,93 @@ Escopo:
   ainda existe em outros pontos do sistema (Sentry apontou: combos com preco
   zero, upload de foto/Vercel Blob). Candidatos a correcao futura fora deste
   incidente.
+
+### v2026.07.01 — 2026-07-01 (Incidente de onboarding — RESOLVIDO por completo)
+
+- INCIDENTE PARTE 1: erros de CPF/slug/ownerId no submit final do onboarding
+  causavam crash generico ("Algo deu errado") em vez de mensagem amigavel.
+  Corrigido via return { error } em vez de throw (Next.js redige mensagens de
+  erros lancados por Server Actions em producao). Validado com Sentry + teste
+  real.
+- INCIDENTE PARTE 2 (UX): usuario so descobria CPF duplicado no FIM do Passo 2,
+  apos preencher endereco inteiro -- desperdicio de tempo e confusao.
+- src/lib/cpf.ts (novo): CPF_TAKEN_MESSAGE centralizada + checkCpfAvailable(cpf,
+  currentUserId?) -- funcao pura reutilizavel, mesma query/normalizacao de
+  antes, exclui a propria conta do usuario da checagem.
+- onboarding/actions.ts: nova Server Action validateCpfStepAction(cpf); a
+  checagem final (rede de seguranca contra concorrencia) refatorada para
+  reusar checkCpfAvailable, SEM mudanca de comportamento.
+- onboarding/page.tsx: botao "Próximo" do Passo 1 agora chama
+  validateCpfStepAction ANTES de avancar de step; bloqueia com mensagem
+  inline se CPF duplicado; estado de loading ("Verificando...") evita
+  duplo-clique.
+- Validado em producao (print real): CPF duplicado bloqueia no Passo 1,
+  mensagem "Este CPF já está cadastrado em outra conta. Faça login ou entre
+  em contato com o suporte." exibida corretamente, sem chegar ao endereco.
+- NAO alterado: e-mails de boas-vindas/confirmacao no cadastro (continuam
+  disparando antes do CPF ser conhecido -- limitacao estrutural aceita e
+  documentada); slug/ownerId/P2025/signOut/middleware/callbacks/schema;
+  TX Barbearia; 14 WaitlistLead. tsc=0; build OK.
+- Nota de backlog (nao urgente): mesmo padrao "throw cru -> tela generica"
+  ainda existe em outros pontos (Sentry apontou: combos com preco zero,
+  upload de foto/Vercel Blob). Candidatos a correcao futura, fora deste
+  incidente.
+
+### v2026.07.01 — 2026-07-01 (Fase B1 — ENCERRADA)
+
+- B1.3 concluida e validada: portao suave ativo. Dono com emailVerified = null
+  continua com dashboard/agenda/comandas funcionando normal, mas fica bloqueado
+  em 2 pontos: pagina publica ([slug] + /book + /clube, tela neutra
+  PublicUnavailable, sem expor motivo a visitantes) e inicio de cobranca
+  (assinar/actions.ts, mensagem clara pedindo confirmacao via /verify-email).
+  Login Google conta como ja confirmado (populado pela B1.2). isActive
+  permanece semanticamente intacto -- gate e checagem separada.
+- src/lib/email-gate.ts (novo): isEmailGateBlocked() com isenção estrutural
+  para planStatus === lifetime -- protege a TX por REGRA, nao por excecao
+  hardcoded.
+- BACKFILL DE DADOS (unico, pontual, executado no Neon): emailVerified = now()
+  para 6 contas de donos de barbearia criadas ANTES da B1.2 (trial/active/
+  suspended/lifetime), identificadas por discriminador estrutural (ausencia de
+  email_verification_tokens, nao por corte de timestamp). TX excluida por
+  dupla via (seatLimitOverride <> -1 explicito + isencao lifetime). 14
+  WaitlistLead nao tocados. SELECT de confirmacao revisado pelo Edu ANTES do
+  UPDATE; resultado pos-UPDATE confirmado vazio (No result) -- as 6 contas
+  nao aparecem mais como pendentes.
+  Contas cobertas: contatodegani, vortexsage7, pedrohs2520, cassarofernando2,
+  carloscabelereiro43, dieguin112k24 -- todas trial, criadas entre 08/06 e
+  24/06/2026, anteriores ao fluxo de confirmacao (deploy B1.2 em 01/07).
+  Cadastros a partir de agora passam pelo fluxo normal de confirmacao.
+
+--- FASE B1 (confirmacao de e-mail) ENCERRADA ---
+
+- B1.1: diagnose read-only (padrao de token, pontos de gate, Google ja
+  verificado).
+- B1.2: fundacao -- EmailVerificationToken, /verify-email (Node), e-mail via
+  Resend, disparo no cadastro, events.createUser para Google. Sem gate ativo.
+- Incidente correlato (mesma janela): erros de CPF/slug/ownerId no onboarding
+  causavam crash generico -- corrigido (return em vez de throw) + checagem
+  antecipada de CPF no Passo 1. Resolvido e validado com Sentry + producao.
+- B1.3: portao suave ativo (pagina publica + cobranca).
+- Backfill: contas pre-B1.2 protegidas retroativamente.
+- NAO tocados em toda a fase: middleware, callbacks jwt/session, providers,
+  CPF/CNPJ do Asaas (VS-4), TX Barbearia, 14 WaitlistLead. tsc=0 e build OK
+  validados em cada etapa.
+
+### Nota de pendencia — Ativacao dos e-mails institucionais (adiada de proposito)
+
+- Os documentos legais (Termos, Politica de Privacidade, Termo de Tratamento de
+  Dados) ja referenciam privacidade@livobarber.com.br (Encarregado/DPO) e
+  contato@livobarber.com.br (contato geral) como os enderecos oficiais.
+- Esses enderecos AINDA NAO recebem e-mail de verdade -- a ativacao via
+  ImprovMX (encaminhamento gratuito para o Gmail do Edu, sem tocar nos
+  registros DNS existentes de Vercel/Resend) foi DELIBERADAMENTE ADIADA para
+  o final do processo, por decisao do Edu.
+- Isso NAO bloqueia B2 (aceite de Termos) nem a publicacao dos documentos --
+  os enderecos ja estao corretos nos textos. So precisam estar ativos e
+  monitorados antes de os documentos irem ao ar / receberem o primeiro pedido
+  real de titular de dados.
+- Retomar: criar conta no ImprovMX -> criar os 2 aliases (privacidade@,
+  contato@) apontando para o Gmail do Edu -> adicionar os 2 registros MX (e
+  o TXT SPF, se pedido) no Registro.br via "Nova Entrada" na Configurar Zona
+  DNS -- SEM tocar nas entradas existentes (A da Vercel, TXT DKIM/SPF do
+  Resend, MX send.livobarber.com.br do Resend, CNAME www).
