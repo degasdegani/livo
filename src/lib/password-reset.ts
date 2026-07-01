@@ -1,16 +1,12 @@
-import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { generateRawToken, hashToken } from "@/lib/token-hash";
 
 const EXPIRES_IN_MS = 60 * 60 * 1000;
-
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
 
 export async function createPasswordResetToken(email: string): Promise<string> {
   await db.passwordResetToken.deleteMany({ where: { email } });
 
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = generateRawToken();
 
   await db.passwordResetToken.create({
     data: {

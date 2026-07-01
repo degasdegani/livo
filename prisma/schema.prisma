@@ -593,6 +593,18 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
 model BarbershopGoal {
   id            String     @id @default(cuid())
   barbershopId  String

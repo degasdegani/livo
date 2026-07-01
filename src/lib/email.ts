@@ -110,6 +110,28 @@ export async function sendWelcomeEmail(
   }
 }
 
+// ─── Confirmação de e-mail ──────────────────────────────────────────────────────
+
+export async function sendEmailVerification(
+  to: string,
+  name: string,
+  token: string,
+): Promise<void> {
+  if (!to) return;
+  const verifyUrl = `${BASE_URL}/verify-email?token=${token}`;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Confirme seu e-mail — LIVO",
+      html: buildEmailVerificationHtml(name, verifyUrl),
+    });
+    log.email.info("e-mail de confirmação enviado", { to });
+  } catch (err) {
+    log.email.error("falha ao enviar e-mail de confirmação", { to }, err);
+  }
+}
+
 // ─── E-mail de convite ─────────────────────────────────────────────────────────
 
 export async function sendInvitationEmail(payload: InvitationEmailPayload) {
@@ -239,6 +261,49 @@ function buildWelcomeHtml(name: string): string {
             <a href="${BASE_URL}/login" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">
               Acessar o LIVO →
             </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #2A2A33;">
+            <p style="color:#6E6E78;font-size:12px;margin:0;">© 2026 LIVO · livobarber.com.br</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+function buildEmailVerificationHtml(name: string, verifyUrl: string): string {
+  const greeting = name ? `, ${name}` : "";
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0B0D;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0B0D;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#17171C;border-radius:12px;border:1px solid #2A2A33;overflow:hidden;max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#C8102E;padding:8px 32px;text-align:center;">
+            <span style="color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;">LIVO</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 32px;">
+            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">Confirme seu e-mail</h1>
+            <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 28px;">
+              Olá${greeting}! Para proteger sua conta no LIVO, confirme que este e-mail
+              é seu. Clique no botão abaixo.
+            </p>
+            <a href="${verifyUrl}" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">
+              Confirmar meu e-mail
+            </a>
+            <p style="color:#6E6E78;font-size:13px;margin:24px 0 0;line-height:1.6;">
+              Este link é válido por <strong style="color:#9A9AA6;">24 horas</strong>.<br>
+              Se você não criou uma conta no LIVO, ignore este e-mail.
+            </p>
           </td>
         </tr>
         <tr>

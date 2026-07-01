@@ -116,5 +116,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 
-  events: {},
+  events: {
+    // Roda no Route Handler /api/auth (Node), NUNCA no middleware (Edge) — o
+    // middleware só invoca os callbacks jwt/session, que permanecem sem Prisma.
+    // adapter.createUser só é chamado no fluxo OAuth (Google); usuários de
+    // credenciais são criados pelo nosso próprio código, não pelo adapter.
+    // Logo, todo createUser aqui é Google, cujo e-mail já vem verificado.
+    async createUser({ user }) {
+      if (!user.id) return;
+      // updateMany com filtro emailVerified: null é idempotente: se o adapter
+      // já tiver populado o campo, não sobrescreve (evita escrita dupla).
+      await db.user.updateMany({
+        where: { id: user.id, emailVerified: null },
+        data: { emailVerified: new Date() },
+      });
+    },
+  },
 });

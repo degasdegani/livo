@@ -606,3 +606,29 @@ Escopo:
 - Itens de housekeeping pendentes (separados de proposito): limpeza token.id vs
   token.sub no callback jwt; migracao middleware -> proxy (Next 16). Build tambem
   sinalizou update disponivel Prisma 5 -> 7.
+
+### v2026.06.30 — 2026-06-30 (A2.4 + fecha trilha A2 completa)
+
+- A2.4 concluida e validada em producao: higiene de callback. token.id (campo
+  orfao, so escrito nunca lido) eliminado; jwt passa a gravar em token.sub, o
+  mesmo campo que o callback session ja lia. Escrita e leitura agora no campo
+  padrao unico. Varredura confirmou que nenhum arquivo lia token.id e que
+  next-auth.d.ts nao declarava token.id (nada mais a remover).
+- src/auth.ts (callback jwt): token.id = user.id -> token.sub = user.id.
+  Callback session inalterado (ja lia token.sub). Sem Prisma adicionado
+  (edge-safe mantido).
+- Validado em producao: login por credenciais e login Google entram normais,
+  com session.user.id resolvendo identidade/role corretas.
+- NAO tocados: middleware, provider Google/Credentials, requireMembership/
+  roteamento, schema/migration, TX, 14 WaitlistLead. tsc=0; build OK.
+
+--- TRILHA A2 (bug de login) ENCERRADA ---
+
+- A2.1: diagnose read-only (2 causas confirmadas em codigo + dados reais no Neon).
+- A2.2: allowDangerousEmailAccountLinking no Google -> corrige OAuthAccountNotLinked.
+- A2.3: requireMembership distingue sem-sessao (/login) de logado-sem-membership
+  (/onboarding), elimina loop; P2025 no onboarding -> signOut limpo.
+- A2.4: higiene token.sub.
+- Pendencias de housekeeping (nao-bloqueantes, separadas de proposito):
+  middleware -> proxy (Next 16); update Prisma 5 -> 7. Adiadas ate haver folego.
+- Correcao de fato registrada: projeto roda Next.js 16 (nao 14).

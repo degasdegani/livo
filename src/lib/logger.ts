@@ -83,6 +83,7 @@ export const log = {
   comanda: ns("comanda"),
   webhook: ns("webhook"),
   email: ns("email"),
+  auth: ns("auth"),
   livia: ns("livia"),
   lead: ns("lead"),
 };

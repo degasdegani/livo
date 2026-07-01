@@ -2,7 +2,8 @@
 
 import { signIn } from "@/auth";
 import { db } from "@/lib/db";
-import { sendWelcomeEmail } from "@/lib/email";
+import { createEmailVerificationToken } from "@/lib/email-verification";
+import { sendEmailVerification, sendWelcomeEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export async function registerUser(
@@ -31,14 +32,19 @@ export async function registerUser(
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  await db.user.create({
+  const user = await db.user.create({
     data: { name, email, password: hashedPassword },
   });
 
-  // Envia e-mail de boas-vindas
+  // E-mail de boas-vindas (onboarding) e e-mail de confirmação (posse do e-mail)
+  // permanecem separados: responsabilidades distintas, sem acoplar templates.
   await sendWelcomeEmail(email, name);
 
-  // Login automático após cadastro — redireciona para dashboard
+  const verificationToken = await createEmailVerificationToken(user.id);
+  await sendEmailVerification(email, name, verificationToken);
+
+  // Login automático após cadastro (portão suave: login liberado mesmo sem
+  // confirmar). O gate real de publicar/cobrar é a etapa B1.3, separada.
   await signIn("credentials", {
     email,
     password,
