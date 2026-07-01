@@ -97,8 +97,17 @@ export default function OnboardingPage() {
     formData.set("landline", landline);
 
     try {
-      await createBarbershop(formData);
+      const result = await createBarbershop(formData);
+      // Sucesso → a action redireciona no servidor; não retorna aqui.
+      // Erro de negócio → a action RETORNA { error } (não lança), o que
+      // sobrevive à fronteira server→client em produção (throws são redigidos).
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      }
     } catch (err: unknown) {
+      // Rede de segurança para erros realmente inesperados. Em produção o Next
+      // redige a mensagem; por isso o caminho amigável usa retorno, não throw.
       setError(err instanceof Error ? err.message : "Erro ao criar barbearia.");
       setLoading(false);
     }

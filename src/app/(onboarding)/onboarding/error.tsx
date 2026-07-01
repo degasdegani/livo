@@ -31,12 +31,21 @@ export default function OnboardingError({
         </h1>
 
         <p
-          className="text-sm mb-8"
+          className="text-sm mb-4"
           style={{ color: "#9A9AA6", lineHeight: 1.6 }}
         >
-          Ocorreu um erro durante o cadastro. Nossa equipe foi notificada.
-          Seus dados não foram perdidos.
+          Ocorreu um erro inesperado durante o cadastro. Nossa equipe foi
+          notificada e seus dados não foram perdidos. Tente novamente; se o
+          problema persistir, fale com o suporte.
         </p>
+
+        <a
+          href="mailto:contato@livobarber.com.br"
+          className="inline-block text-sm mb-8 underline"
+          style={{ color: "#9A9AA6" }}
+        >
+          contato@livobarber.com.br
+        </a>
 
         {error.digest && (
           <p className="text-xs font-mono mb-6" style={{ color: "#6E6E78" }}>

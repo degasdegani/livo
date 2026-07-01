@@ -19,7 +19,9 @@ function slugify(text: string): string {
     .replace(/-+/g, "-");
 }
 
-export async function createBarbershop(formData: FormData) {
+export async function createBarbershop(
+  formData: FormData,
+): Promise<{ error: string } | void> {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -43,27 +45,43 @@ export async function createBarbershop(formData: FormData) {
     (formData.get("landline") as string)?.replace(/\D/g, "") || null;
 
   if (!fullName || !barbershopName || !slugInput || !phone) {
-    throw new Error("Campos obrigatórios faltando.");
+    return { error: "Preencha todos os campos obrigatórios." };
   }
   if (!street || !neighborhood || !cep || !city) {
-    throw new Error("Endereço completo é obrigatório.");
+    return { error: "Endereço completo é obrigatório." };
+  }
+
+  // Usuário que já possui barbearia não está num erro: é um estado válido.
+  // Sem esta guarda, tx.barbershop.create dispararia P2002 em ownerId (@unique)
+  // numa resubmissão. Redireciona direto para o painel.
+  const ownedShop = await db.barbershop.findUnique({
+    where: { ownerId: userId },
+    select: { id: true },
+  });
+  if (ownedShop) {
+    redirect("/dashboard");
   }
 
   const slug = slugify(slugInput);
 
   const existing = await db.barbershop.findUnique({ where: { slug } });
   if (existing) {
-    throw new Error("Este link já está em uso. Escolha outro.");
+    return {
+      error: "Este nome de barbearia já está em uso. Escolha um nome diferente.",
+    };
   }
 
   if (cpfRaw) {
     const cpfExisting = await db.user.findUnique({ where: { cpf: cpfRaw } });
     if (cpfExisting && cpfExisting.id !== userId) {
-      throw new Error("CPF já cadastrado no sistema.");
+      return {
+        error:
+          "Este CPF já está cadastrado em outra conta. Faça login ou entre em contato com o suporte.",
+      };
     }
   }
   if (birthDateRaw && birthDateRaw.length < 10) {
-    throw new Error("Data de nascimento inválida.");
+    return { error: "Data de nascimento inválida." };
   }
 
   let birthDate: Date | null = null;
@@ -181,6 +199,50 @@ export async function createBarbershop(formData: FormData) {
       });
       await signOut({ redirectTo: "/login" });
     }
+
+    // P2002 (violacao de unicidade): rede de seguranca para corridas entre a
+    // pre-checagem e o INSERT. Traduz a coluna em mensagem amigavel em vez de
+    // cair no boundary generico. Nao substitui as pre-checagens acima.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const target = err.meta?.target;
+      const fields = Array.isArray(target)
+        ? target.map(String)
+        : typeof target === "string"
+          ? [target]
+          : [];
+      const hits = (needle: string) => fields.some((f) => f.includes(needle));
+
+      log.onboarding.warn("colisao de unicidade no onboarding (P2002)", {
+        userId,
+        slug,
+        target: fields,
+      });
+
+      // ownerId: outra requisicao criou a barbearia entre o pre-check e o
+      // create. Estado valido — segue para o painel.
+      if (hits("ownerId")) {
+        redirect("/dashboard");
+      }
+      if (hits("cpf")) {
+        return {
+          error:
+            "Este CPF já está cadastrado em outra conta. Faça login ou entre em contato com o suporte.",
+        };
+      }
+      if (hits("slug")) {
+        return {
+          error:
+            "Este nome de barbearia já está em uso. Escolha um nome diferente.",
+        };
+      }
+      return {
+        error: "Alguns dados já estão cadastrados. Revise e tente novamente.",
+      };
+    }
+
     log.onboarding.error("erro ao criar barbearia", { userId, slug }, err);
     throw err;
   }
