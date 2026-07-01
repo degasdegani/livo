@@ -666,3 +666,33 @@ Escopo:
   deve ser maior que zero", erro de Vercel Blob em upload de foto de
   profissional). Mesma familia de problema; candidatos a correcao futura,
   fora do escopo deste incidente.
+
+### v2026.07.01 — 2026-07-01 (Incidente de onboarding — RESOLVIDO por completo)
+
+- INCIDENTE PARTE 1 (ja registrado): erros de CPF/slug/ownerId no submit final
+  do onboarding causavam crash generico ("Algo deu errado") em vez de mensagem
+  amigavel. Corrigido via return { error } em vez de throw (Next.js redige
+  mensagens de erros lancados por Server Actions em producao). Validado com
+  Sentry + teste real.
+- INCIDENTE PARTE 2 (UX): usuario so descobria CPF duplicado no FIM do Passo 2,
+  apos preencher endereco inteiro -- desperdicio de tempo e confusao.
+- src/lib/cpf.ts (novo): CPF_TAKEN_MESSAGE centralizada + checkCpfAvailable(cpf,
+  currentUserId?) -- funcao pura reutilizavel, mesma query/normalizacao de
+  antes, exclui a propria conta do usuario da checagem.
+- onboarding/actions.ts: nova Server Action validateCpfStepAction(cpf); a
+  checagem final (rede de seguranca contra concorrencia) refatorada para
+  reusar checkCpfAvailable, SEM mudanca de comportamento.
+- onboarding/page.tsx: botao "Próximo" do Passo 1 agora chama
+  validateCpfStepAction ANTES de avancar de step; bloqueia com mensagem
+  inline se CPF duplicado; estado de loading ("Verificando...") evita
+  duplo-clique.
+- Validado em producao: CPF duplicado bloqueia no Passo 1 (nao chega mais no
+  endereco); CPF novo segue fluxo normal; rede de seguranca do Passo 2 intacta.
+- NAO alterado: e-mails de boas-vindas/confirmacao no cadastro (continuam
+  disparando antes do CPF ser conhecido -- limitacao estrutural aceita,
+  documentada e explicada ao Edu); slug/ownerId/P2025/signOut/middleware/
+  callbacks/schema; TX Barbearia; 14 WaitlistLead. tsc=0; build OK.
+- Nota de backlog (nao urgente): mesmo padrao "throw cru -> tela generica"
+  ainda existe em outros pontos do sistema (Sentry apontou: combos com preco
+  zero, upload de foto/Vercel Blob). Candidatos a correcao futura fora deste
+  incidente.
