@@ -881,3 +881,50 @@ Escopo:
   relatorio da execucao) -- ainda nao confirmada pelo Edu.
 - Proximo: C2 -- P1-B (asaasSubscriptionId @unique + guard de double-submit
   na criacao de assinatura).
+
+### v2026.07.02 — 2026-07-02 (C1 — VALIDADO em producao)
+
+- P1-A + VS-5 confirmados corrigidos com teste real de ponta a ponta (3
+  eventos simulados via POST direto ao webhook, com header de autenticacao
+  real): evento OVERDUE recente suspende; evento CONFIRMED mais ANTIGO que o
+  ja processado e corretamente IGNORADO (lastBillingEventAt nao regride);
+  evento CONFIRMED mais recente reativa normalmente.
+- Nota do processo: a primeira rodada de testes foi feita contra codigo NAO
+  publicado (git push pendente), o que mascarou o comportamento correto por
+  alguns ciclos -- corrigido publicando o commit pendente antes de retestar.
+  Licao reforcada: sempre confirmar deploy "Ready" antes de validar qualquer
+  correcao.
+- Conta de teste "vortex" resetada ao estado trial/limpo apos os testes.
+
+### v2026.07.02 — 2026-07-02 (C1 + C2 — Fase C, itens 1 e 2 CONCLUIDOS)
+
+--- C1: P1-A + VS-5 (webhook Asaas fora de ordem) — RESOLVIDO E VALIDADO ---
+
+- Barbershop ganhou lastBillingEventAt (DateTime?, migration aditiva). Guarda
+  simetrica nos 6 updateMany do webhook: eventAt extraido de body.dateCreated
+  (campo raiz, unico presente em TODOS os 7 tipos de evento, inclusive
+  SUBSCRIPTION_DELETED que nao tem objeto payment). Evento mais antigo que o
+  ja processado e silenciosamente ignorado (sempre-200 preservado); protege
+  tanto downgrade (suspended/cancelled) quanto upgrade (active).
+- VALIDADO EM PRODUCAO com 3 POSTs reais simulando o Asaas (conta de teste
+  "vortex", resetada ao final): evento antigo corretamente ignorado
+  (planStatus e lastBillingEventAt inalterados); evento novo aplicado
+  normalmente. Primeira rodada de testes mascarada por deploy pendente —
+  licao reforcada: sempre confirmar "Ready" na Vercel antes de validar.
+
+--- C2: P1-B (asaasSubscriptionId sem @unique + race condition) — RESOLVIDO ---
+
+- assinar/actions.ts: update incondicional trocado por compare-and-swap (CAS)
+  contra o valor de asaasSubscriptionId LIDO no inicio da funcao (nao contra
+  null fixo) -- cobre tanto trial (null) quanto re-assinatura de barbearia
+  cancelled (ID stale). Double-submit: o request perdedor cancela a propria
+  subscription orfa no Asaas via cancelAsaasSubscription (@/lib/asaas, DELETE
+  /subscriptions/{id}) e retorna erro amigavel (return, nao throw).
+- Barbershop.asaasSubscriptionId ganhou @unique (migration aditiva, so
+  CREATE UNIQUE INDEX). Pre-check obrigatorio no Neon confirmou ausencia de
+  duplicatas antes de aplicar; a propria aplicacao sem erro e segunda prova.
+- Gates de planStatus (active/lifetime/suspended), webhook C1, clube e
+  asaas-clube nao tocados. tsc=0; build OK em ambas as etapas.
+
+--- Fase C: 2/4 concluidos. Restam C3 (advisory lock em edicao/movimentacao
+de agendamento) e C4 (rate limit na pagina publica de agendamento). ---

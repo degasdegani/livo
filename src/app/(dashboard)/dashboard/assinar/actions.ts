@@ -5,6 +5,7 @@ import { MemberRole, PlanStatus } from "@prisma/client";
 import { getCurrentMembership } from "@/lib/permissions";
 import { isEmailGateBlocked } from "@/lib/email-gate";
 import {
+  cancelAsaasSubscription,
   createAsaasCustomer,
   createAsaasSubscription,
   getChargePixQrCode,
@@ -135,10 +136,30 @@ export async function createSubscription(
 
     // NÃO ativa aqui. O acesso só é liberado quando o webhook receber
     // PAYMENT_CONFIRMED/PAYMENT_RECEIVED.
-    await db.barbershop.update({
-      where: { id: barbershop.id },
+    // Compare-and-swap (P1-B): só grava se asaasSubscriptionId continuar com o
+    // valor lido no início. Cobre trial (null) e re-assinatura de cancelled
+    // (ID stale). Se outro request concorrente venceu a corrida entre o read e
+    // este write, count === 0 → a subscription que acabamos de criar no Asaas é
+    // órfã e precisa ser cancelada para não gerar cobrança sem rastro no LIVO.
+    const claimed = await db.barbershop.updateMany({
+      where: {
+        id: barbershop.id,
+        asaasSubscriptionId: barbershop.asaasSubscriptionId,
+      },
       data: { asaasSubscriptionId: subscription.id },
     });
+
+    if (claimed.count === 0) {
+      await cancelAsaasSubscription(subscription.id);
+      log.billing.warn("assinatura concorrente cancelada (race P1-B)", {
+        barbershopId: barbershop.id,
+        orphanSubscriptionId: subscription.id,
+      });
+      return {
+        error:
+          "Assinatura já em processamento. Recarregue a página e tente novamente.",
+      };
+    }
 
     log.billing.info("assinatura Asaas criada", {
       barbershopId: barbershop.id,
