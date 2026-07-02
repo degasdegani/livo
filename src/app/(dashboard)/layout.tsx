@@ -1,6 +1,7 @@
 // src/app/(dashboard)/layout.tsx
 import { headers } from "next/headers";
 import { checkBillingAccess, requireMembership } from "@/lib/permissions";
+import { requireTermsAccepted } from "@/lib/terms-gate";
 import { db } from "@/lib/db";
 import { isClubEnabled } from "@/lib/clube-flag";
 import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
@@ -15,6 +16,10 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Gate de aceite de termos: ANTES de membership/billing. Não interfere no
+  // caso não-logado (o helper retorna e requireMembership cuida do /login).
+  await requireTermsAccepted();
+
   const membership = await requireMembership();
 
   const headersList = await headers();

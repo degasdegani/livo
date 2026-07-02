@@ -1,3 +1,5 @@
+import { PlanStatus } from "@prisma/client";
+
 // Versão vigente dos documentos legais (Termos de Uso + Política de Privacidade
 // + Termo de Tratamento de Dados). Versão INICIAL — rascunho pendente de revisão
 // jurídica. Quando o texto final for aprovado, basta incrementar esta string:
@@ -19,4 +21,15 @@ export function isTermsPending(
   currentVersion: string = CURRENT_TERMS_VERSION,
 ): boolean {
   return acceptedVersion !== currentVersion;
+}
+
+// Gate de aceite (espelho de isEmailGateBlocked, B1.3): isenção ESTRUTURAL para
+// planStatus lifetime (TX Barbearia) — nunca por identidade hardcoded. Demais
+// contas: bloqueadas enquanto o aceite estiver pendente. Função pura.
+export function isTermsGateBlocked(input: {
+  planStatus: PlanStatus | null;
+  lastAcceptedVersion: string | null;
+}): boolean {
+  if (input.planStatus === PlanStatus.lifetime) return false;
+  return isTermsPending(input.lastAcceptedVersion);
 }

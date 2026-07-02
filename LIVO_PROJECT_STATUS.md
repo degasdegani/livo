@@ -786,3 +786,40 @@ Escopo:
   o TXT SPF, se pedido) no Registro.br via "Nova Entrada" na Configurar Zona
   DNS -- SEM tocar nas entradas existentes (A da Vercel, TXT DKIM/SPF do
   Resend, MX send.livobarber.com.br do Resend, CNAME www).
+
+### v2026.07.01 — 2026-07-01 (B2.2 — Fundação do aceite de Termos)
+
+- Model novo TermsAcceptance (append-only, migration aditiva): userId,
+  documentType, version, acceptedAt, ipAddress, userAgent. @@map
+  terms_acceptances. migrate diff sem DROP (so CREATE TABLE + ADD CONSTRAINT
+  de FK nova).
+- src/lib/terms.ts (puro, sem Prisma/headers): CURRENT_TERMS_VERSION =
+  "2026-07-01" + isTermsPending(acceptedVersion, currentVersion) -- mesmo
+  padrao arquitetural do email-gate.ts (B1.3). Documentado que a versao sera
+  incrementada quando o advogado aprovar o texto final, disparando re-aceite
+  automatico de todos os usuarios.
+- src/lib/terms-record.ts (Node): recordTermsAcceptance(userId) captura
+  ipAddress/user-agent via headers() e grava via db.termsAcceptance.create.
+  Reusada pelo cadastro e pelo interstitial, sem duplicar logica.
+- Cadastro por credenciais: checkbox desmarcado por padrao ("Li e aceito os
+  Termos de Uso e a Política de Privacidade", com links). Validacao
+  return { error } (nao throw) bloqueia cadastro sem marcar. Ao criar a conta,
+  grava TermsAcceptance (documentType = "bundle").
+- Nova rota /aceitar-termos (Node, runtime nodejs): interstitial standalone,
+  exige login, exibe versao vigente, grava aceite ao confirmar, redireciona
+  para /dashboard.
+- Decisao de modelagem: documentType = "bundle" unico (nao terms+privacy
+  separados) -- um so checkbox no produto, isTermsPending fica uma unica
+  comparacao de versao, sem estados de aceite parcial.
+- Validado em producao (4/4 cenarios, com prints e query real no Neon):
+  (1) cadastro sem marcar -> bloqueado com mensagem clara; (2) cadastro
+  marcando -> conta criada + linha real gravada em terms_acceptances
+  (confirmado via SELECT no Neon); (3) /aceitar-termos acessivel isoladamente,
+  carrega e exibe versao corretamente; (4) dashboard/onboarding seguem 100%
+  acessiveis sem aceite (nenhum gate ativo ainda).
+- NAO tocado: middleware, callbacks jwt/session, providers, B1.2/B1.3
+  (email-verification/email-gate, so lidos como referencia), onboarding/
+  actions.ts, src/lib/cpf.ts, TX Barbearia, 14 WaitlistLead. tsc=0; build OK.
+- Pendente: B2.3 (ligar o gate real -- bloquear dashboard/onboarding para
+  quem nao aceitou, com /aceitar-termos e paginas legais isentas, sem
+  recriar o loop que a A2.3 corrigiu).

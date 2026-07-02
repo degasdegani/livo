@@ -6,6 +6,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getCurrentMembership } from "@/lib/permissions";
+import { requireTermsAccepted } from "@/lib/terms-gate";
 
 export default async function OnboardingLayout({
   children,
@@ -16,6 +17,10 @@ export default async function OnboardingLayout({
 
   // Não logado → login
   if (!session?.user?.id) redirect("/login");
+
+  // Gate de aceite: usuário Google novo (sem membership) precisa aceitar os
+  // termos ANTES de preencher o onboarding. Roda em Node, antes do membership.
+  await requireTermsAccepted();
 
   // Já tem membership (owner, barber ou reception) → pula o onboarding
   const membership = await getCurrentMembership();
