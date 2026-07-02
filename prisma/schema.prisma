@@ -82,6 +82,7 @@ model Barbershop {
   asaasSubscriptionId String?
   planStatus          PlanStatus        @default(trial)
   trialEndsAt         DateTime?
+  lastBillingEventAt  DateTime?
   cep                 String?
   neighborhood        String?
   street              String?

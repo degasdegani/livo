@@ -21,6 +21,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { event, payment, subscription } = body;
 
+    // Timestamp do evento no nível RAIZ do payload (dateCreated). Presente em
+    // TODOS os 7 tipos de evento — inclusive SUBSCRIPTION_DELETED, que não tem
+    // objeto `payment`. É a única fonte universal de ordem; por isso NÃO usamos
+    // o fallback payment.confirmedDate/dueDate do handler do clube (colapsaria
+    // para now() no SUBSCRIPTION_DELETED). Guarda P1-A/VS-5: cada updateMany só
+    // aplica se este evento for mais recente que o último já processado.
+    const eventAt = body.dateCreated ? new Date(body.dateCreated) : new Date();
+    const isNewerEvent = {
+      OR: [
+        { lastBillingEventAt: null },
+        { lastBillingEventAt: { lt: eventAt } },
+      ],
+    };
+
     log.webhook.info("evento recebido", {
       correlationId,
       event,
@@ -35,8 +49,13 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.active, plan: "pro" },
+          data: {
+            planStatus: PlanStatus.active,
+            plan: "pro",
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.info("plano PRO ativado por pagamento", {
           correlationId,
@@ -54,8 +73,12 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.suspended },
+          data: {
+            planStatus: PlanStatus.suspended,
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.warn("plano suspenso por inadimplência", {
           correlationId,
@@ -72,8 +95,12 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.cancelled },
+          data: {
+            planStatus: PlanStatus.cancelled,
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.warn("plano cancelado por remoção de pagamento", {
           correlationId,
@@ -91,8 +118,12 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: subscriptionId,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.cancelled },
+          data: {
+            planStatus: PlanStatus.cancelled,
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.warn("plano cancelado por exclusão de assinatura", {
           correlationId,
@@ -110,8 +141,12 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.suspended },
+          data: {
+            planStatus: PlanStatus.suspended,
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.warn("plano suspenso por estorno de pagamento", {
           correlationId,
@@ -131,8 +166,12 @@ export async function POST(req: NextRequest) {
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
+            ...isNewerEvent,
           },
-          data: { planStatus: PlanStatus.suspended },
+          data: {
+            planStatus: PlanStatus.suspended,
+            lastBillingEventAt: eventAt,
+          },
         });
         log.billing.warn("plano suspenso por chargeback solicitado", {
           correlationId,

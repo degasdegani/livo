@@ -823,3 +823,61 @@ Escopo:
 - Pendente: B2.3 (ligar o gate real -- bloquear dashboard/onboarding para
   quem nao aceitou, com /aceitar-termos e paginas legais isentas, sem
   recriar o loop que a A2.3 corrigiu).
+
+### v2026.07.01 — 2026-07-01 (B4 — CPF único, FASE B ENCERRADA)
+
+- B4 concluida e validada em producao: CPF unico agora protegido nos DOIS
+  pontos que escrevem User.cpf.
+- settings/actions.ts (updatePersonalInfo): pre-checagem checkCpfAvailable
+  (cpf, membership.userId) antes do update -> CPF_TAKEN_MESSAGE se
+  indisponivel. Exclusao do proprio owner via currentUserId (evita falso
+  positivo ao salvar sem mudar o CPF). Rede de seguranca no catch para
+  P2002 com meta.target incluindo "cpf". Reuso direto de src/lib/cpf.ts
+  (checkCpfAvailable, CPF_TAKEN_MESSAGE) -- sem duplicar logica, sem
+  migration (User.cpf @unique ja existia).
+- Anomalia investigada e resolvida: primeiro teste mostrou mensagem
+  generica ("Erro ao salvar dados pessoais") em vez da amigavel. Causa
+  raiz confirmada por diagnose + git status: commit da B4.2 nao tinha sido
+  publicado (working tree com settings/actions.ts modified, sem push) --
+  Vercel servia a versao pre-B4.2. Apos git push, comportamento correto
+  confirmado em producao com print real.
+- NAO alterado: onboarding/actions.ts (ja protegido), src/lib/cpf.ts (so
+  importado), middleware, callbacks, providers, B1/B2 (email-gate/
+  terms-gate). TX Barbearia e 14 WaitlistLead intocados. tsc=0; build OK.
+
+--- FASE B (seguranca e conformidade) ENCERRADA ---
+
+- B1: confirmacao de e-mail (fundacao + portao suave + backfill de contas
+  pre-existentes).
+- Incidente correlato: erros de onboarding (CPF/slug/ownerId) viram
+  mensagem amigavel; checagem de CPF antecipada no Passo 1.
+- B2: aceite de Termos + Politica, log versionado append-only (
+  TermsAcceptance), gate ativo no dashboard e onboarding, TX isenta
+  estruturalmente (planStatus = lifetime).
+- B4: CPF unico nos dois pontos de escrita (onboarding + settings).
+- Pendencias registradas (nao bloqueantes): confirmacao do teste da TX no
+  gate de termos (aguardando retorno do Taxinha); ativacao do ImprovMX para
+  privacidade@/contato@livobarber.com.br (adiada de proposito para o fim).
+
+### v2026.07.02 — 2026-07-02 (C1 — Fase C: hardening Asaas, item 1/4)
+
+- P1-A + VS-5 RESOLVIDOS: webhook Asaas principal protegido contra eventos
+  fora de ordem. Barbershop ganhou lastBillingEventAt (DateTime?, migration
+  aditiva 20260702160955_add_last_billing_event_at_barbershop, so ADD COLUMN).
+- src/app/api/webhooks/asaas/route.ts: eventAt extraido de body.dateCreated
+  (campo raiz do payload, presente em TODOS os 7 tipos de evento -- inclusive
+  SUBSCRIPTION_DELETED, que nao tem objeto payment). Deliberadamente NAO usa
+  o fallback do clube (confirmedDate ?? dueDate ?? now()), que colapsaria
+  para now() nesse evento e quebraria a ordenacao no caso mais perigoso.
+- Guarda simetrica aplicada aos 6 updateMany que escrevem planStatus (OR:
+  lastBillingEventAt null OU menor que o evento atual) -- protege tanto
+  downgrade (suspended/cancelled) quanto upgrade (active): um CONFIRMED
+  atrasado nao reativa conta ja legitimamente suspensa/cancelada por evento
+  mais recente.
+- Protecao planStatus=lifetime intacta nos 6 updates (TX imune). Sempre-200
+  preservado (evento fora de ordem = 0 linhas, nao e erro). Handler do clube
+  nao tocado (padrao proprio, ja correto). tsc=0; build OK.
+- Pendente: validacao manual em producao via POST simulado (roteiro no
+  relatorio da execucao) -- ainda nao confirmada pelo Edu.
+- Proximo: C2 -- P1-B (asaasSubscriptionId @unique + guard de double-submit
+  na criacao de assinatura).
