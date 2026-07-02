@@ -1,8 +1,9 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { GoalPeriod } from "@prisma/client";
+import { GoalPeriod, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
@@ -243,6 +244,14 @@ export async function updatePersonalInfo(_: unknown, formData: FormData) {
 
     if (!name) return { error: "Nome é obrigatório." };
 
+    // Checagem antecipada de CPF duplicado (mesmo padrão do onboarding). Exclui
+    // o próprio owner (currentUserId) — sem isso, salvar sem mudar o CPF
+    // acusaria falso positivo contra a própria conta.
+    if (cpf) {
+      const { available } = await checkCpfAvailable(cpf, membership.userId);
+      if (!available) return { error: CPF_TAKEN_MESSAGE };
+    }
+
     await db.user.update({
       where: { id: membership.userId },
       data: {
@@ -262,6 +271,21 @@ export async function updatePersonalInfo(_: unknown, formData: FormData) {
     revalidatePath("/dashboard/settings");
     return { success: true };
   } catch (err) {
+    // Rede de segurança: corrida entre a pré-checagem e o update.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const target = err.meta?.target;
+      const fields = Array.isArray(target)
+        ? target.map(String)
+        : typeof target === "string"
+          ? [target]
+          : [];
+      if (fields.some((f) => f.includes("cpf"))) {
+        return { error: CPF_TAKEN_MESSAGE };
+      }
+    }
     log.error("erro ao salvar dados pessoais", { barbershopId: membership.barbershopId }, err);
     return { error: "Erro ao salvar dados pessoais." };
   }
