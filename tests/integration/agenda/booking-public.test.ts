@@ -32,6 +32,17 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+// getClientIp() lê x-forwarded-for via next/headers. Damos a cada teste um IP
+// ÚNICO para isolar os rate limiters em memória (Map de módulo persiste entre
+// testes e não é resetado por clearAllMocks). Sem isso, todas as chamadas
+// compartilhariam o balde "unknown" e estourariam o limite ao longo do arquivo.
+const ipHolder = vi.hoisted(() => ({ n: 0, ip: "10.0.0.1" }));
+vi.mock("next/headers", () => ({
+  headers: vi.fn(async () => ({
+    get: (key: string) => (key === "x-forwarded-for" ? ipHolder.ip : null),
+  })),
+}));
+
 vi.mock("@/lib/appointment-core", () => ({
   createAppointmentCore: vi.fn(),
 }));
@@ -67,6 +78,9 @@ const openBusinessHour = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // IP único por teste → balde de rate limit próprio, sem acúmulo entre testes.
+  ipHolder.n += 1;
+  ipHolder.ip = `10.0.0.${ipHolder.n}`;
 });
 
 // ══════════════════════════════════════════════════════════════════════════════

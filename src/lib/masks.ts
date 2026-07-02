@@ -27,6 +27,16 @@ export function formatPhoneBR(input: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+/**
+ * Valida telefone brasileiro pelo comprimento em dígitos: fixo com DDD (10)
+ * ou celular com DDD (11). Rejeita entradas curtas (ex.: "1"). Não valida
+ * o conteúdo do DDD — só o formato mínimo esperado.
+ */
+export function isValidPhoneBR(v: string): boolean {
+  const d = onlyDigits(v);
+  return d.length === 10 || d.length === 11;
+}
+
 // ── Moeda (centavos) ─────────────────────────────────────────────────────────
 
 /**

@@ -12,6 +12,7 @@ import { generateAvailableSlots, type SlotInfo } from "@/lib/availability";
 import { db } from "@/lib/db";
 import { sendAppointmentConfirmation } from "@/lib/email";
 import { log } from "@/lib/logger";
+import { isValidPhoneBR } from "@/lib/masks";
 
 // ── Rate limit: agendamento público ──────────────────────────
 // In-memory por instância serverless — mesmo padrão de src/auth.ts.
@@ -45,6 +46,26 @@ function isBookingRateLimited(ip: string): boolean {
   return false;
 }
 
+// ── Rate limit: consulta de slots (enumeração) ───────────────
+// Bucket PRÓPRIO, separado do de createAppointment. Muito mais folgado:
+// getAvailableSlots é chamada com alta frequência na navegação legítima
+// (troca de data/profissional/serviço). Retorna só disponibilidade, sem PII.
+const slotsRateLimitMap = new Map<string, BookingRateLimitEntry>();
+const SLOTS_RATE_LIMIT_MAX = 120;
+const SLOTS_RATE_LIMIT_WINDOW_MS = 60 * 60_000; // 1 hora
+
+function isSlotsRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = slotsRateLimitMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    slotsRateLimitMap.set(ip, { count: 1, resetAt: now + SLOTS_RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= SLOTS_RATE_LIMIT_MAX) return true;
+  entry.count += 1;
+  return false;
+}
+
 // ── Buscar slots disponíveis ──────────────────────────────────
 // Retorna TODOS os slots do expediente com available: boolean.
 // Guarda de cross-tenant: todos os serviceIds devem pertencer ao barbershopId.
@@ -62,6 +83,14 @@ export async function getAvailableSlots({
   date,
 }: GetSlotsParams): Promise<SlotInfo[]> {
   try {
+    // Rate limit de enumeração. IP "unknown" compartilha um único balde
+    // (nunca fail-open), mesma decisão do createAppointment.
+    const ip = await getClientIp();
+    if (isSlotsRateLimited(ip)) {
+      log.agenda.warn("rate limit de consulta de slots atingido", { ip, barbershopId });
+      return [];
+    }
+
     const uniqueIds = [...new Set(serviceIds)];
 
     const services = await db.service.findMany({
@@ -147,15 +176,22 @@ export async function createAppointment(
 ): Promise<AppointmentResult> {
   try {
     const ip = await getClientIp();
+    // IP "unknown" não passa mais silenciosamente (fail-open): compartilha um
+    // único balde no rate limiter, então o agregado de tráfego sem IP também
+    // fica limitado (opção "a" da diagnose C4.1).
     if (ip === "unknown") {
-      log.agenda.warn("agendamento público sem IP identificável", { barbershopId: data.barbershopId });
-    } else if (isBookingRateLimited(ip)) {
+      log.agenda.warn("agendamento público sem IP identificável (balde compartilhado)", { barbershopId: data.barbershopId });
+    }
+    if (isBookingRateLimited(ip)) {
       log.agenda.warn("rate limit de agendamento público atingido", { ip, barbershopId: data.barbershopId });
       return { error: "Muitas tentativas. Tente novamente em algumas horas." };
     }
 
     if (!data.clientName?.trim()) return { error: "Informe seu nome." };
     if (!data.clientPhone?.trim()) return { error: "Informe seu telefone." };
+    if (!isValidPhoneBR(data.clientPhone)) {
+      return { error: "Telefone inválido. Use um número com DDD." };
+    }
     if (!data.date || !data.time) return { error: "Selecione data e horário." };
 
     const uniqueServiceIds = [...new Set(data.serviceIds)];
