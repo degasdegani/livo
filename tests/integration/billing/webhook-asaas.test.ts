@@ -285,8 +285,16 @@ describe("Webhook — PAYMENT_OVERDUE", () => {
         where: expect.objectContaining({
           asaasSubscriptionId: SUB_A,
           planStatus: { not: PlanStatus.lifetime },
+          // C1 (guard de ordenação): só aplica se o evento for mais recente.
+          OR: [
+            { lastBillingEventAt: null },
+            { lastBillingEventAt: { lt: expect.any(Date) } },
+          ],
         }),
-        data: { planStatus: PlanStatus.suspended },
+        data: expect.objectContaining({
+          planStatus: PlanStatus.suspended,
+          lastBillingEventAt: expect.any(Date),
+        }),
       }),
     );
   });
@@ -350,8 +358,15 @@ describe("Webhook — PAYMENT_DELETED", () => {
         where: expect.objectContaining({
           asaasSubscriptionId: SUB_A,
           planStatus: { not: PlanStatus.lifetime },
+          OR: [
+            { lastBillingEventAt: null },
+            { lastBillingEventAt: { lt: expect.any(Date) } },
+          ],
         }),
-        data: { planStatus: PlanStatus.cancelled },
+        data: expect.objectContaining({
+          planStatus: PlanStatus.cancelled,
+          lastBillingEventAt: expect.any(Date),
+        }),
       }),
     );
   });
@@ -389,8 +404,15 @@ describe("Webhook — SUBSCRIPTION_DELETED", () => {
         where: expect.objectContaining({
           asaasSubscriptionId: SUB_A,
           planStatus: { not: PlanStatus.lifetime },
+          OR: [
+            { lastBillingEventAt: null },
+            { lastBillingEventAt: { lt: expect.any(Date) } },
+          ],
         }),
-        data: { planStatus: PlanStatus.cancelled },
+        data: expect.objectContaining({
+          planStatus: PlanStatus.cancelled,
+          lastBillingEventAt: expect.any(Date),
+        }),
       }),
     );
   });

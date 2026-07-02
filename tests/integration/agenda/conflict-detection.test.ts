@@ -62,6 +62,9 @@ function makeTxMock() {
       create: vi.fn().mockResolvedValue({ id: "new-appt-id" }),
       update: vi.fn().mockResolvedValue({}),
     },
+    timeBlock: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     comanda: {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       findFirst: vi.fn().mockResolvedValue(null),

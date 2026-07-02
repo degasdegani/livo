@@ -3,7 +3,7 @@
 // Todos os writers (book, agenda) devem usar estas funções.
 // Nenhum outro arquivo deve conter lógica de criação direta de Appointment.
 
-import { type AppointmentStatus, ComandaStatus } from "@prisma/client";
+import { type AppointmentStatus, ComandaStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 
@@ -72,6 +72,42 @@ async function checkConflict(
       select: { id: true },
     }),
     db.timeBlock.findFirst({
+      where: {
+        professionalId,
+        date: { lt: endDate },
+        endTime: { gt: startDate },
+      },
+      select: { id: true },
+    }),
+  ]);
+  return apptConflict !== null || blockConflict !== null;
+}
+
+// ─── Re-check autoritativo DENTRO do advisory lock (update/move) ───────────────
+// Espelha checkConflict, mas roda no cliente da transação (tx) — ou seja, sob o
+// pg_advisory_xact_lock já adquirido — para fechar a janela TOCTOU (VS-2).
+// Diferenças frente ao re-check de createAppointmentCore:
+//   1. usa excludeId (NOT: { id }) — o próprio agendamento não conflita consigo;
+//   2. cobre appointment + timeBlock (paridade completa com checkConflict).
+async function checkConflictInTx(
+  tx: Prisma.TransactionClient,
+  professionalId: string,
+  startDate: Date,
+  endDate: Date,
+  excludeId: string,
+): Promise<boolean> {
+  const [apptConflict, blockConflict] = await Promise.all([
+    tx.appointment.findFirst({
+      where: {
+        professionalId,
+        status: { notIn: ["cancelled", "no_show"] as AppointmentStatus[] },
+        date: { lt: endDate },
+        endTime: { gt: startDate },
+        NOT: { id: excludeId },
+      },
+      select: { id: true },
+    }),
+    tx.timeBlock.findFirst({
       where: {
         professionalId,
         date: { lt: endDate },
@@ -302,7 +338,24 @@ export async function updateAppointmentCore(
   const existingNormalizedPhone = existing.clientPhone?.replace(/\D/g, "") ?? "";
   const phoneChanged = normalizedPhone !== existingNormalizedPhone;
 
-  await db.$transaction(async (tx) => {
+  try {
+    await db.$transaction(async (tx) => {
+    // Serializa edições concorrentes do mesmo profissional e revalida o conflito
+    // sob o lock (VS-2). O checkConflict externo acima é fast-path; este é o
+    // autoritativo — vê o estado committed após qualquer transação anterior.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${existing.professionalId}))`;
+    if (
+      await checkConflictInTx(
+        tx,
+        existing.professionalId,
+        startDate,
+        endDate,
+        input.appointmentId,
+      )
+    ) {
+      throw Object.assign(new Error("conflict"), { isConflict: true });
+    }
+
     // clientId is immutable once set — never reassign an appointment that already
     // has a linked client record (would corrupt CRM history for the original client)
     let newClientId: string | null = existing.clientId;
@@ -359,7 +412,21 @@ export async function updateAppointmentCore(
         clientId: newClientId,
       },
     });
-  });
+    });
+  } catch (err) {
+    if (err && typeof err === "object" && "isConflict" in err) {
+      log.agenda.warn("conflito de horário detectado (com lock) na edição", {
+        barbershopId: auth.barbershopId,
+        appointmentId: input.appointmentId,
+        dateISO: input.dateISO,
+      });
+      return {
+        success: false,
+        error: "Horário em conflito com outro agendamento.",
+      };
+    }
+    throw err;
+  }
 
   return { success: true };
 }
@@ -496,13 +563,42 @@ export async function moveAppointmentCore(
   // Advisory lock: serializa movimentos concorrentes para o mesmo profissional destino.
   // Resolve lacuna identificada no AGENDA_INVENTORY.md (VS-2): moveAppointmentCore
   // anteriormente não tinha lock, ao contrário de createAppointmentCore.
-  await db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.newProfessionalId}))`;
-    await tx.appointment.update({
-      where: { id: input.appointmentId },
-      data: { professionalId: input.newProfessionalId },
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.newProfessionalId}))`;
+      // Re-check autoritativo sob o lock (VS-2). Mesmo guard do checkConflict
+      // externo: só revalida quando endTime existir (agendamento com duração).
+      if (
+        appointment.endTime !== null &&
+        (await checkConflictInTx(
+          tx,
+          input.newProfessionalId,
+          appointment.date,
+          appointment.endTime,
+          input.appointmentId,
+        ))
+      ) {
+        throw Object.assign(new Error("conflict"), { isConflict: true });
+      }
+      await tx.appointment.update({
+        where: { id: input.appointmentId },
+        data: { professionalId: input.newProfessionalId },
+      });
     });
-  });
+  } catch (err) {
+    if (err && typeof err === "object" && "isConflict" in err) {
+      log.agenda.warn("conflito de horário detectado (com lock) no move", {
+        barbershopId: auth.barbershopId,
+        appointmentId: input.appointmentId,
+        newProfessionalId: input.newProfessionalId,
+      });
+      return {
+        success: false,
+        error: "Horário em conflito com outro agendamento deste profissional.",
+      };
+    }
+    throw err;
+  }
 
   return { success: true };
 }

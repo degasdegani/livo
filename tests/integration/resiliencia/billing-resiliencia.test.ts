@@ -40,7 +40,7 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    barbershop: { findUnique: vi.fn(), update: vi.fn() },
+    barbershop: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -49,6 +49,7 @@ vi.mock("@/lib/asaas", () => ({
   createAsaasSubscription: vi.fn(),
   getSubscriptionPayments: vi.fn(),
   getChargePixQrCode: vi.fn(),
+  cancelAsaasSubscription: vi.fn(),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -119,6 +120,7 @@ beforeEach(() => {
   vi.mocked(getCurrentMembership).mockResolvedValue(makeMembership() as never);
   vi.mocked(db.barbershop.findUnique).mockResolvedValue(makeBarbershop() as never);
   vi.mocked(db.barbershop.update).mockResolvedValue({} as never);
+  vi.mocked(db.barbershop.updateMany).mockResolvedValue({ count: 1 } as never);
 
   vi.mocked(createAsaasCustomer).mockResolvedValue({
     id: CUSTOMER_ID,
@@ -338,12 +340,13 @@ describe("Database failures → outer catch → error result", () => {
     );
   });
 
-  it("returns error when db.barbershop.update (save subscriptionId) throws", async () => {
-    // Barbershop already has customerId — first update (save customerId) is skipped
+  it("returns error when db.barbershop.updateMany (save subscriptionId CAS) throws", async () => {
+    // Barbershop already has customerId — first update (save customerId) is skipped.
+    // C2 (P1-B): a persistência do subscriptionId agora é via updateMany (CAS).
     vi.mocked(db.barbershop.findUnique).mockResolvedValue(
       makeBarbershop({ asaasCustomerId: CUSTOMER_ID }) as never,
     );
-    vi.mocked(db.barbershop.update).mockRejectedValue(
+    vi.mocked(db.barbershop.updateMany).mockRejectedValue(
       new Error("DB write failed"),
     );
 

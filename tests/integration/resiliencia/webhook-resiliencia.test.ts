@@ -245,7 +245,10 @@ describe("Idempotency — repeated webhook events", () => {
     // Both calls use the same WHERE clause — DB upsert is naturally idempotent
     expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { planStatus: PlanStatus.active, plan: "pro" },
+        data: expect.objectContaining({
+          planStatus: PlanStatus.active,
+          plan: "pro",
+        }),
       }),
     );
   });
@@ -257,8 +260,48 @@ describe("Idempotency — repeated webhook events", () => {
     // Second call must update to active
     expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        data: { planStatus: PlanStatus.active, plan: "pro" },
+        data: expect.objectContaining({
+          planStatus: PlanStatus.active,
+          plan: "pro",
+        }),
       }),
+    );
+  });
+
+  it("reactivates when dateCreated is strictly later, no tie (ordering guard)", async () => {
+    // Regressão do guard de ordenação do C1 com timestamps NÃO empatados: um
+    // OVERDUE às 10:00:00 seguido de um CONFIRMED às 10:00:01 (1s depois) deve
+    // reativar. Cenário determinístico (sem empate de segundo/fallback) — trava
+    // a política atual de `{ lt: eventAt }` para eventos estritamente ordenados.
+    // A resolução do empate no MESMO segundo é decisão de arquitetura à parte.
+    await POST(
+      makeReq({
+        body: {
+          event: "PAYMENT_OVERDUE",
+          dateCreated: "2026-07-02 10:00:00",
+          payment: { id: PAY_ID, subscription: SUB_ID },
+        },
+      }),
+    );
+    await POST(
+      makeReq({
+        body: {
+          event: "PAYMENT_CONFIRMED",
+          dateCreated: "2026-07-02 10:00:01",
+          payment: { id: PAY_ID, subscription: SUB_ID },
+        },
+      }),
+    );
+
+    const calls = vi.mocked(db.barbershop.updateMany).mock.calls;
+    expect(calls).toHaveLength(2);
+    // 1º evento (mais antigo) suspende; 2º evento (mais recente) reativa.
+    expect(calls[0][0].data).toMatchObject({ planStatus: PlanStatus.suspended });
+    expect(calls[1][0].data).toMatchObject({ planStatus: PlanStatus.active });
+    // O guard grava o timestamp do evento processado.
+    expect(calls[1][0].data).toHaveProperty("lastBillingEventAt");
+    expect(calls[1][0].data.lastBillingEventAt).toEqual(
+      new Date("2026-07-02 10:00:01"),
     );
   });
 

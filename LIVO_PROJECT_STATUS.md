@@ -928,3 +928,32 @@ Escopo:
 
 --- Fase C: 2/4 concluidos. Restam C3 (advisory lock em edicao/movimentacao
 de agendamento) e C4 (rate limit na pagina publica de agendamento). ---
+
+### v2026.07.02 — 2026-07-02 (C1+C2 — testes reparados, 100% verde no escopo)
+
+- Os 16 testes pre-existentes quebrados por C1 (webhook ordering) e C2 (CAS
+  subscription) foram corrigidos -- SOMENTE arquivos de teste, nenhum codigo
+  de producao tocado. Causa: 11 eram gap de mock (updateMany/
+  cancelAsaasSubscription ausentes dos mocks de C2); 5 eram staleness de
+  asserção exata (data ganhou lastBillingEventAt no C1).
+- Reforco de regressao: asserções trocadas de match exato para
+  objectContaining + validacao explicita do guard novo (where com OR de
+  lastBillingEventAt, CAS com asaasSubscriptionId lido) -- preserva a
+  intencao original dos testes em vez de so afrouxar.
+- Teste NOVO adicionado: "reactivates when dateCreated is strictly later, no
+  tie (ordering guard)" -- trava o comportamento de reativacao ordenada com
+  timestamps sem empate.
+- Resultado: 4 arquivos alvo 100% verdes (90/90). Suite completa: 47 falhas
+  remanescentes (de 63), todas pre-existentes e fora de escopo (agenda
+  read-side, onboarding, avatar-upload, rbac, convite) -- nenhuma falha nova
+  introduzida. tsc=0; build OK.
+- RISCO REGISTRADO (nao corrigido, follow-up do C1): guard `lt` pode
+  descartar evento por empate de dateCreated (resolucao de segundos do
+  Asaas ou fallback now()) quando dois eventos de STATUS DIFERENTE colidem
+  no mesmo timestamp. NAO trocar lt->lte as cegas (reabriria o bug
+  original). Requer decisao de politica de desempate (ex.: id/sequencia do
+  evento como criterio secundario). Baixa probabilidade em producao real
+  (pares OVERDUE->CONFIRMED tipicamente distantes em dias).
+- Debito de teste remanescente (fora de escopo, anterior a Fase C): 47
+  falhas em agenda read-side, onboarding, avatar-upload, rbac, convite --
+  registrado, nao urgente.

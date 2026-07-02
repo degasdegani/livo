@@ -27,7 +27,7 @@ import { createSubscription } from "@/app/(dashboard)/dashboard/assinar/actions"
 
 vi.mock("@/lib/db", () => ({
   db: {
-    barbershop: { findUnique: vi.fn(), update: vi.fn() },
+    barbershop: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -40,6 +40,7 @@ vi.mock("@/lib/asaas", () => ({
   createAsaasSubscription: vi.fn(),
   getSubscriptionPayments: vi.fn(),
   getChargePixQrCode: vi.fn(),
+  cancelAsaasSubscription: vi.fn(),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -103,6 +104,7 @@ function makeFormData(fields: Record<string, string> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.barbershop.update).mockResolvedValue({} as never);
+  vi.mocked(db.barbershop.updateMany).mockResolvedValue({ count: 1 } as never);
   vi.mocked(createAsaasCustomer).mockResolvedValue({
     id: "cus-new",
     name: "Test",
@@ -309,9 +311,16 @@ describe("createSubscription() — subscription creation and persistence", () =>
   it("persists subscriptionId to DB (webhook will use this to find barbershop)", async () => {
     await createSubscription(null, makeFormData());
 
-    expect(vi.mocked(db.barbershop.update)).toHaveBeenCalledWith(
+    // C2 (P1-B): persistência via compare-and-swap. O where casa o valor lido
+    // (asaasSubscriptionId: null no makeBarbershop default) — valida o CAS, não
+    // apenas "foi chamado".
+    expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ asaasSubscriptionId: "sub-new" }),
+        where: expect.objectContaining({
+          id: SHOP_A,
+          asaasSubscriptionId: null,
+        }),
+        data: { asaasSubscriptionId: "sub-new" },
       }),
     );
   });
@@ -319,11 +328,11 @@ describe("createSubscription() — subscription creation and persistence", () =>
   it("does NOT activate plan immediately — waits for webhook PAYMENT_CONFIRMED", async () => {
     await createSubscription(null, makeFormData());
 
-    // planStatus must NOT be in the update data at this point
-    const updateCall = vi.mocked(db.barbershop.update).mock.calls.find(
-      (call) => "asaasSubscriptionId" in (call[0].data ?? {}),
+    // planStatus must NOT be in the CAS persistence data at this point
+    const call = vi.mocked(db.barbershop.updateMany).mock.calls.find(
+      (c) => "asaasSubscriptionId" in (c[0].data ?? {}),
     );
-    expect(updateCall?.[0].data).not.toHaveProperty("planStatus");
+    expect(call?.[0].data).not.toHaveProperty("planStatus");
   });
 
   it("uses trialEndsAt as nextDueDate when trial is still valid", async () => {
