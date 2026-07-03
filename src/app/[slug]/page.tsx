@@ -5,9 +5,20 @@ import { db } from "@/lib/db";
 import { isEmailGateBlocked } from "@/lib/email-gate";
 import { formatPhoneBR } from "@/lib/masks";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ServicePicker } from "./service-picker";
 import { PublicUnavailable } from "./unavailable";
+
+// Iniciais para fallback de avatar (mesmo padrão do ProfAvatar do booking).
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 // Gera o título da aba dinamicamente para cada barbearia
 export async function generateMetadata({
@@ -253,6 +264,62 @@ export default async function BarbershopPage({
             </div>
           )}
         </section>
+
+        {/* ── Nossa equipe ─────────────────────────────────── */}
+        {barbershop.professionals.length > 0 && (
+          <section>
+            <h2
+              className="font-black text-white mb-4"
+              style={{ fontSize: "18px", letterSpacing: "-0.3px" }}
+            >
+              Nossa equipe
+            </h2>
+            <div className="flex flex-wrap gap-5">
+              {barbershop.professionals.map((prof) => (
+                <div
+                  key={prof.id}
+                  className="flex flex-col items-center gap-2"
+                  style={{ width: 72 }}
+                >
+                  {prof.avatarUrl ? (
+                    <Image
+                      src={prof.avatarUrl}
+                      alt={prof.name}
+                      width={56}
+                      height={56}
+                      className="rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        background: "rgba(255,45,85,0.12)",
+                        border: "1px solid rgba(255,45,85,0.2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#FF2D55",
+                        fontWeight: 700,
+                        fontSize: 18,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {initials(prof.name)}
+                    </div>
+                  )}
+                  <p
+                    className="text-xs font-semibold text-center leading-tight"
+                    style={{ color: "#E4E4E7" }}
+                  >
+                    {prof.name}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Horários de funcionamento ────────────────────── */}
         <section>

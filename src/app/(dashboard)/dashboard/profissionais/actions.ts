@@ -1,8 +1,9 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
-import { del, put } from "@vercel/blob";
+import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
+import { uploadImageToBlob } from "@/lib/blob-upload";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 
@@ -250,37 +251,30 @@ export async function uploadProfessionalAvatar(
   if (!(file instanceof File)) {
     return { success: false, error: "Arquivo inválido." };
   }
-  if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
-    return { success: false, error: "Formato inválido. Use JPEG, PNG ou WebP." };
-  }
-  if (file.size > MAX_AVATAR_BYTES) {
-    return { success: false, error: "Arquivo muito grande. Máximo 10 MB." };
+
+  const uploaded = await uploadImageToBlob({
+    file,
+    pathPrefix: `professionals/${membership.barbershopId}/${professionalId}`,
+    maxBytes: MAX_AVATAR_BYTES,
+    allowedTypes: ALLOWED_AVATAR_TYPES,
+  });
+  if ("error" in uploaded) {
+    return { success: false, error: uploaded.error };
   }
 
+  // Remove a foto antiga só depois do upload novo ter sido confirmado.
   if (professional.avatarUrl) {
     try { await del(professional.avatarUrl); } catch {}
   }
 
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  await db.professional.update({
+    where: { id: professionalId },
+    data: { avatarUrl: uploaded.url },
+  });
 
-  try {
-    const blob = await put(
-      `professionals/${membership.barbershopId}/${professionalId}.${ext}`,
-      file,
-      { access: "public", addRandomSuffix: true },
-    );
+  revalidatePath("/dashboard/profissionais");
 
-    await db.professional.update({
-      where: { id: professionalId },
-      data: { avatarUrl: blob.url },
-    });
-
-    revalidatePath("/dashboard/profissionais");
-
-    return { success: true, message: "Foto atualizada.", avatarUrl: blob.url };
-  } catch {
-    return { success: false, error: "Falha ao enviar a imagem. Tente novamente." };
-  }
+  return { success: true, message: "Foto atualizada.", avatarUrl: uploaded.url };
 }
 
 export async function removeProfessionalAvatar(

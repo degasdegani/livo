@@ -407,8 +407,9 @@ export function BookingForm({
         <ServicesSummaryCard services={services} />
         {stepIndicator}
 
-        {/* Profissional selecionado (se houver escolha) */}
-        {hasProfessionalChoice && selectedProf && (
+        {/* Profissional selecionado — sempre visível (inclusive com 1 só
+            profissional); botão "Trocar" só quando há mais de um. */}
+        {selectedProf && (
           <div
             className="flex items-center gap-3 p-3 rounded-xl"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
@@ -418,14 +419,16 @@ export function BookingForm({
               <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>Profissional</p>
               <p className="text-sm font-semibold text-white">{selectedProf.name}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setStep("professional")}
-              className="ml-auto text-xs transition-opacity hover:opacity-70"
-              style={{ color: "#FF2D55" }}
-            >
-              Trocar
-            </button>
+            {hasProfessionalChoice && (
+              <button
+                type="button"
+                onClick={() => setStep("professional")}
+                className="ml-auto text-xs transition-opacity hover:opacity-70"
+                style={{ color: "#FF2D55" }}
+              >
+                Trocar
+              </button>
+            )}
           </div>
         )}
 

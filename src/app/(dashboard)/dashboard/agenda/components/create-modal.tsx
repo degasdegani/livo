@@ -99,13 +99,36 @@ export function ServiceChips({
   selected: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const [query, setQuery] = useState("");
+
   function toggle(id: string) {
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   }
 
+  // Filtro client-side em memória (serviços são poucas dezenas; sem rede).
+  const normalized = query.trim().toLowerCase();
+  const visibleServices = normalized
+    ? services.filter((s) => s.name.toLowerCase().includes(normalized))
+    : services;
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {services.map((s) => {
+    <div className="flex flex-col gap-2">
+      {services.length > 6 && (
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar serviço…"
+          className="livo-input w-full text-sm"
+        />
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        {visibleServices.length === 0 && (
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            Nenhum serviço encontrado.
+          </p>
+        )}
+        {visibleServices.map((s) => {
         const isOn = selected.includes(s.id);
         return (
           <button
@@ -131,7 +154,8 @@ export function ServiceChips({
             {isOn && <span className="ml-1 opacity-70">{s.durationMin}min</span>}
           </button>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }

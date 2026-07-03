@@ -1010,3 +1010,44 @@ de agendamento) e C4 (rate limit na pagina publica de agendamento). ---
 - Confirmacao da TX (login real do Taxinha) na B2.3 -- ainda pendente.
 - Ativacao do ImprovMX (privacidade@/contato@) -- guardada para o final,
   por decisao do Edu.
+
+### v2026.07.02 — 2026-07-02 (Grupo A+B — upload de imagem + bloqueio touch)
+
+- Limite de upload de avatar: corrigido de 1MB EFETIVO (nao documentado,
+  default do Next.js) para 10MB real. next.config.ts ganhou
+  experimental.serverActions.bodySizeLimit: "10mb"; MAX_AVATAR_BYTES 5MB->10MB.
+- Compressao client-side adicionada (compressImageFile): reduz para max
+  800px no maior lado, JPEG q0.8, com fallback seguro (usa original se
+  compressao falhar ou nao reduzir o tamanho). Resolve fotos de 50MP sem
+  depender so do limite maior.
+- Confirmado e resolvido separadamente: erro "private access" do Sentry era
+  de configuracao pontual do Blob Store (26/06), ja corrigido -- Store
+  publico confirmado, upload funcionando em producao sem erro.
+- Bloqueio de horario: adicionado botao explicito "Bloquear este horário" no
+  modal de criar agendamento (visao Dia), reusando a mesma
+  handleTimeBlockCreate do arrasto -- funciona com toque simples, sem
+  depender do gesto de arrasto (mouse-only, quebrado em touchscreen).
+  Arrasto no desktop continua intacto, sem alteracao.
+- Fora de escopo, registrado para fase futura: migrar o gesto de arrasto
+  para Pointer Events (permitiria tambem arrastar duracao no touch).
+- Suite: 47 failed | 765 passed (baseline estavel; teste de limite
+  atualizado para 10MB, 1 falha pre-existente de texto isolada e nao
+  relacionada). tsc=0; build OK nas duas tarefas.
+
+### v2026.07.02 — 2026-07-02 (Grupo C — 1/2: busca de serviço + fotos publicas)
+
+- ServiceChips (compartilhado por CreateModal e EditModal) ganhou busca
+  client-side em memoria, exibida so quando ha mais de 6 servicos (sem
+  ruido em barbearias pequenas). Sem rede, sem debounce.
+- Landing publica ([slug]/page.tsx): nova secao "Nossa equipe" exibindo
+  avatarUrl (ou iniciais) de cada profissional ativo -- reuso puro do dado
+  ja existente, sem migration.
+- Booking com 1 unico profissional: avatar do profissional agora aparece no
+  passo de data/hora (antes ficava oculto, exibido so com 2+ profissionais).
+- Nenhum schema/migration; upload de avatar intocado, so exibicao ampliada.
+- Suite: 47 failed | 765 passed (baseline estavel). tsc=0; build OK.
+- Pendente (Item 2B, fase separada com migration): foto de capa da
+  barbearia -- exige campo novo (coverPhotoUrl) + extrair helper de upload
+  compartilhado (compressImageFile/MAX_BYTES hoje sao locais a
+  profissionais/actions.ts, precisam virar src/lib/image-compress.ts +
+  src/lib/blob-upload.ts antes, para nao duplicar logica).
