@@ -231,7 +231,7 @@ export type AvatarUploadResult =
   | { success: false; error: string };
 
 const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function uploadProfessionalAvatar(
   professionalId: string,
@@ -254,7 +254,7 @@ export async function uploadProfessionalAvatar(
     return { success: false, error: "Formato inválido. Use JPEG, PNG ou WebP." };
   }
   if (file.size > MAX_AVATAR_BYTES) {
-    return { success: false, error: "Arquivo muito grande. Máximo 5 MB." };
+    return { success: false, error: "Arquivo muito grande. Máximo 10 MB." };
   }
 
   if (professional.avatarUrl) {

@@ -151,6 +151,7 @@ export function CreateModal({
   anchorY,
   onClose,
   onCreate,
+  onBlockTime,
 }: {
   professionalId: string;
   suggestedMinute: number;
@@ -171,6 +172,11 @@ export function CreateModal({
     clientPhone: string;
     notes: string;
   }) => void;
+  // Caminho alternativo por toque simples: bloquear o horário do slot sem
+  // depender do gesto de arrasto (mouse-only). Recebe o profissional e o
+  // minuto atuais do modal (respeita edições do usuário). Opcional: só a
+  // visão de dia oferece este caminho hoje.
+  onBlockTime?: (professionalId: string, startMin: number) => void;
 }) {
   const [profId, setProfId] = useState(initialProfId);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -376,6 +382,19 @@ export function CreateModal({
           />
         </div>
       </div>
+
+      {/* Alternativa por toque simples (funciona em touch, sem arrastar):
+          bloquear este horário. Reusa o mesmo fluxo do arrasto. */}
+      {onBlockTime && (
+        <button
+          type="button"
+          onClick={() => onBlockTime?.(profId, timeStrToMin(time))}
+          className="w-full mt-3 rounded-lg py-2 text-sm font-medium transition-colors"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          Bloquear este horário
+        </button>
+      )}
 
       {/* Footer */}
       <div

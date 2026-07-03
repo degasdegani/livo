@@ -831,6 +831,18 @@ export default function DayView({ initialData, initialDateKey, services }: DayVi
             isPending={isPending}
             onClose={() => setModal({ type: "none" })}
             onCreate={handleCreate}
+            onBlockTime={(professionalId, startMin) =>
+              // Mesmo fluxo do arrasto (handleTimeBlockCreate), acionado por
+              // toque/clique simples. Duração padrão de 30 min; o usuário
+              // confirma (e escolhe motivo) no modal de bloqueio que abre.
+              handleTimeBlockCreate(
+                professionalId,
+                startMin,
+                startMin + 30,
+                modal.anchorX,
+                modal.anchorY,
+              )
+            }
           />
         )}
         {modal.type === "block-create" && (

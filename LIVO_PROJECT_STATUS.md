@@ -957,3 +957,56 @@ de agendamento) e C4 (rate limit na pagina publica de agendamento). ---
 - Debito de teste remanescente (fora de escopo, anterior a Fase C): 47
   falhas em agenda read-side, onboarding, avatar-upload, rbac, convite --
   registrado, nao urgente.
+
+### v2026.07.02 — 2026-07-02 (FASE C ENCERRADA — hardening Asaas + agenda + booking)
+
+--- C1: P1-A + VS-5 (webhook Asaas fora de ordem) ---
+
+- Barbershop ganhou lastBillingEventAt. Guarda simetrica (upgrade+downgrade)
+  nos 6 updateMany, usando dateCreated (campo raiz do payload, unico
+  presente em todos os 7 eventos). Validado com 3 POSTs reais em producao.
+
+--- C2: P1-B (asaasSubscriptionId sem @unique + race na assinatura) ---
+
+- CAS contra o valor lido (cobre trial e re-assinatura de cancelled) +
+  cancelamento automatico de subscription orfa no Asaas em conflito.
+  @unique aplicado apos confirmar ausencia de duplicatas.
+
+--- C3: VS-2 (updateAppointmentCore/moveAppointmentCore sem advisory lock) ---
+
+- Re-check autoritativo (appointment + timeBlock) dentro do lock ja
+  existente em move; lock + re-check adicionados em update. Validado por
+  suite automatizada (37/37 nos arquivos alvo).
+
+--- C4: P1-C/N-03 (rate limit + validacao na pagina publica) ---
+
+- Descoberto que createAppointment JA TINHA rate limit (10/hora/IP) de
+  sessao anterior nao documentada -- auditoria estava desatualizada.
+- Adicionado: validacao de telefone (isValidPhoneBR, 10/11 digitos,
+  rejeita "1"); bypass fail-open de IP "unknown" fechado (balde
+  compartilhado); rate limit proprio e folgado em getAvailableSlots
+  (120/hora/IP, nao compartilha contador com createAppointment).
+
+--- Reparo de debito colateral (C1+C2) ---
+
+- 16 testes pre-existentes desatualizados por C1/C2 corrigidos +1 teste novo
+  de regressao para o guard de ordering. Suite: 63->47 falhas (as 47
+  remanescentes sao debito anterior a Fase C, fora de escopo).
+
+--- Validacao completa da fase ---
+
+- npx vitest run: 47 failed | 765 passed | 812 (baseline estavel, sem
+  regressao). tsc=0 e build OK em todas as etapas. TX Barbearia e 14
+  WaitlistLead intocados em toda a fase.
+
+--- Pendencias registradas (nao bloqueiam, follow-up futuro) ---
+
+- Politica de desempate de timestamp no guard do C1 (risco de baixa
+  probabilidade, empate de dateCreated entre eventos de status diferente).
+- Helper compartilhado de rate-limit (6 implementacoes isoladas hoje) --
+  melhoria de manutenibilidade, nao urgente.
+- 47 falhas de teste pre-existentes (agenda read-side, onboarding,
+  avatar-upload, rbac, convite) -- debito anterior a Fase C.
+- Confirmacao da TX (login real do Taxinha) na B2.3 -- ainda pendente.
+- Ativacao do ImprovMX (privacidade@/contato@) -- guardada para o final,
+  por decisao do Edu.

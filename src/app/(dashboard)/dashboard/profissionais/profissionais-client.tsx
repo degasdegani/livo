@@ -34,6 +34,43 @@ import {
   uploadProfessionalAvatar,
 } from "./actions";
 
+// ─── Compressão de imagem no cliente ──────────────────────────────────────────
+// Reduz o maior lado para ~800px e re-encoda como JPEG q0.8 antes do upload.
+// Resolve fotos de celular (50MP) sem depender de limites gigantes no servidor.
+// Qualquer falha → devolve o arquivo original (fallback seguro, nunca bloqueia).
+async function compressImageFile(file: File): Promise<File> {
+  try {
+    if (typeof document === "undefined") return file;
+    const bitmap = await createImageBitmap(file);
+    const maxSide = 800;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      bitmap.close?.();
+      return file;
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.8),
+    );
+    // Só usa a versão comprimida se realmente ficou menor que a original.
+    if (!blob || blob.size >= file.size) return file;
+
+    const newName = `${file.name.replace(/\.[^.]+$/, "")}.jpg`;
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function ProfessionalAvatar({
@@ -123,8 +160,11 @@ function ProfessionalModal({
     setAvatarError("");
     setUploadingAvatar(true);
 
+    // Comprime/redimensiona no cliente antes de enviar (fallback: arquivo original).
+    const uploadFile = await compressImageFile(file);
+
     const fd = new FormData();
-    fd.append("avatar", file);
+    fd.append("avatar", uploadFile);
 
     try {
       const result: AvatarUploadResult = await uploadProfessionalAvatar(
@@ -258,7 +298,7 @@ function ProfessionalModal({
               </div>
             </button>
             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-              JPG, PNG ou WebP · max 5 MB
+              JPG, PNG ou WebP · max 10 MB
             </p>
             {currentAvatarUrl && (
               <button

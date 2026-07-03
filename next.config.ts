@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Upload de avatar via Server Action (FormData). O default do Next é 1MB,
+    // que barra fotos de celular mesmo após a compressão client-side.
+    serverActions: { bodySizeLimit: "10mb" },
+  },
   images: {
     remotePatterns: [
       {

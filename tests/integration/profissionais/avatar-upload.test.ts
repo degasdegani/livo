@@ -222,15 +222,15 @@ describe("uploadProfessionalAvatar", () => {
       );
     });
 
-    it("rejects files 1 byte over the 5 MB limit", async () => {
+    it("rejects files 1 byte over the 10 MB limit", async () => {
       const result = await uploadProfessionalAvatar(
         PROF_A,
-        makeFormData(makeFile({ sizeBytes: 5 * 1024 * 1024 + 1 })),
+        makeFormData(makeFile({ sizeBytes: 10 * 1024 * 1024 + 1 })),
       );
 
       expect(result).toEqual({
         success: false,
-        error: "Arquivo muito grande. Máximo 5 MB.",
+        error: "Arquivo muito grande. Máximo 10 MB.",
       });
     });
 
