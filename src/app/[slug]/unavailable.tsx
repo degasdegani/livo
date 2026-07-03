@@ -4,7 +4,8 @@ export function PublicUnavailable() {
   return (
     <main
       className="min-h-screen flex items-center justify-center p-6"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       <div className="w-full max-w-md text-center">
         <div className="flex items-center justify-center gap-1.5 mb-6">

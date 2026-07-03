@@ -49,7 +49,7 @@ export function ServicePicker({ services, slug }: Props) {
             tabIndex={0}
             className="flex items-center justify-between p-4 rounded-2xl cursor-pointer select-none transition-all"
             style={{
-              background: isOn ? "rgba(255,45,85,0.08)" : "#0A0A0A",
+              background: isOn ? "rgba(255,45,85,0.08)" : "var(--bg-card)",
               border: isOn
                 ? "1px solid rgba(255,45,85,0.4)"
                 : "1px solid rgba(255,255,255,0.06)",

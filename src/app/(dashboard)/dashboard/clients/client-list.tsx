@@ -76,7 +76,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
           placeholder="Buscar por nome ou telefone..."
           className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white outline-none placeholder:text-[#3F3F46]"
           style={{
-            background: "#0A0A0A",
+            background: "var(--bg-card)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         />
@@ -105,7 +105,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
         <div
           className="flex flex-col items-center justify-center py-16 text-center rounded-2xl"
           style={{
-            background: "#0A0A0A",
+            background: "var(--bg-card)",
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
@@ -131,7 +131,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
                 key={client.id}
                 className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.02]"
                 style={{
-                  background: "#0A0A0A",
+                  background: "var(--bg-card)",
                   borderBottom:
                     i < filtered.length - 1
                       ? "1px solid rgba(255,255,255,0.04)"

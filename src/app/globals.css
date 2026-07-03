@@ -45,24 +45,24 @@
 
   /* ── Paleta de cores do Livo ─────────────────────────── */
 
-  /* Background */
-  --color-background: #050505;
+  /* Background — carvão (antes preto puro #050505) */
+  --color-background: #191919;
   --color-foreground: #fafafa;
 
-  /* Superfícies */
-  --color-surface-1: #0a0a0a;
-  --color-surface-2: #111111;
-  --color-surface-3: #1a1a1a;
-  --color-surface-4: #242424;
+  /* Superfícies — escala carvão (antes #0a0a0a → #242424) */
+  --color-surface-1: #212121;
+  --color-surface-2: #262626;
+  --color-surface-3: #303030;
+  --color-surface-4: #3a3a3a;
 
-  /* Bordas */
-  --color-border: rgba(255, 255, 255, 0.06);
+  /* Bordas — 0.09 (antes 0.06) para manter separação sobre carvão */
+  --color-border: rgba(255, 255, 255, 0.09);
   --color-border-strong: rgba(255, 255, 255, 0.12);
 
-  /* Texto */
+  /* Texto — tertiary elevado (#83838d) p/ ~4.6:1 sobre #191919 (antes #52525b) */
   --color-text-primary: #ffffff;
   --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #52525b;
+  --color-text-tertiary: #83838d;
   --color-text-disabled: #27272a;
 
   /* ── Cores accent do Livo ────────────────────────────── */
@@ -142,12 +142,12 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* Backgrounds — --bg-card/elevated bridge to @theme surface tokens */
-  --bg-base: #050505;
+  /* Backgrounds — todos via token (antes --bg-base/sidebar/input eram hex fixo) */
+  --bg-base: var(--color-background);
   --bg-card: var(--color-surface-1);
   --bg-card-elevated: var(--color-surface-2);
-  --bg-sidebar: #0a0a0a;
-  --bg-input: #111111;
+  --bg-sidebar: var(--color-surface-1);
+  --bg-input: var(--color-surface-2);
 
   /* Borders — bridge to @theme token */
   --border: var(--color-border);
@@ -157,7 +157,7 @@
   --text-primary: var(--color-text-primary);
   --text-secondary: var(--color-text-secondary);
   --text-tertiary: var(--color-text-tertiary);
-  --text-inverse: #050505;
+  --text-inverse: var(--color-background);
 
   /* Brand variants — --color-primary and --color-gold live in @theme inline */
   --color-primary-hover: #ff4566;
@@ -230,6 +230,49 @@
   --color-text-primary: #09090b;
   --color-text-secondary: #52525b;
   --color-text-tertiary: #a1a1aa;
+}
+
+/* ── Dark re-assertion ───────────────────────────────────────
+   Reaplica a escala dark em subárvores marcadas com data-theme="dark"
+   (páginas públicas/auth/legal/onboarding — dark-locked). Sem isto, se o
+   <html> estiver em data-theme="light" (owner que alternou no dashboard e
+   navegou p/ uma dessas telas via client-side), as variáveis de light
+   vazariam por herança. Espelha exatamente o conjunto do bloco light,
+   porém com os valores dark. ═══════════════════════════════════════════ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-base: var(--color-background);
+  --bg-sidebar: var(--color-surface-1);
+  --bg-input: var(--color-surface-2);
+  --border-focus: #ff2d55;
+  --text-inverse: var(--color-background);
+
+  --color-primary: var(--color-red);
+  --color-primary-hover: #ff4566;
+  --color-primary-10: rgba(255, 45, 85, 0.1);
+  --color-primary-20: rgba(255, 45, 85, 0.2);
+  --color-gold: #d4af37;
+
+  --status-green: var(--color-success);
+  --status-yellow: var(--color-warning);
+  --status-gray: #52525b;
+  --status-red: var(--color-error);
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.8);
+
+  --color-background: #191919;
+  --color-foreground: #fafafa;
+  --color-surface-1: #212121;
+  --color-surface-2: #262626;
+  --color-surface-3: #303030;
+  --color-surface-4: #3a3a3a;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #83838d;
 }
 
 /* ── Reset e base global ────────────────────────────────── */

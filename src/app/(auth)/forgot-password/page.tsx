@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
     <div
       className="rounded-2xl p-8"
       style={{
-        background: "#0A0A0A",
+        background: "var(--bg-card)",
         border: "1px solid rgba(255,255,255,0.08)",
       }}
     >

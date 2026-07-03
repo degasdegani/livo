@@ -29,7 +29,8 @@ export default async function OnboardingLayout({
   return (
     <main
       className="min-h-screen py-12 px-4"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       {/* Grid de fundo */}
       <div

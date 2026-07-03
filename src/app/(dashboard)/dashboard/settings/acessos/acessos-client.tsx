@@ -199,7 +199,7 @@ export default function AcessosClient({
   const usedSeats = data.members.filter((m) => m.isActive !== false).length;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-(--bg-base) text-white">
       {/* Toast */}
       {toast && (
         <div

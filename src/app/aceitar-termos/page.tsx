@@ -21,7 +21,8 @@ export default async function AceitarTermosPage() {
   return (
     <main
       className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -45,7 +46,7 @@ export default async function AceitarTermosPage() {
         <div
           className="rounded-2xl p-8"
           style={{
-            background: "#0A0A0A",
+            background: "var(--bg-card)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >

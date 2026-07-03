@@ -7,7 +7,8 @@ export default function AuthLayout({
   return (
     <main
       className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       {/* Grid de fundo */}
       <div

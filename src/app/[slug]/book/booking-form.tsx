@@ -227,7 +227,7 @@ export function BookingForm({
 
         <div
           className="w-full rounded-2xl p-5 mb-8 text-left"
-          style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           {services.map((s) => (
             <div

@@ -2,7 +2,8 @@ export default function BarbershopNotFound() {
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center p-6 text-center"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       <div className="flex items-center gap-2 mb-12">
         <span

@@ -22,7 +22,8 @@ export function PublicFooter() {
   return (
     <footer
       className="text-center py-6"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       <p className="text-xs" style={{ color: "#52525B" }}>
         Product by S.A.L.A Tecnologia © 2026

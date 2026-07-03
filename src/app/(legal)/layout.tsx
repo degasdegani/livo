@@ -6,7 +6,8 @@ export default function LegalLayout({
   return (
     <main
       className="min-h-screen py-16 px-6"
-      style={{ backgroundColor: "#050505" }}
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
     >
       <div className="max-w-3xl mx-auto">
         <a

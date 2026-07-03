@@ -22,7 +22,7 @@ function initials(name: string): string {
 
 // Círculo de logo/perfil da barbearia (estilo Facebook). `overlay` posiciona
 // sobrepondo a base da capa; sem `overlay`, entra no fluxo normal do header.
-// Borda 4px #050505 (cor do fundo do <main>) recorta o círculo sobre a capa.
+// Borda 4px var(--bg-base) (cor do fundo do <main>) recorta o círculo sobre a capa.
 const LOGO_SIZE = 96;
 function BarbershopLogo({
   logoUrl,
@@ -51,7 +51,7 @@ function BarbershopLogo({
             height: LOGO_SIZE,
             borderRadius: 9999,
             objectFit: "cover",
-            border: "4px solid #050505",
+            border: "4px solid var(--bg-base)",
             display: "block",
           }}
         />
@@ -61,7 +61,7 @@ function BarbershopLogo({
             width: LOGO_SIZE,
             height: LOGO_SIZE,
             borderRadius: 9999,
-            border: "4px solid #050505",
+            border: "4px solid var(--bg-base)",
             boxShadow: "inset 0 0 0 1px rgba(255,45,85,0.2)",
             background: "rgba(255,45,85,0.12)",
             color: "#FF2D55",
@@ -167,7 +167,11 @@ export default async function BarbershopPage({
   const hasLogo = !!barbershop.logoUrl;
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <main
+      className="min-h-screen"
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
+    >
       {/* ── Hero / capa compacta (dentro de container, não full-bleed) ─────
           Estilo Facebook: capa 200px arredondada + logo circular sobreposto
           na base. O logo só entra aqui quando há capa; sem capa, ele é
@@ -185,7 +189,7 @@ export default async function BarbershopPage({
               height: 240,
               borderRadius: 16,
               overflow: "hidden",
-              background: "#0A0A0A",
+              background: "var(--bg-card)",
             }}
           >
             <Image
@@ -208,7 +212,7 @@ export default async function BarbershopPage({
       {/* ── Header da barbearia ────────────────────────────── */}
       <header
         style={{
-          background: "#0A0A0A",
+          background: "var(--bg-card)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
@@ -335,7 +339,7 @@ export default async function BarbershopPage({
                   key={service.id}
                   className="flex items-center justify-between p-4 rounded-2xl"
                   style={{
-                    background: "#0A0A0A",
+                    background: "var(--bg-card)",
                     border: "1px solid rgba(255,255,255,0.06)",
                   }}
                 >
@@ -435,7 +439,7 @@ export default async function BarbershopPage({
                   key={hour.id}
                   className="flex items-center justify-between px-5 py-3"
                   style={{
-                    background: isToday ? "rgba(255,45,85,0.04)" : "#0A0A0A",
+                    background: isToday ? "rgba(255,45,85,0.04)" : "var(--bg-card)",
                     borderBottom:
                       i < barbershop.businessHours.length - 1
                         ? "1px solid rgba(255,255,255,0.04)"

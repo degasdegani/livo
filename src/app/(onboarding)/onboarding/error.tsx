@@ -15,7 +15,10 @@ export default function OnboardingError({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6">
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-(--bg-base) flex items-center justify-center p-6"
+    >
       <div className="w-full max-w-md text-center">
         <div className="text-center mb-8">
           <span className="text-2xl font-black tracking-widest">

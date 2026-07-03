@@ -70,7 +70,10 @@ export default async function ConvitePage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-(--bg-base) flex items-center justify-center p-4"
+    >
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -149,7 +152,10 @@ const INVALID_MESSAGES: Record<string, { title: string; description: string }> =
 function InvalidInvite({ reason }: { reason: string }) {
   const info = INVALID_MESSAGES[reason] ?? INVALID_MESSAGES["not_found"];
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-(--bg-base) flex items-center justify-center p-4"
+    >
       <div className="w-full max-w-md text-center">
         <div className="text-5xl mb-6">✉️</div>
         <h1 className="text-xl font-bold text-white mb-2">{info.title}</h1>

@@ -55,7 +55,11 @@ export default async function BookPage({
   if (professionals.length === 0 || services.length === 0) notFound();
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <main
+      className="min-h-screen"
+      data-theme="dark"
+      style={{ backgroundColor: "var(--bg-base)" }}
+    >
       <div className="max-w-lg mx-auto px-6 py-8">
         {/* Formulário client-side com todos os dados já carregados */}
         <BookingForm
