@@ -332,7 +332,7 @@ export default function AssinarPage() {
                       color: "var(--text-primary)",
                     }}
                   >
-                    R$ 1.997
+                    R$ {brl(yearlyPrice)}
                     <span
                       className="text-base font-normal"
                       style={{ color: "var(--text-tertiary)" }}
