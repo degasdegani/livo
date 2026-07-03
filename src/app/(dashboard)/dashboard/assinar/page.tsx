@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { useToast } from "@/components/ui/toast";
+import { formatCentsToBRL } from "@/lib/masks";
 import { PLAN_PRICING } from "@/lib/pricing";
 import { createSubscription } from "./actions";
 
@@ -47,7 +48,11 @@ export default function AssinarPage() {
   const monthlyPrice = PRO_MONTHLY;
   const yearlyPrice = PRO_YEARLY;
   const yearlyMonthly = Math.round(yearlyPrice / 12);
-  const yearlySaving = monthlyPrice * 12 - yearlyPrice;
+  // Cálculo monetário em CENTAVOS inteiros (convenção do projeto) para evitar
+  // erro de ponto flutuante (ex.: 169.9*12 - 1839.9 = 198.90000000000003).
+  const monthlyCents = Math.round(monthlyPrice * 100);
+  const yearlyCents = Math.round(yearlyPrice * 100);
+  const yearlySavingCents = monthlyCents * 12 - yearlyCents;
 
   if (state?.success && state.pixPayload) {
     return (
@@ -275,7 +280,7 @@ export default function AssinarPage() {
                   billingType === "yearly" ? "#ffffff" : "var(--color-primary)",
               }}
             >
-              -{Math.round((yearlySaving / (monthlyPrice * 12)) * 100)}%
+              -{Math.round((yearlySavingCents / (monthlyCents * 12)) * 100)}%
             </span>
           </button>
         </div>
@@ -336,7 +341,7 @@ export default function AssinarPage() {
                     </span>
                   </p>
                   <p className="text-sm" style={{ color: "var(--color-gold)" }}>
-                    R$ {yearlyMonthly}/mês · Economia de R$ {yearlySaving}
+                    R$ {yearlyMonthly}/mês · Economia de R$ {formatCentsToBRL(yearlySavingCents)}
                   </p>
                 </div>
               )}

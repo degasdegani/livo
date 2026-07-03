@@ -17,7 +17,7 @@ export const PLAN_PRICING: Record<
   { monthly: number; yearly: number | null }
 > = {
   start: { monthly: 59.9, yearly: null },
-  pro: { monthly: 169.9, yearly: 1997.0 },
+  pro: { monthly: 169.9, yearly: 1839.9 },
   // prime ainda não é vendido — placeholder com os mesmos valores do pro.
-  prime: { monthly: 169.9, yearly: 1997.0 },
+  prime: { monthly: 169.9, yearly: 1839.9 },
 };
