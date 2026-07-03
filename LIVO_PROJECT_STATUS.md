@@ -1051,3 +1051,22 @@ de agendamento) e C4 (rate limit na pagina publica de agendamento). ---
   compartilhado (compressImageFile/MAX_BYTES hoje sao locais a
   profissionais/actions.ts, precisam virar src/lib/image-compress.ts +
   src/lib/blob-upload.ts antes, para nao duplicar logica).
+
+### v2026.07.02 — 2026-07-02 (Grupo C — 1/2 e refatoracao de upload)
+
+- Busca de servico + fotos publicas: ver changelog anterior desta mesma
+  data (ServiceChips com filtro >6 servicos; secao "Nossa equipe" na
+  landing; avatar exibido no booking com 1 profissional).
+- REFATORACAO (sem mudanca de comportamento): compressImageFile extraida
+  para src/lib/image-compress.ts (client, exportada, generica). Upload
+  extraido para src/lib/blob-upload.ts (server, uploadImageToBlob
+  parametrizado por pathPrefix/maxBytes/allowedTypes). actions.ts e
+  profissionais-client.tsx passam a consumir os helpers em vez de logica
+  duplicada. Mesmos valores (10MB, jpeg/png/webp, access:public), mesmas
+  mensagens de erro. Unica mudanca de ordem interna: del da foto antiga
+  agora ocorre APOS o upload novo confirmar (mais seguro -- falha no
+  upload preserva a foto antiga em vez de apagar).
+- Suite: 47 failed | 765 passed (baseline estavel, zero regressao nova).
+  tsc=0; build OK.
+- Helpers prontos para reuso no proximo passo (Item 2B): foto de capa da
+  barbearia.
