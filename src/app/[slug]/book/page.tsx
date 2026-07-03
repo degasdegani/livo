@@ -57,22 +57,6 @@ export default async function BookPage({
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
       <div className="max-w-lg mx-auto px-6 py-8">
-        {/* Logo */}
-        <div className="flex items-center gap-1.5 mb-8">
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#FF2D55",
-              display: "inline-block",
-            }}
-          />
-          <span className="text-xs font-bold" style={{ color: "#52525B" }}>
-            livo
-          </span>
-        </div>
-
         {/* Formulário client-side com todos os dados já carregados */}
         <BookingForm
           barbershopId={barbershop.id}

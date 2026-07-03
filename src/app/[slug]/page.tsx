@@ -34,7 +34,7 @@ function BarbershopLogo({
   overlay: boolean;
 }) {
   const wrapperStyle: React.CSSProperties = overlay
-    ? { position: "absolute", bottom: -48, left: 24 }
+    ? { position: "absolute", bottom: -32, left: 24 }
     : {};
 
   return (
@@ -182,7 +182,7 @@ export default async function BarbershopPage({
             style={{
               position: "relative",
               width: "100%",
-              height: 200,
+              height: 240,
               borderRadius: 16,
               overflow: "hidden",
               background: "#0A0A0A",
@@ -213,22 +213,6 @@ export default async function BarbershopPage({
         }}
       >
         <div className="max-w-2xl mx-auto px-6 py-8">
-          {/* Logo do Livo */}
-          <div className="flex items-center gap-1.5 mb-6">
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "#FF2D55",
-                display: "inline-block",
-              }}
-            />
-            <span className="text-xs font-bold" style={{ color: "#52525B" }}>
-              livo
-            </span>
-          </div>
-
           {/* Logo/perfil sem capa: entra no fluxo do header (sem overlap). */}
           {!hasCover && hasLogo && (
             <div className="mb-5">
@@ -530,19 +514,6 @@ export default async function BarbershopPage({
           </section>
         )}
 
-        {/* ── Rodapé ────────────────────────────────────────── */}
-        <footer className="text-center pb-4">
-          <p className="text-xs" style={{ color: "#27272A" }}>
-            Agendamento online por{" "}
-            <a
-              href="/"
-              className="hover:text-white transition-colors"
-              style={{ color: "#3F3F46" }}
-            >
-              Livo
-            </a>
-          </p>
-        </footer>
       </div>
     </main>
   );

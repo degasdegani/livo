@@ -1,4 +1,5 @@
 // src/app/layout.tsx
+import { PublicFooter } from "@/components/public-footer";
 import { ToastProvider } from "@/components/ui/toast";
 import type { Metadata } from "next";
 import "./globals.css";
@@ -24,7 +25,10 @@ export default function RootLayout({
       <body
         style={{ transition: "background-color 150ms ease, color 150ms ease" }}
       >
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          {children}
+          <PublicFooter />
+        </ToastProvider>
       </body>
     </html>
   );
