@@ -20,6 +20,65 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+// Círculo de logo/perfil da barbearia (estilo Facebook). `overlay` posiciona
+// sobrepondo a base da capa; sem `overlay`, entra no fluxo normal do header.
+// Borda 4px #050505 (cor do fundo do <main>) recorta o círculo sobre a capa.
+const LOGO_SIZE = 96;
+function BarbershopLogo({
+  logoUrl,
+  name,
+  overlay,
+}: {
+  logoUrl: string | null;
+  name: string;
+  overlay: boolean;
+}) {
+  const wrapperStyle: React.CSSProperties = overlay
+    ? { position: "absolute", bottom: -48, left: 24 }
+    : {};
+
+  return (
+    <div style={wrapperStyle}>
+      {logoUrl ? (
+        <Image
+          src={logoUrl}
+          alt={`Logo da ${name}`}
+          width={LOGO_SIZE}
+          height={LOGO_SIZE}
+          priority
+          style={{
+            width: LOGO_SIZE,
+            height: LOGO_SIZE,
+            borderRadius: 9999,
+            objectFit: "cover",
+            border: "4px solid #050505",
+            display: "block",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: LOGO_SIZE,
+            height: LOGO_SIZE,
+            borderRadius: 9999,
+            border: "4px solid #050505",
+            boxShadow: "inset 0 0 0 1px rgba(255,45,85,0.2)",
+            background: "rgba(255,45,85,0.12)",
+            color: "#FF2D55",
+            fontWeight: 700,
+            fontSize: 30,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {initials(name)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Gera o título da aba dinamicamente para cada barbearia
 export async function generateMetadata({
   params,
@@ -104,26 +163,44 @@ export default async function BarbershopPage({
   // Verifica se tem endereço suficiente para mostrar o mapa
   const hasAddress = barbershop.street && barbershop.city;
 
+  const hasCover = !!barbershop.coverPhotoUrl;
+  const hasLogo = !!barbershop.logoUrl;
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
-      {/* ── Hero / capa (só quando houver coverPhotoUrl) ───── */}
-      {barbershop.coverPhotoUrl && (
+      {/* ── Hero / capa compacta (dentro de container, não full-bleed) ─────
+          Estilo Facebook: capa 200px arredondada + logo circular sobreposto
+          na base. O logo só entra aqui quando há capa; sem capa, ele é
+          renderizado no fluxo do header (abaixo). Sem capa nem logo, o
+          header permanece idêntico ao original (zero regressão). */}
+      {hasCover && (
         <div
-          style={{
-            position: "relative",
-            width: "100%",
-            aspectRatio: "16 / 6",
-            background: "#0A0A0A",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-          }}
+          className="max-w-2xl mx-auto px-6"
+          style={{ position: "relative", paddingBottom: 56 }}
         >
-          <Image
-            src={barbershop.coverPhotoUrl}
-            alt={`Foto de capa da ${barbershop.name}`}
-            fill
-            sizes="100vw"
-            priority
-            style={{ objectFit: "cover" }}
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: 200,
+              borderRadius: 16,
+              overflow: "hidden",
+              background: "#0A0A0A",
+            }}
+          >
+            <Image
+              src={barbershop.coverPhotoUrl as string}
+              alt={`Foto de capa da ${barbershop.name}`}
+              fill
+              sizes="(max-width: 672px) 100vw, 672px"
+              priority
+              style={{ objectFit: "cover" }}
+            />
+          </div>
+          <BarbershopLogo
+            logoUrl={barbershop.logoUrl}
+            name={barbershop.name}
+            overlay
           />
         </div>
       )}
@@ -151,6 +228,17 @@ export default async function BarbershopPage({
               livo
             </span>
           </div>
+
+          {/* Logo/perfil sem capa: entra no fluxo do header (sem overlap). */}
+          {!hasCover && hasLogo && (
+            <div className="mb-5">
+              <BarbershopLogo
+                logoUrl={barbershop.logoUrl}
+                name={barbershop.name}
+                overlay={false}
+              />
+            </div>
+          )}
 
           {/* Nome e info da barbearia */}
           <h1

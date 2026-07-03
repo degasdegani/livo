@@ -460,3 +460,89 @@ export async function removeBarbershopCover(): Promise<CoverUploadResult> {
 
   return { success: true, coverPhotoUrl: "" };
 }
+
+// ─── FOTO DE PERFIL / LOGO DA BARBEARIA ───────────────────────────────────────
+// Espelha 1:1 o padrão da capa (uploadBarbershopCover): RBAC owner,
+// barbershopId do membership, uploadImageToBlob reusado, del() da imagem antiga
+// só depois do upload novo confirmado, revalidação da página pública + Settings.
+// A compressão acontece no CLIENTE (compressImageFile, maxSide 800 — imagem
+// pequena/quadrada, não precisa de 1600 como a capa).
+
+export type LogoUploadResult =
+  | { success: true; logoUrl: string }
+  | { success: false; error: string };
+
+const ALLOWED_LOGO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_LOGO_BYTES = 10 * 1024 * 1024; // 10 MB
+
+export async function uploadBarbershopLogo(
+  formData: FormData,
+): Promise<LogoUploadResult> {
+  const membership = await requireRole("owner");
+  const barbershopId = membership.barbershopId;
+
+  const barbershop = await db.barbershop.findFirst({
+    where: { id: barbershopId },
+    select: { logoUrl: true, slug: true },
+  });
+  if (!barbershop) {
+    return { success: false, error: "Barbearia não encontrada." };
+  }
+
+  const file = formData.get("logo");
+  if (!(file instanceof File)) {
+    return { success: false, error: "Arquivo inválido." };
+  }
+
+  const uploaded = await uploadImageToBlob({
+    file,
+    pathPrefix: `barbershops/${barbershopId}/logo`,
+    maxBytes: MAX_LOGO_BYTES,
+    allowedTypes: ALLOWED_LOGO_TYPES,
+  });
+  if ("error" in uploaded) {
+    return { success: false, error: uploaded.error };
+  }
+
+  // Remove o logo antigo só depois do upload novo ter sido confirmado.
+  if (barbershop.logoUrl) {
+    try { await del(barbershop.logoUrl); } catch {}
+  }
+
+  await db.barbershop.update({
+    where: { id: barbershopId },
+    data: { logoUrl: uploaded.url },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath(`/${barbershop.slug}`);
+
+  return { success: true, logoUrl: uploaded.url };
+}
+
+export async function removeBarbershopLogo(): Promise<LogoUploadResult> {
+  const membership = await requireRole("owner");
+  const barbershopId = membership.barbershopId;
+
+  const barbershop = await db.barbershop.findFirst({
+    where: { id: barbershopId },
+    select: { logoUrl: true, slug: true },
+  });
+  if (!barbershop) {
+    return { success: false, error: "Barbearia não encontrada." };
+  }
+
+  if (barbershop.logoUrl) {
+    try { await del(barbershop.logoUrl); } catch {}
+  }
+
+  await db.barbershop.update({
+    where: { id: barbershopId },
+    data: { logoUrl: null },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath(`/${barbershop.slug}`);
+
+  return { success: true, logoUrl: "" };
+}

@@ -10,6 +10,7 @@ import { BusinessHoursForm } from "./business-hours-form";
 import { CoverPhotoForm } from "./cover-photo-form";
 import { PersonalInfoForm } from "./personal-info-form";
 import { PinForm } from "./pin-form";
+import { ProfileLogoForm } from "./profile-logo-form";
 import { ServicesManager } from "./services-manager";
 
 interface AccordionProps {
@@ -25,6 +26,7 @@ interface AccordionProps {
     phone: string | null;
     city: string | null;
     coverPhotoUrl: string | null;
+    logoUrl: string | null;
     services: Service[];
     businessHours: BusinessHour[];
   };
@@ -116,6 +118,7 @@ export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionP
                 {section.id === "barbearia" && (
                   <div className="flex flex-col gap-4 p-4">
                     <CoverPhotoForm coverPhotoUrl={barbershop.coverPhotoUrl} />
+                    <ProfileLogoForm logoUrl={barbershop.logoUrl} />
                     <BasicInfoForm
                       name={barbershop.name}
                       phone={barbershop.phone || ""}

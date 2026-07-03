@@ -74,6 +74,7 @@ model Barbershop {
   city                String?
   state               String?
   coverPhotoUrl       String?
+  logoUrl             String?
   plan                Plan              @default(start)
   isActive            Boolean           @default(true)
   ownerId             String            @unique
