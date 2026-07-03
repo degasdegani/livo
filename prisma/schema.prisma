@@ -73,6 +73,7 @@ model Barbershop {
   phone               String?
   city                String?
   state               String?
+  coverPhotoUrl       String?
   plan                Plan              @default(start)
   isActive            Boolean           @default(true)
   ownerId             String            @unique

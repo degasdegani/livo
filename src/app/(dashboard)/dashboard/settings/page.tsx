@@ -28,6 +28,7 @@ export default async function SettingsPage() {
         slug: true,
         phone: true,
         city: true,
+        coverPhotoUrl: true,
         reopenPin: true,
         services: { orderBy: { name: "asc" } },
         businessHours: { orderBy: { dayOfWeek: "asc" } },
@@ -188,6 +189,7 @@ export default async function SettingsPage() {
             name: barbershop.name,
             phone: barbershop.phone,
             city: barbershop.city,
+            coverPhotoUrl: barbershop.coverPhotoUrl,
             services: barbershop.services,
             businessHours: barbershop.businessHours,
           }}

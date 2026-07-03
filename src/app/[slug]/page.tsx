@@ -106,6 +106,28 @@ export default async function BarbershopPage({
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+      {/* ── Hero / capa (só quando houver coverPhotoUrl) ───── */}
+      {barbershop.coverPhotoUrl && (
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "16 / 6",
+            background: "#0A0A0A",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <Image
+            src={barbershop.coverPhotoUrl}
+            alt={`Foto de capa da ${barbershop.name}`}
+            fill
+            sizes="100vw"
+            priority
+            style={{ objectFit: "cover" }}
+          />
+        </div>
+      )}
+
       {/* ── Header da barbearia ────────────────────────────── */}
       <header
         style={{

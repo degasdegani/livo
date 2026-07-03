@@ -2,7 +2,9 @@
 
 import bcrypt from "bcryptjs";
 import { GoalPeriod, Prisma } from "@prisma/client";
+import { del } from "@vercel/blob";
 import { db } from "@/lib/db";
+import { uploadImageToBlob } from "@/lib/blob-upload";
 import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
 import { requireRole } from "@/lib/permissions";
@@ -372,4 +374,89 @@ export async function revokeTvDevice(deviceId: string) {
   });
 
   revalidatePath("/dashboard/settings");
+}
+
+// ─── FOTO DE CAPA DA BARBEARIA ────────────────────────────────────────────────
+// Espelha o padrão de uploadProfessionalAvatar: RBAC owner, barbershopId do
+// membership, uploadImageToBlob reusado, del() da imagem antiga só depois do
+// upload novo confirmado, e revalidação da página pública além do Settings.
+// A compressão do arquivo acontece no CLIENTE (compressImageFile, maxSide 1600).
+
+export type CoverUploadResult =
+  | { success: true; coverPhotoUrl: string }
+  | { success: false; error: string };
+
+const ALLOWED_COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_COVER_BYTES = 10 * 1024 * 1024; // 10 MB
+
+export async function uploadBarbershopCover(
+  formData: FormData,
+): Promise<CoverUploadResult> {
+  const membership = await requireRole("owner");
+  const barbershopId = membership.barbershopId;
+
+  const barbershop = await db.barbershop.findFirst({
+    where: { id: barbershopId },
+    select: { coverPhotoUrl: true, slug: true },
+  });
+  if (!barbershop) {
+    return { success: false, error: "Barbearia não encontrada." };
+  }
+
+  const file = formData.get("cover");
+  if (!(file instanceof File)) {
+    return { success: false, error: "Arquivo inválido." };
+  }
+
+  const uploaded = await uploadImageToBlob({
+    file,
+    pathPrefix: `barbershops/${barbershopId}/cover`,
+    maxBytes: MAX_COVER_BYTES,
+    allowedTypes: ALLOWED_COVER_TYPES,
+  });
+  if ("error" in uploaded) {
+    return { success: false, error: uploaded.error };
+  }
+
+  // Remove a capa antiga só depois do upload novo ter sido confirmado.
+  if (barbershop.coverPhotoUrl) {
+    try { await del(barbershop.coverPhotoUrl); } catch {}
+  }
+
+  await db.barbershop.update({
+    where: { id: barbershopId },
+    data: { coverPhotoUrl: uploaded.url },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath(`/${barbershop.slug}`);
+
+  return { success: true, coverPhotoUrl: uploaded.url };
+}
+
+export async function removeBarbershopCover(): Promise<CoverUploadResult> {
+  const membership = await requireRole("owner");
+  const barbershopId = membership.barbershopId;
+
+  const barbershop = await db.barbershop.findFirst({
+    where: { id: barbershopId },
+    select: { coverPhotoUrl: true, slug: true },
+  });
+  if (!barbershop) {
+    return { success: false, error: "Barbearia não encontrada." };
+  }
+
+  if (barbershop.coverPhotoUrl) {
+    try { await del(barbershop.coverPhotoUrl); } catch {}
+  }
+
+  await db.barbershop.update({
+    where: { id: barbershopId },
+    data: { coverPhotoUrl: null },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath(`/${barbershop.slug}`);
+
+  return { success: true, coverPhotoUrl: "" };
 }

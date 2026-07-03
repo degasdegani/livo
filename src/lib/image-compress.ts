@@ -1,14 +1,18 @@
 // src/lib/image-compress.ts
 // Compressão/redimensionamento de imagem NO CLIENTE (canvas), reutilizável por
 // qualquer upload de imagem do projeto (avatar de profissional, foto de capa, …).
-// Reduz o maior lado para ~800px e re-encoda como JPEG q0.8. Qualquer falha →
-// devolve o arquivo original (fallback seguro, nunca bloqueia o usuário).
+// Reduz o maior lado para `maxSide` (default 800) e re-encoda como JPEG q0.8.
+// Qualquer falha → devolve o arquivo original (fallback seguro, nunca bloqueia
+// o usuário). O parâmetro `maxSide` permite fotos maiores para hero/capa (1600)
+// sem alterar o comportamento do avatar (que segue chamando sem o 2º argumento).
 
-export async function compressImageFile(file: File): Promise<File> {
+export async function compressImageFile(
+  file: File,
+  maxSide = 800,
+): Promise<File> {
   try {
     if (typeof document === "undefined") return file;
     const bitmap = await createImageBitmap(file);
-    const maxSide = 800;
     const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const width = Math.round(bitmap.width * scale);
     const height = Math.round(bitmap.height * scale);

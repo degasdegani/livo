@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { BasicInfoForm } from "./basic-info-form";
 import { BusinessHoursForm } from "./business-hours-form";
+import { CoverPhotoForm } from "./cover-photo-form";
 import { PersonalInfoForm } from "./personal-info-form";
 import { PinForm } from "./pin-form";
 import { ServicesManager } from "./services-manager";
@@ -23,6 +24,7 @@ interface AccordionProps {
     name: string;
     phone: string | null;
     city: string | null;
+    coverPhotoUrl: string | null;
     services: Service[];
     businessHours: BusinessHour[];
   };
@@ -112,11 +114,14 @@ export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionP
                   />
                 )}
                 {section.id === "barbearia" && (
-                  <BasicInfoForm
-                    name={barbershop.name}
-                    phone={barbershop.phone || ""}
-                    city={barbershop.city || ""}
-                  />
+                  <div className="flex flex-col gap-4 p-4">
+                    <CoverPhotoForm coverPhotoUrl={barbershop.coverPhotoUrl} />
+                    <BasicInfoForm
+                      name={barbershop.name}
+                      phone={barbershop.phone || ""}
+                      city={barbershop.city || ""}
+                    />
+                  </div>
                 )}
                 {section.id === "servicos" && (
                   <ServicesManager services={barbershop.services} />
