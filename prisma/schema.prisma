@@ -92,6 +92,7 @@ model Barbershop {
   tvPin               String?           @unique
   clubEnabled         Boolean           @default(false)
   seatLimitOverride   Int?
+  moduleAddOns        String[]          @default([])
   clubAsaasWalletId      String?
   clubAsaasAccountStatus String?
   appointments        Appointment[]

@@ -5,6 +5,11 @@
 import { db } from "@/lib/db";
 import { Plan } from "@prisma/client";
 
+// Preços por plano — definidos em @/lib/pricing (módulo client-safe, sem o
+// import de Prisma que este arquivo carrega). Re-exportados aqui para o lado
+// servidor manter uma importação única a partir de @/lib/plans.
+export { PLAN_PRICING } from "@/lib/pricing";
+
 // Quantos acessos (crachás) cada plano permite NO TOTAL, incluindo o dono
 export const PLAN_SEAT_LIMITS: Record<Plan, number> = {
   start: 1, // só o dono

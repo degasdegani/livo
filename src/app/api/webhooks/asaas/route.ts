@@ -53,11 +53,15 @@ export async function POST(req: NextRequest) {
           },
           data: {
             planStatus: PlanStatus.active,
-            plan: "pro",
+            // NÃO forçar `plan` aqui: o plano correto (start/pro) já foi
+            // gravado na criação da assinatura, quando o plano escolhido é
+            // conhecido. Sobrescrever com "pro" quebraria um START pago.
+            // O webhook só ativa o status; o guard de ordering
+            // (lastBillingEventAt via isNewerEvent) permanece intacto.
             lastBillingEventAt: eventAt,
           },
         });
-        log.billing.info("plano PRO ativado por pagamento", {
+        log.billing.info("assinatura ativada por pagamento", {
           correlationId,
           event,
           subscriptionId: payment.subscription,

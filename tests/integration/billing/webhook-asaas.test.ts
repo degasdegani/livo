@@ -163,7 +163,7 @@ describe("Webhook — authentication", () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe("Webhook — PAYMENT_CONFIRMED / PAYMENT_RECEIVED", () => {
-  it("activates PRO plan when PAYMENT_CONFIRMED with subscriptionId", async () => {
+  it("activates subscription (status active) when PAYMENT_CONFIRMED, without overwriting plan", async () => {
     const req = makeReq({
       body: paymentBody("PAYMENT_CONFIRMED", SUB_A),
     });
@@ -175,10 +175,16 @@ describe("Webhook — PAYMENT_CONFIRMED / PAYMENT_RECEIVED", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           planStatus: PlanStatus.active,
-          plan: "pro",
         }),
       }),
     );
+    // Regressão E1: o webhook NÃO deve mais forçar `plan: "pro"` — o plano
+    // (start/pro) já foi gravado na criação da assinatura. Sobrescrever aqui
+    // quebraria um START pago.
+    const call = vi.mocked(db.barbershop.updateMany).mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(call.data).not.toHaveProperty("plan");
   });
 
   it("activates PRO plan when PAYMENT_RECEIVED with subscriptionId", async () => {
@@ -246,7 +252,7 @@ describe("Webhook — PAYMENT_CONFIRMED / PAYMENT_RECEIVED", () => {
     await POST(req);
 
     expect(vi.mocked(log.billing.info)).toHaveBeenCalledWith(
-      expect.stringContaining("PRO"),
+      expect.stringContaining("ativada"),
       expect.any(Object),
     );
   });

@@ -13,10 +13,14 @@ import {
 } from "@/lib/asaas";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { PLAN_PRICING } from "@/lib/plans";
 
+// Fonte única de preço em @/lib/plans (PLAN_PRICING). NESTA ETAPA a assinatura
+// é sempre "pro"; a seleção de plano vem em fase futura (E4). `yearly` do pro
+// nunca é null, mas normalizamos para o mensal por segurança de tipo.
 const PLAN_PRICES = {
-  monthly: 197.0,
-  yearly: 1997.0,
+  monthly: PLAN_PRICING.pro.monthly,
+  yearly: PLAN_PRICING.pro.yearly ?? PLAN_PRICING.pro.monthly,
 };
 
 export interface SubscriptionResult {

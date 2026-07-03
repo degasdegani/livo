@@ -6,14 +6,21 @@ import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { useToast } from "@/components/ui/toast";
+import { PLAN_PRICING } from "@/lib/pricing";
 import { createSubscription } from "./actions";
+
+// NESTA ETAPA a assinatura é sempre "pro" (seleção de plano vem em E4).
+const PRO_MONTHLY = PLAN_PRICING.pro.monthly;
+const PRO_YEARLY = PLAN_PRICING.pro.yearly ?? PRO_MONTHLY;
+const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function SubmitButton({ billingType }: { billingType: "monthly" | "yearly" }) {
   const { pending } = useFormStatus();
   const label =
     billingType === "yearly"
-      ? "Assinar PRO Anual — R$ 1.997/ano →"
-      : "Assinar PRO Mensal — R$ 197/mês →";
+      ? `Assinar PRO Anual — R$ ${brl(PRO_YEARLY)}/ano →`
+      : `Assinar PRO Mensal — R$ ${brl(PRO_MONTHLY)}/mês →`;
   return (
     <button
       type="submit"
@@ -37,8 +44,8 @@ export default function AssinarPage() {
   );
   const { toast } = useToast();
 
-  const monthlyPrice = 197;
-  const yearlyPrice = 1997;
+  const monthlyPrice = PRO_MONTHLY;
+  const yearlyPrice = PRO_YEARLY;
   const yearlyMonthly = Math.round(yearlyPrice / 12);
   const yearlySaving = monthlyPrice * 12 - yearlyPrice;
 
@@ -302,7 +309,7 @@ export default function AssinarPage() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  R$ 197
+                  R$ {brl(monthlyPrice)}
                   <span
                     className="text-base font-normal"
                     style={{ color: "var(--text-tertiary)" }}

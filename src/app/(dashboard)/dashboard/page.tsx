@@ -14,7 +14,7 @@ import { AppointmentActions } from "./appointment-actions";
 import { getComissoesData } from "./comandas/actions";
 
 const PLAN_LABELS: Record<string, string> = {
-  start: "PRO",
+  start: "START",
   pro: "PRO",
   prime: "PRIME",
 };
@@ -23,10 +23,12 @@ const PLAN_COLORS: Record<
   string,
   { bg: string; text: string; border: string }
 > = {
+  // START — tom neutro/cinza de "entrada" (distinto do vermelho do PRO e do
+  // dourado do PRIME). Usa tokens existentes do Design System.
   start: {
-    bg: "var(--color-primary-10)",
-    text: "var(--color-primary)",
-    border: "var(--color-primary-20)",
+    bg: "var(--bg-card-elevated)",
+    text: "var(--text-secondary)",
+    border: "var(--border)",
   },
   pro: {
     bg: "var(--color-primary-10)",

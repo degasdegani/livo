@@ -247,7 +247,6 @@ describe("Idempotency — repeated webhook events", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           planStatus: PlanStatus.active,
-          plan: "pro",
         }),
       }),
     );
@@ -262,7 +261,6 @@ describe("Idempotency — repeated webhook events", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           planStatus: PlanStatus.active,
-          plan: "pro",
         }),
       }),
     );
