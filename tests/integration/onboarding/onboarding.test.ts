@@ -724,3 +724,77 @@ describe("Observability — log.onboarding", () => {
     expect(vi.mocked(log.onboarding.error)).not.toHaveBeenCalled();
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// E4 — escolha de plano + trial diferenciado (START 7d / PRO 15d / waitlist 60d)
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe("E4 — plano escolhido e trial diferenciado", () => {
+  function getCreateData(): { plan: string; trialEndsAt: Date } {
+    return (
+      tx.barbershop.create.mock.calls[0][0] as {
+        data: { plan: string; trialEndsAt: Date };
+      }
+    ).data;
+  }
+  function assertTrialDays(
+    trialEndsAt: Date,
+    days: number,
+    before: number,
+    after: number,
+  ) {
+    const ms = days * 24 * 60 * 60 * 1000;
+    expect(trialEndsAt.getTime()).toBeGreaterThanOrEqual(before + ms - 1000);
+    expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + ms + 1000);
+  }
+
+  it("[caso 1] plan=start → cria com plan 'start' e trial de 7 dias", async () => {
+    const before = Date.now();
+    await expect(
+      createBarbershop(makeFormData({ plan: "start" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    const after = Date.now();
+
+    const data = getCreateData();
+    expect(data.plan).toBe("start");
+    assertTrialDays(data.trialEndsAt, 7, before, after);
+  });
+
+  it("[caso 2] plan=pro → cria com plan 'pro' e trial de 15 dias", async () => {
+    const before = Date.now();
+    await expect(
+      createBarbershop(makeFormData({ plan: "pro" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    const after = Date.now();
+
+    const data = getCreateData();
+    expect(data.plan).toBe("pro");
+    assertTrialDays(data.trialEndsAt, 15, before, after);
+  });
+
+  it("[caso 3] plan=start + waitlist → trial de 60 dias (waitlist vence o plano)", async () => {
+    vi.mocked(db.waitlistLead.findFirst).mockResolvedValue({ id: "wl-1" } as never);
+
+    const before = Date.now();
+    await expect(
+      createBarbershop(makeFormData({ plan: "start" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    const after = Date.now();
+
+    const data = getCreateData();
+    expect(data.plan).toBe("start");
+    assertTrialDays(data.trialEndsAt, 60, before, after);
+  });
+
+  it("[caso 4] plan adulterado → default seguro 'start' (7 dias)", async () => {
+    const before = Date.now();
+    await expect(
+      createBarbershop(makeFormData({ plan: "premium_hacker" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    const after = Date.now();
+
+    const data = getCreateData();
+    expect(data.plan).toBe("start");
+    assertTrialDays(data.trialEndsAt, 7, before, after);
+  });
+});

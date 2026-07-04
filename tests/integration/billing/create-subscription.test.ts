@@ -469,3 +469,72 @@ describe("createSubscription() — observability", () => {
     expect(vi.mocked(log.billing.error)).toHaveBeenCalled();
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// E4 — plano escolhido define preço/ciclo e é gravado no CAS
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe("E4 — plano escolhido define preço e é gravado", () => {
+  beforeEach(() => {
+    vi.mocked(getCurrentMembership).mockResolvedValue(makeOwnerMembership());
+    vi.mocked(db.barbershop.findUnique).mockResolvedValue(
+      makeBarbershop() as never,
+    );
+  });
+
+  // Args passados ao createAsaasSubscription (value/cycle refletem plano+ciclo).
+  function subArgs(): { value: number; cycle: string; description: string } {
+    return vi.mocked(createAsaasSubscription).mock.calls[0][0] as never;
+  }
+  // data do updateMany do CAS (o que grava asaasSubscriptionId + plan).
+  function casData(): { asaasSubscriptionId: string; plan: string } {
+    const call = vi.mocked(db.barbershop.updateMany).mock.calls.find(
+      (c) => "asaasSubscriptionId" in ((c[0].data ?? {}) as object),
+    );
+    return call?.[0].data as { asaasSubscriptionId: string; plan: string };
+  }
+
+  it("[caso 5] plan=start → value=59.90 (mensal) e CAS grava plan 'start'", async () => {
+    await createSubscription(null, makeFormData({ plan: "start" }));
+
+    const args = subArgs();
+    expect(args.value).toBe(59.9);
+    expect(args.cycle).toBe("MONTHLY");
+    expect(casData().plan).toBe("start");
+  });
+
+  it("[caso 6] plan=start + billingType=yearly → coage p/ mensal (59.90, não anual)", async () => {
+    await createSubscription(
+      null,
+      makeFormData({ plan: "start", billingType: "yearly" }),
+    );
+
+    const args = subArgs();
+    expect(args.value).toBe(59.9); // START não tem anual → nunca usa preço anual
+    expect(args.cycle).toBe("MONTHLY");
+    expect(casData().plan).toBe("start");
+  });
+
+  it("[caso 7] plan=pro + billingType=yearly → value=1839.90 (anual) e CAS grava plan 'pro'", async () => {
+    await createSubscription(
+      null,
+      makeFormData({ plan: "pro", billingType: "yearly" }),
+    );
+
+    const args = subArgs();
+    expect(args.value).toBe(1839.9);
+    expect(args.cycle).toBe("YEARLY");
+    expect(casData().plan).toBe("pro");
+  });
+
+  it("[caso 8] plan adulterado → default seguro 'pro' (mensal 169.90)", async () => {
+    await createSubscription(
+      null,
+      makeFormData({ plan: "premium_hacker" }),
+    );
+
+    const args = subArgs();
+    expect(args.value).toBe(169.9);
+    expect(casData().plan).toBe("pro");
+  });
+});
