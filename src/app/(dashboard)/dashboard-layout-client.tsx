@@ -32,6 +32,8 @@ import { LiviaBubble } from "@/components/livia-bubble";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
 import type { AppointmentAlert } from "@/hooks/use-appointment-alerts";
+// `import type` é totalmente elidido no bundle — não arrasta @/lib/db (Prisma).
+import type { ModuleKey } from "@/lib/modules";
 
 type MemberRole = "owner" | "reception" | "barber";
 
@@ -40,6 +42,8 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   roles: MemberRole[];
+  // Módulo PRO-only associado; se ausente, o item é livre (START inclui).
+  module?: ModuleKey;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -78,6 +82,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/comissoes",
     icon: <DollarSign size={18} />,
     roles: ["owner", "reception", "barber"],
+    module: "comissoes",
   },
   {
     label: "Relatórios",
@@ -90,18 +95,21 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/marketing",
     icon: <Megaphone size={18} />,
     roles: ["owner", "reception"],
+    module: "marketing",
   },
   {
     label: "Insights",
     href: "/dashboard/insights",
     icon: <Sparkles size={18} />,
     roles: ["owner"],
+    module: "insights",
   },
   {
     label: "Profissionais",
     href: "/dashboard/profissionais",
     icon: <Scissors size={18} />,
     roles: ["owner"],
+    module: "profissionais",
   },
   {
     label: "Combos",
@@ -231,6 +239,52 @@ function ThemeToggle({
   );
 }
 
+// Item de nav bloqueado (módulo PRO-only fora do plano). Mesmo padrão visual do
+// cadeado do Clube: <div> inerte + pill à direita com <Lock/> — texto "PRO".
+function LockedNavItem({ item }: { item: NavItem }) {
+  return (
+    <div
+      title="Disponível no plano PRO"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: "0.625rem 0.75rem",
+        borderRadius: "0.5rem",
+        fontSize: "0.875rem",
+        fontWeight: 500,
+        color: "var(--text-tertiary)",
+        border: "1px solid transparent",
+        cursor: "default",
+        userSelect: "none",
+      }}
+    >
+      <span style={{ color: "var(--text-tertiary)", flexShrink: 0, display: "flex" }}>
+        {item.icon}
+      </span>
+      {item.label}
+      <span
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.25rem",
+          fontSize: "0.625rem",
+          fontWeight: 600,
+          background: "var(--bg-card-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "0.25rem",
+          padding: "0.0625rem 0.3125rem",
+          color: "var(--text-tertiary)",
+        }}
+      >
+        <Lock size={9} />
+        PRO
+      </span>
+    </div>
+  );
+}
+
 function SidebarContent({
   role,
   pathname,
@@ -238,6 +292,7 @@ function SidebarContent({
   toggleTheme,
   onNavClick,
   clubEnabled,
+  allowedModules,
 }: {
   role: MemberRole;
   pathname: string;
@@ -245,6 +300,7 @@ function SidebarContent({
   toggleTheme: () => void;
   onNavClick?: () => void;
   clubEnabled: boolean;
+  allowedModules: ModuleKey[];
 }) {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -270,14 +326,18 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {visibleItems.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            pathname={pathname}
-            onClick={onNavClick}
-          />
-        ))}
+        {visibleItems.map((item) =>
+          item.module && !allowedModules.includes(item.module) ? (
+            <LockedNavItem key={item.href} item={item} />
+          ) : (
+            <NavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              onClick={onNavClick}
+            />
+          ),
+        )}
 
         {/* ── Clube de Assinatura (somente owner) ─────────────── */}
         {role === "owner" &&
@@ -409,6 +469,7 @@ export function DashboardLayoutClient({
   barbershopName,
   alerts,
   clubEnabled,
+  allowedModules,
 }: {
   children: React.ReactNode;
   role: MemberRole;
@@ -416,6 +477,7 @@ export function DashboardLayoutClient({
   barbershopName: string;
   alerts: AppointmentAlert[];
   clubEnabled: boolean;
+  allowedModules: ModuleKey[];
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -461,6 +523,7 @@ export function DashboardLayoutClient({
           theme={theme}
           toggleTheme={toggle}
           clubEnabled={clubEnabled}
+          allowedModules={allowedModules}
         />
       </aside>
 
@@ -501,6 +564,7 @@ export function DashboardLayoutClient({
           toggleTheme={toggle}
           onNavClick={() => setMobileOpen(false)}
           clubEnabled={clubEnabled}
+          allowedModules={allowedModules}
         />
       </aside>
 
@@ -560,7 +624,9 @@ export function DashboardLayoutClient({
 
         <main className="flex-1">{children}</main>
 
-        <LiviaBubble barbershopId={barbershopId} barbershopName={barbershopName} />
+        {allowedModules.includes("livia") && (
+          <LiviaBubble barbershopId={barbershopId} barbershopName={barbershopName} />
+        )}
       </div>
     </div>
     </ToastProvider>

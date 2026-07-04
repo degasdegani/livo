@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 
 export async function dismissInsight(formData: FormData) {
@@ -10,6 +11,7 @@ export async function dismissInsight(formData: FormData) {
 
   const membership = await requireRole(["owner", "reception"]);
   const { barbershopId } = membership;
+  await requireModuleAccess(barbershopId, "insights");
 
   await db.insightDismissal.upsert({
     where: { barbershopId_recId: { barbershopId, recId } },

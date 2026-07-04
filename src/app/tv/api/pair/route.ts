@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { hasModuleAccess } from "@/lib/modules";
 import crypto from "crypto";
 
 // Rate-limit em memória: 5 tentativas por IP em 15 minutos.
@@ -57,6 +58,14 @@ export async function POST(req: NextRequest) {
 
   if (!barbershop) {
     return NextResponse.json({ error: "PIN invalido." }, { status: 401 });
+  }
+
+  // Defesa em profundidade: não parear device se a conta não tem o módulo TV.
+  if (!(await hasModuleAccess(barbershop.id, "tv"))) {
+    return NextResponse.json(
+      { error: "Recurso indisponível para este plano." },
+      { status: 403 },
+    );
   }
 
   const token = crypto.randomBytes(32).toString("hex");

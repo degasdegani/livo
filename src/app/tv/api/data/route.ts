@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { hasModuleAccess } from "@/lib/modules";
 import { getPeriodWindow, TvPeriod } from "../../tv-period";
 
 const VALID_PERIODS: TvPeriod[] = ["DAY", "WEEK", "MONTH"];
@@ -39,6 +40,15 @@ export async function GET(req: NextRequest) {
     });
 
   const { barbershopId } = device;
+
+  // Defesa em profundidade: device já pareado numa conta que perdeu o módulo TV.
+  if (!(await hasModuleAccess(barbershopId, "tv"))) {
+    return NextResponse.json(
+      { error: "Recurso indisponível para este plano." },
+      { status: 403 },
+    );
+  }
+
   const { start, end } = getPeriodWindow(period);
 
   // ── Faturamento do período (meta geral) ───────────────────────

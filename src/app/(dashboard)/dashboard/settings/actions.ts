@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { uploadImageToBlob } from "@/lib/blob-upload";
 import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
+import { requireModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 import { recalcularComissoesPendentes } from "../comissoes/actions";
@@ -23,6 +24,9 @@ export async function updateMembershipComissao(data: {
   commissionProductPct: number | null;
 }): Promise<{ atualizados: number }> {
   const membership = await requireRole("owner");
+  // Config de % de comissão é funcionalidade do módulo Comissões (mora aqui por
+  // histórico, mas o gate é "comissoes"). Hard-stop via throw, padrão do clube.
+  await requireModuleAccess(membership.barbershopId, "comissoes");
 
   const target = await db.professional.findFirst({
     where: { id: data.professionalId, barbershopId: membership.barbershopId },
@@ -302,6 +306,7 @@ export async function upsertBarbershopGoal(
 ) {
   const membership = await requireRole(["owner"]);
   const barbershopId = membership.barbershopId;
+  await requireModuleAccess(barbershopId, "tv");
 
   await db.barbershopGoal.upsert({
     where: { barbershopId_period: { barbershopId, period } },
@@ -320,6 +325,7 @@ export async function upsertProfessionalGoal(
 ) {
   const membership = await requireRole(["owner"]);
   const barbershopId = membership.barbershopId;
+  await requireModuleAccess(barbershopId, "tv");
 
   // Garante que o profissional pertence à barbearia
   const professional = await db.professional.findFirst({
@@ -340,6 +346,7 @@ export async function upsertProfessionalGoal(
 export async function generateTvPin(): Promise<string> {
   const membership = await requireRole(["owner"]);
   const barbershopId = membership.barbershopId;
+  await requireModuleAccess(barbershopId, "tv");
 
   let pin: string;
   let attempts = 0;
@@ -368,6 +375,7 @@ export async function generateTvPin(): Promise<string> {
 export async function revokeTvDevice(deviceId: string) {
   const membership = await requireRole(["owner"]);
   const barbershopId = membership.barbershopId;
+  await requireModuleAccess(barbershopId, "tv");
 
   await db.tvDevice.deleteMany({
     where: { id: deviceId, barbershopId },

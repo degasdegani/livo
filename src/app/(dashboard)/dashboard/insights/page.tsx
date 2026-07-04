@@ -1,5 +1,7 @@
 import { Check } from "lucide-react";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { hasModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import type {
   Recommendation,
@@ -417,6 +419,11 @@ function buildSummary(recs: Recommendation[]): RecommendationSummary {
 export default async function InsightsPage() {
   const membership = await requireRole(["owner", "reception"]);
   const { barbershopId } = membership;
+
+  // Gate de módulo (navegação): START → upsell.
+  if (!(await hasModuleAccess(barbershopId, "insights"))) {
+    redirect("/dashboard/assinar");
+  }
 
   const [{ recommendations: all }, dismissed] = await Promise.all([
     getRecommendations(barbershopId),

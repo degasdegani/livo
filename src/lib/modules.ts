@@ -101,3 +101,53 @@ export async function requireModuleAccess(
   const has = await hasModuleAccess(barbershopId, module);
   if (!has) throw new ModuleLockedError(module);
 }
+
+// Todos os módulos gerenciados por este helper (para expandir lifetime/prime).
+const ALL_MODULES: readonly ModuleKey[] = [
+  "comissoes",
+  "marketing",
+  "insights",
+  "profissionais",
+  "livia",
+  "tv",
+];
+
+/**
+ * Computa (SEM query) o conjunto de módulos acessíveis a partir dos campos já
+ * lidos da barbearia. Fonte única da regra (lifetime = tudo; senão módulos do
+ * plano ∪ add-ons avulsos válidos). Permite ao layout do dashboard alargar o
+ * findUnique que já faz e computar em memória — ZERO query extra.
+ */
+export function accessibleModulesFor(barbershop: {
+  plan: Plan;
+  planStatus: PlanStatus;
+  moduleAddOns: string[];
+}): Set<ModuleKey> {
+  if (barbershop.planStatus === PlanStatus.lifetime) {
+    return new Set<ModuleKey>(ALL_MODULES);
+  }
+  const result = new Set<ModuleKey>(PLAN_MODULES[barbershop.plan]);
+  for (const m of barbershop.moduleAddOns) {
+    if ((ALL_MODULES as readonly string[]).includes(m)) {
+      result.add(m as ModuleKey);
+    }
+  }
+  return result;
+}
+
+/**
+ * Resolve TODOS os módulos acessíveis da barbearia numa ÚNICA query — para
+ * callers que só têm o barbershopId. O layout do dashboard prefere alargar seu
+ * findUnique e usar accessibleModulesFor (sem query extra). Barbershop
+ * inexistente → set vazio.
+ */
+export async function getAccessibleModules(
+  barbershopId: string,
+): Promise<Set<ModuleKey>> {
+  const barbershop = await db.barbershop.findUnique({
+    where: { id: barbershopId },
+    select: { plan: true, moduleAddOns: true, planStatus: true },
+  });
+  if (!barbershop) return new Set<ModuleKey>();
+  return accessibleModulesFor(barbershop);
+}

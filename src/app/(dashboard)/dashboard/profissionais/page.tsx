@@ -1,10 +1,20 @@
 import { Scissors } from "lucide-react";
+import { redirect } from "next/navigation";
+import { hasModuleAccess } from "@/lib/modules";
+import { requireRole } from "@/lib/permissions";
 import { getProfessionalsData } from "./actions";
 import { ProfissionaisClient } from "./profissionais-client";
 
 export const metadata = { title: "Profissionais — LIVO" };
 
 export default async function ProfissionaisPage() {
+  // Gate no TOPO da page (antes só existia dentro de getProfessionalsData) —
+  // corrige a divergência de padrão. requireRole("owner") = mesma restrição da action.
+  const membership = await requireRole("owner");
+  if (!(await hasModuleAccess(membership.barbershopId, "profissionais"))) {
+    redirect("/dashboard/assinar");
+  }
+
   const professionals = await getProfessionalsData();
 
   return (

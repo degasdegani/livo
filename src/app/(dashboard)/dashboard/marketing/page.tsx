@@ -1,5 +1,7 @@
 // src/app/(dashboard)/dashboard/marketing/page.tsx
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { hasModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import { getAniversariantes, getClientesSumidos } from "./actions";
 import { MarketingClient } from "./marketing-client";
@@ -11,6 +13,11 @@ export const metadata = {
 export default async function MarketingPage() {
   // RBAC: barbers também podem ver (com escopo restrito, tratado nas actions)
   const membership = await requireRole(["owner", "reception", "barber"]);
+
+  // Gate de módulo (navegação): START → upsell.
+  if (!(await hasModuleAccess(membership.barbershopId, "marketing"))) {
+    redirect("/dashboard/assinar");
+  }
 
   // Busca nome da barbearia para personalizar mensagens WhatsApp
   const barbershop = await db.barbershop.findUnique({

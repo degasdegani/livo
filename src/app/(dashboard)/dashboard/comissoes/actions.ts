@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { requireModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import { getComissoesData as _getComissoesData } from "../comandas/actions";
 
@@ -176,6 +177,8 @@ export async function updateProfessionalItemCommissions(
   overrides: { type: "service" | "product"; itemId: string; commissionPct: number | null }[],
 ): Promise<void> {
   const membership = await requireRole("owner");
+  // Gate de módulo (endpoint de escrita): hard-stop via throw, padrão do clube.
+  await requireModuleAccess(membership.barbershopId, "comissoes");
 
   const prof = await db.professional.findFirst({
     where: { id: professionalId, barbershopId: membership.barbershopId },

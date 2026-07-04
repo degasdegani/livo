@@ -35,6 +35,12 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+// Gate de módulo bypassa (a lógica em si é coberta por tests/unit/modules.test.ts).
+vi.mock("@/lib/modules", () => ({
+  hasModuleAccess: vi.fn().mockResolvedValue(true),
+  requireModuleAccess: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/permissions", () => ({
   requireRole: vi.fn(),
 }));

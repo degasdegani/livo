@@ -3,6 +3,7 @@
 import { MemberRole } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentMembership } from "@/lib/permissions";
+import { hasModuleAccess } from "@/lib/modules";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 
@@ -21,6 +22,14 @@ export async function POST(req: NextRequest) {
     const membership = await getCurrentMembership();
     if (!membership) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    // Gate de módulo (endpoint): 403 se o plano não inclui a Livia.
+    if (!(await hasModuleAccess(membership.barbershopId, "livia"))) {
+      return NextResponse.json(
+        { error: "Módulo não disponível no seu plano." },
+        { status: 403 },
+      );
     }
 
     const userId = membership.userId;

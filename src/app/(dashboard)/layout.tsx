@@ -4,6 +4,7 @@ import { checkBillingAccess, requireMembership } from "@/lib/permissions";
 import { requireTermsAccepted } from "@/lib/terms-gate";
 import { db } from "@/lib/db";
 import { isClubEnabled } from "@/lib/clube-flag";
+import { accessibleModulesFor } from "@/lib/modules";
 import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 
@@ -33,11 +34,23 @@ export default async function DashboardLayout({
   const [barbershop, alerts, clubEnabled] = await Promise.all([
     db.barbershop.findUnique({
       where: { id: membership.barbershopId },
-      select: { name: true },
+      // Campos de plano alargam o MESMO findUnique (zero query extra) para
+      // computar os módulos liberados que alimentam o nav (UX).
+      select: {
+        name: true,
+        plan: true,
+        planStatus: true,
+        moduleAddOns: true,
+      },
     }),
     getTodayAppointmentsForAlerts(),
     isClubEnabled(membership.barbershopId),
   ]);
+
+  // Módulos liberados (nav/UX only — a segurança real é o gate por página/action).
+  const allowedModules = barbershop
+    ? Array.from(accessibleModulesFor(barbershop))
+    : [];
 
   return (
     <DashboardLayoutClient
@@ -46,6 +59,7 @@ export default async function DashboardLayout({
       barbershopName={barbershop?.name ?? ""}
       alerts={alerts}
       clubEnabled={clubEnabled}
+      allowedModules={allowedModules}
     >
       {children}
     </DashboardLayoutClient>

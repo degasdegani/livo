@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { MemberRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { hasModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import { CopyUrlButton } from "./copy-url-button";
 import { SettingsAccordion } from "./settings-accordion";
@@ -10,6 +11,9 @@ import { TvGoalsSection } from "./tv-goals-section";
 export default async function SettingsPage() {
   const membership = await requireRole(MemberRole.owner);
   const barbershopId = membership.barbershopId;
+
+  // Settings continua acessível a todos; só a seção Ranking TV é gateada.
+  const hasTv = await hasModuleAccess(barbershopId, "tv");
 
   const [user, barbershop] = await Promise.all([
     db.user.findUnique({
@@ -212,12 +216,39 @@ export default async function SettingsPage() {
           >
             Ranking TV
           </h2>
-          <TvGoalsSection
-            barbershopGoals={barbershopGoals}
-            professionals={professionals}
-            tvPin={barbershopForPin?.tvPin ?? null}
-            devices={tvDevices}
-          />
+          {hasTv ? (
+            <TvGoalsSection
+              barbershopGoals={barbershopGoals}
+              professionals={professionals}
+              tvPin={barbershopForPin?.tvPin ?? null}
+              devices={tvDevices}
+            />
+          ) : (
+            <div
+              className="rounded-lg px-4 py-6 text-center"
+              style={{
+                backgroundColor: "var(--bg-card-elevated)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <p
+                className="text-sm font-semibold mb-1"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Disponível no plano PRO
+              </p>
+              <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
+                O Ranking TV (metas, PIN e dispositivos) faz parte do plano PRO.
+              </p>
+              <a
+                href="/dashboard/assinar"
+                className="text-xs font-bold"
+                style={{ color: "var(--color-primary)" }}
+              >
+                Fazer upgrade →
+              </a>
+            </div>
+          )}
         </section>
       </main>
     </div>

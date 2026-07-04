@@ -5,6 +5,7 @@ import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { uploadImageToBlob } from "@/lib/blob-upload";
 import { db } from "@/lib/db";
+import { requireModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export async function getProfessionalsData(): Promise<
   ProfessionalWithDetails[]
 > {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   return db.professional.findMany({
     where: { barbershopId: membership.barbershopId },
@@ -62,6 +64,7 @@ export async function createProfessional(data: {
   bio?: string;
 }): Promise<ActionResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const name = data.name.trim();
   if (!name) {
@@ -98,6 +101,7 @@ export async function updateProfessional(
   data: { name: string; bio?: string },
 ): Promise<ActionResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const professional = await db.professional.findFirst({
     where: {
@@ -141,6 +145,7 @@ export async function toggleProfessionalActive(
   confirmDeactivate = false,
 ): Promise<ToggleProfessionalResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const professional = await db.professional.findFirst({
     where: {
@@ -191,6 +196,7 @@ export async function deleteProfessional(
   professionalId: string,
 ): Promise<ActionResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const professional = await db.professional.findFirst({
     where: {
@@ -239,6 +245,7 @@ export async function uploadProfessionalAvatar(
   formData: FormData,
 ): Promise<AvatarUploadResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const professional = await db.professional.findFirst({
     where: { id: professionalId, barbershopId: membership.barbershopId },
@@ -281,6 +288,7 @@ export async function removeProfessionalAvatar(
   professionalId: string,
 ): Promise<ActionResult> {
   const membership = await requireRole("owner");
+  await requireModuleAccess(membership.barbershopId, "profissionais");
 
   const professional = await db.professional.findFirst({
     where: { id: professionalId, barbershopId: membership.barbershopId },

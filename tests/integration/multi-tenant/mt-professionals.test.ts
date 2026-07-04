@@ -36,6 +36,11 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/modules", () => ({
+  hasModuleAccess: vi.fn().mockResolvedValue(true),
+  requireModuleAccess: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/permissions", () => ({
   requireRole: vi.fn(),
 }));
