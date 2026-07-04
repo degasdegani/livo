@@ -122,7 +122,9 @@ export async function updateService(_: unknown, formData: FormData) {
   }
 }
 
-export async function deleteService(serviceId: string) {
+export async function deleteService(
+  serviceId: string,
+): Promise<{ success: true } | { error: string }> {
   const membership = await requireRole("owner");
 
   const service = await db.service.findFirst({
@@ -131,9 +133,26 @@ export async function deleteService(serviceId: string) {
 
   if (!service) throw new Error("Serviço não encontrado.");
 
-  await db.service.delete({ where: { id: serviceId } });
+  try {
+    await db.service.delete({ where: { id: serviceId } });
+  } catch (err) {
+    // P2003 = violação de FK: o serviço está referenciado por agendamentos
+    // existentes (Appointment.serviceId é RESTRICT). Retorna mensagem amigável
+    // em vez de deixar o throw cru cair no error boundary genérico da página.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2003"
+    ) {
+      return {
+        error:
+          "Este serviço está em uso em agendamentos existentes. Desative-o em vez de excluir.",
+      };
+    }
+    throw err;
+  }
 
   revalidatePath("/dashboard/settings");
+  return { success: true };
 }
 
 export async function toggleServiceActive(serviceId: string) {

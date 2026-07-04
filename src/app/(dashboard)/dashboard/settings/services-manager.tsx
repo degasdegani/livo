@@ -172,6 +172,7 @@ interface Service {
 export function ServicesManager({ services }: { services: Service[] }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function handleToggle(serviceId: string) {
@@ -183,8 +184,12 @@ export function ServicesManager({ services }: { services: Service[] }) {
   function handleDelete(serviceId: string) {
     if (!confirm("Excluir este serviço? Esta ação não pode ser desfeita."))
       return;
+    setDeleteError("");
     startTransition(async () => {
-      await deleteService(serviceId);
+      const result = await deleteService(serviceId);
+      if (result && "error" in result) {
+        setDeleteError(result.error);
+      }
     });
   }
 
@@ -242,6 +247,18 @@ export function ServicesManager({ services }: { services: Service[] }) {
       </div>
 
       <div style={{ backgroundColor: "var(--bg-card-elevated)" }}>
+        {deleteError && (
+          <p
+            className="text-xs px-6 py-3"
+            style={{
+              color: "var(--color-primary)",
+              backgroundColor: "var(--color-primary-10)",
+            }}
+          >
+            {deleteError}
+          </p>
+        )}
+
         {showAddForm && (
           <AddServiceForm onSuccess={() => setShowAddForm(false)} />
         )}
