@@ -320,7 +320,8 @@ describe("createSubscription() — subscription creation and persistence", () =>
           id: SHOP_A,
           asaasSubscriptionId: null,
         }),
-        data: { asaasSubscriptionId: "sub-new" },
+        // Grava também o plano na criação da assinatura (não mais só no webhook).
+        data: { asaasSubscriptionId: "sub-new", plan: "pro" },
       }),
     );
   });

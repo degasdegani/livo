@@ -145,12 +145,16 @@ export async function createSubscription(
     // (ID stale). Se outro request concorrente venceu a corrida entre o read e
     // este write, count === 0 → a subscription que acabamos de criar no Asaas é
     // órfã e precisa ser cancelada para não gerar cobrança sem rastro no LIVO.
+    // Grava o plano no momento da CRIAÇÃO da assinatura (não no webhook, que só
+    // ativa planStatus). Desde a E1 nada mais escreve `plan`; sem isto a conta
+    // ficaria presa em "start" mesmo pagando PRO, e o gate de módulo (E3) a
+    // bloquearia. Hoje só vendemos PRO; a Parte 2 passará o plano escolhido.
     const claimed = await db.barbershop.updateMany({
       where: {
         id: barbershop.id,
         asaasSubscriptionId: barbershop.asaasSubscriptionId,
       },
-      data: { asaasSubscriptionId: subscription.id },
+      data: { asaasSubscriptionId: subscription.id, plan: "pro" },
     });
 
     if (claimed.count === 0) {
