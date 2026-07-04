@@ -324,7 +324,7 @@ describe("Trial duration — waitlist vs standard", () => {
     expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + sixtyDays + 1000);
   });
 
-  it("grants 30-day trial when owner email is NOT on the waitlist", async () => {
+  it("grants 7-day trial (START default) when owner email is NOT on the waitlist", async () => {
     vi.mocked(db.waitlistLead.findFirst).mockResolvedValue(null);
 
     const before = Date.now();
@@ -334,13 +334,14 @@ describe("Trial duration — waitlist vs standard", () => {
     const { trialEndsAt } = (
       tx.barbershop.create.mock.calls[0][0] as { data: { trialEndsAt: Date } }
     ).data;
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    // makeFormData() não define "plan" → default "start" → trial de 7 dias.
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-    expect(trialEndsAt.getTime()).toBeGreaterThanOrEqual(before + thirtyDays - 1000);
-    expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + thirtyDays + 1000);
+    expect(trialEndsAt.getTime()).toBeGreaterThanOrEqual(before + sevenDays - 1000);
+    expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + sevenDays + 1000);
   });
 
-  it("grants 30-day trial when owner record is not found in DB", async () => {
+  it("grants 7-day trial (START default) when owner record is not found in DB", async () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
 
     const before = Date.now();
@@ -350,10 +351,10 @@ describe("Trial duration — waitlist vs standard", () => {
     const { trialEndsAt } = (
       tx.barbershop.create.mock.calls[0][0] as { data: { trialEndsAt: Date } }
     ).data;
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-    expect(trialEndsAt.getTime()).toBeGreaterThanOrEqual(before + thirtyDays - 1000);
-    expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + thirtyDays + 1000);
+    expect(trialEndsAt.getTime()).toBeGreaterThanOrEqual(before + sevenDays - 1000);
+    expect(trialEndsAt.getTime()).toBeLessThanOrEqual(after + sevenDays + 1000);
     expect(vi.mocked(db.waitlistLead.findFirst)).not.toHaveBeenCalled();
   });
 
@@ -691,7 +692,7 @@ describe("Observability — log.onboarding", () => {
       expect.objectContaining({
         userId: USER_ID,
         slug: "barbearia-test",
-        trialDays: 30,
+        trialDays: 7,
         isWaitlistLead: false,
       }),
     );

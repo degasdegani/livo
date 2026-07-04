@@ -115,7 +115,15 @@ export async function createBarbershop(
       })) !== null
     : false;
 
-  const trialDays = isWaitlistLead ? 60 : 30;
+  // Plano escolhido no onboarding — validação server-side (whitelist), nunca
+  // confiar cru no valor do client. Default seguro = "start".
+  const rawPlan = formData.get("plan");
+  const plan = rawPlan === "pro" ? "pro" : "start";
+
+  // Trial diferenciado por plano (START 7d, PRO 15d). O tratamento especial de
+  // waitlist/TX (60d) permanece por cima — só o trial PADRÃO passa a variar.
+  const baseTrial = plan === "pro" ? 15 : 7;
+  const trialDays = isWaitlistLead ? 60 : baseTrial;
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
@@ -123,6 +131,7 @@ export async function createBarbershop(
     userId,
     slug,
     barbershopName,
+    plan,
     trialDays,
     isWaitlistLead,
   });
@@ -148,7 +157,7 @@ export async function createBarbershop(
           street,
           neighborhood,
           cep,
-          plan: "start",
+          plan,
           planStatus: PlanStatus.trial,
           trialEndsAt,
           ownerId: userId,

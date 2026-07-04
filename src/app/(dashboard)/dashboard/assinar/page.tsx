@@ -10,18 +10,23 @@ import { formatCentsToBRL } from "@/lib/masks";
 import { PLAN_PRICING } from "@/lib/pricing";
 import { createSubscription } from "./actions";
 
-// NESTA ETAPA a assinatura é sempre "pro" (seleção de plano vem em E4).
-const PRO_MONTHLY = PLAN_PRICING.pro.monthly;
-const PRO_YEARLY = PLAN_PRICING.pro.yearly ?? PRO_MONTHLY;
+type PlanKey = "start" | "pro";
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function SubmitButton({ billingType }: { billingType: "monthly" | "yearly" }) {
+function SubmitButton({
+  plan,
+  billingType,
+}: {
+  plan: PlanKey;
+  billingType: "monthly" | "yearly";
+}) {
   const { pending } = useFormStatus();
-  const label =
-    billingType === "yearly"
-      ? `Assinar PRO Anual — R$ ${brl(PRO_YEARLY)}/ano →`
-      : `Assinar PRO Mensal — R$ ${brl(PRO_MONTHLY)}/mês →`;
+  const isYear = billingType === "yearly";
+  const price = isYear
+    ? (PLAN_PRICING[plan].yearly ?? PLAN_PRICING[plan].monthly)
+    : PLAN_PRICING[plan].monthly;
+  const label = `Assinar ${plan.toUpperCase()} ${isYear ? "Anual" : "Mensal"} — R$ ${brl(price)}/${isYear ? "ano" : "mês"} →`;
   return (
     <button
       type="submit"
@@ -40,13 +45,20 @@ function SubmitButton({ billingType }: { billingType: "monthly" | "yearly" }) {
 export default function AssinarPage() {
   const [state, action] = useActionState(createSubscription, null);
   const [cpf, setCpf] = useState("");
+  const [plan, setPlan] = useState<PlanKey>("pro");
   const [billingType, setBillingType] = useState<"monthly" | "yearly">(
     "monthly",
   );
   const { toast } = useToast();
 
-  const monthlyPrice = PRO_MONTHLY;
-  const yearlyPrice = PRO_YEARLY;
+  // START não tem plano anual → coage o billing efetivo para mensal.
+  const hasYearly = PLAN_PRICING[plan].yearly != null;
+  const effectiveBilling: "monthly" | "yearly" = hasYearly
+    ? billingType
+    : "monthly";
+
+  const monthlyPrice = PLAN_PRICING[plan].monthly;
+  const yearlyPrice = PLAN_PRICING[plan].yearly ?? monthlyPrice;
   const yearlyMonthly = Math.round(yearlyPrice / 12);
   // Cálculo monetário em CENTAVOS inteiros (convenção do projeto) para evitar
   // erro de ponto flutuante (ex.: 169.9*12 - 1839.9 = 198.90000000000003).
@@ -236,11 +248,37 @@ export default function AssinarPage() {
             <span style={{ color: "var(--color-primary)" }}>ao fim.</span>
           </h1>
           <p style={{ color: "var(--text-secondary)" }}>
-            Assine o LIVO PRO para continuar gerenciando sua barbearia.
+            Assine o LIVO {plan.toUpperCase()} para continuar gerenciando sua
+            barbearia.
           </p>
         </div>
 
-        {/* Toggle mensal/anual */}
+        {/* Seletor de plano START | PRO */}
+        <div
+          className="flex gap-1 rounded-xl p-1"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          {(["start", "pro"] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPlan(p)}
+              className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all"
+              style={
+                plan === p
+                  ? { backgroundColor: "var(--color-primary)", color: "#ffffff" }
+                  : { color: "var(--text-secondary)" }
+              }
+            >
+              {p.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Toggle mensal/anual — só PRO tem plano anual */}
+        {hasYearly && (
         <div
           className="flex gap-1 rounded-xl p-1"
           style={{
@@ -284,6 +322,7 @@ export default function AssinarPage() {
             </span>
           </button>
         </div>
+        )}
 
         {/* Card do plano */}
         <div
@@ -303,9 +342,9 @@ export default function AssinarPage() {
                   border: "1px solid var(--color-primary-20)",
                 }}
               >
-                LIVO PRO
+                LIVO {plan.toUpperCase()}
               </span>
-              {billingType === "monthly" ? (
+              {effectiveBilling === "monthly" ? (
                 <p
                   className="font-black mt-3"
                   style={{
@@ -349,16 +388,26 @@ export default function AssinarPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            {[
-              "Agendamento online ilimitado",
-              "Dashboard e relatórios completos",
-              "CRM de clientes automático",
-              "Comandas e controle de estoque",
-              "Comissões por barbeiro",
-              "Lívia IA — assistente inteligente",
-              "Até 3 profissionais",
-              "Suporte via WhatsApp",
-            ].map((feature) => (
+            {(plan === "pro"
+              ? [
+                  "Agendamento online ilimitado",
+                  "Dashboard e relatórios completos",
+                  "CRM de clientes automático",
+                  "Comandas e controle de estoque",
+                  "Comissões por barbeiro",
+                  "Lívia IA — assistente inteligente",
+                  "Marketing, Insights e Ranking TV",
+                  "Suporte via WhatsApp",
+                ]
+              : [
+                  "Agendamento online ilimitado",
+                  "Dashboard e relatórios completos",
+                  "CRM de clientes automático",
+                  "Comandas e controle de estoque",
+                  "Produtos e combos",
+                  "Suporte via WhatsApp",
+                ]
+            ).map((feature) => (
               <div key={feature} className="flex items-center gap-2">
                 <Check size={14} style={{ color: "var(--status-green)", flexShrink: 0 }} />
                 <span
@@ -374,7 +423,8 @@ export default function AssinarPage() {
 
         {/* Formulário */}
         <form action={action} className="flex flex-col gap-4">
-          <input type="hidden" name="billingType" value={billingType} />
+          <input type="hidden" name="plan" value={plan} />
+          <input type="hidden" name="billingType" value={effectiveBilling} />
 
           <div>
             <label
@@ -423,7 +473,7 @@ export default function AssinarPage() {
             </div>
           )}
 
-          <SubmitButton billingType={billingType} />
+          <SubmitButton plan={plan} billingType={effectiveBilling} />
 
           <p
             className="text-center text-xs"

@@ -5,7 +5,11 @@ import { useState } from "react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isValidCPF } from "@/lib/masks";
+import { PLAN_PRICING } from "@/lib/pricing";
 import { createBarbershop, validateCpfStepAction } from "./actions";
+
+const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Funções de máscara
 function maskCEP(v: string) {
@@ -45,6 +49,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [stepLoading, setStepLoading] = useState(false);
   const [error, setError] = useState("");
+  const [plan, setPlan] = useState<"start" | "pro">("start");
 
   const [fullName, setFullName] = useState("");
   const [cpf, setCpf] = useState("");
@@ -96,6 +101,7 @@ export default function OnboardingPage() {
     formData.set("city", city);
     formData.set("state", state);
     formData.set("landline", landline);
+    formData.set("plan", plan);
 
     try {
       const result = await createBarbershop(formData);
@@ -248,6 +254,56 @@ export default function OnboardingPage() {
             {/* STEP 2 — Dados da barbearia */}
             {step === 2 && (
               <>
+                {/* Escolha de plano */}
+                <div>
+                  <label className={labelClass}>Escolha seu plano *</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      {
+                        key: "start" as const,
+                        name: "START",
+                        price: PLAN_PRICING.start.monthly,
+                        trial: 7,
+                        desc: "Agenda, Clientes, Produtos, Comandas, Relatórios, Combos.",
+                      },
+                      {
+                        key: "pro" as const,
+                        name: "PRO",
+                        price: PLAN_PRICING.pro.monthly,
+                        trial: 15,
+                        desc: "Tudo do START + Comissões, Marketing, Insights, Profissionais, Livia e TV.",
+                      },
+                    ]).map((p) => {
+                      const selected = plan === p.key;
+                      return (
+                        <button
+                          key={p.key}
+                          type="button"
+                          onClick={() => setPlan(p.key)}
+                          className="text-left rounded-xl p-4 transition-colors"
+                          style={{
+                            backgroundColor: selected ? "rgba(200,16,46,0.08)" : "#0B0B0D",
+                            border: `1px solid ${selected ? "#C8102E" : "#2A2A33"}`,
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-white font-bold text-sm">{p.name}</span>
+                            <span className="text-[#6E6E78] text-xs">{p.trial} dias grátis</span>
+                          </div>
+                          <p className="text-white font-black text-lg leading-none mb-2">
+                            R$ {brl(p.price)}
+                            <span className="text-[#6E6E78] text-xs font-normal">/mês</span>
+                          </p>
+                          <p className="text-[#9A9AA6] text-xs leading-snug">{p.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-[#6E6E78] mt-1">
+                    Você começa com {plan === "pro" ? 15 : 7} dias grátis. Pode mudar depois.
+                  </p>
+                </div>
+
                 <div>
                   <label className={labelClass}>Nome da barbearia *</label>
                   <input

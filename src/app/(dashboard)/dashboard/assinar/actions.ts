@@ -15,14 +15,6 @@ import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { PLAN_PRICING } from "@/lib/plans";
 
-// Fonte única de preço em @/lib/plans (PLAN_PRICING). NESTA ETAPA a assinatura
-// é sempre "pro"; a seleção de plano vem em fase futura (E4). `yearly` do pro
-// nunca é null, mas normalizamos para o mensal por segurança de tipo.
-const PLAN_PRICES = {
-  monthly: PLAN_PRICING.pro.monthly,
-  yearly: PLAN_PRICING.pro.yearly ?? PLAN_PRICING.pro.monthly,
-};
-
 export interface SubscriptionResult {
   success?: boolean;
   error?: string;
@@ -46,8 +38,14 @@ export async function createSubscription(
       return { error: "CPF inválido. Digite um CPF válido." };
     }
 
-    const billingType =
+    // Plano escolhido — validação server-side (whitelist), nunca confiar cru.
+    // Default "pro" preserva o histórico da tela (que vendia só PRO).
+    const plan = (formData.get("plan") as string) === "start" ? "start" : "pro";
+
+    // START não tem plano anual: coage para mensal.
+    let billingType =
       (formData.get("billingType") as "monthly" | "yearly") ?? "monthly";
+    if (plan === "start") billingType = "monthly";
 
     const barbershop = await db.barbershop.findUnique({
       where: { id: membership.barbershopId },
@@ -126,7 +124,8 @@ export async function createSubscription(
       nextDueDate = due.toISOString().split("T")[0];
     }
 
-    const value = PLAN_PRICES[billingType];
+    // Preço do plano escolhido (START coagido para monthly acima → nunca null).
+    const value = PLAN_PRICING[plan][billingType] ?? PLAN_PRICING[plan].monthly;
     const cycle = billingType === "yearly" ? "YEARLY" : "MONTHLY";
     const cycleLabel = billingType === "yearly" ? "Anual" : "Mensal";
 
@@ -135,7 +134,7 @@ export async function createSubscription(
       value,
       nextDueDate,
       cycle,
-      description: `LIVO PRO ${cycleLabel} — ${barbershop.name}`,
+      description: `LIVO ${plan.toUpperCase()} ${cycleLabel} — ${barbershop.name}`,
     });
 
     // NÃO ativa aqui. O acesso só é liberado quando o webhook receber
@@ -154,7 +153,7 @@ export async function createSubscription(
         id: barbershop.id,
         asaasSubscriptionId: barbershop.asaasSubscriptionId,
       },
-      data: { asaasSubscriptionId: subscription.id, plan: "pro" },
+      data: { asaasSubscriptionId: subscription.id, plan },
     });
 
     if (claimed.count === 0) {
