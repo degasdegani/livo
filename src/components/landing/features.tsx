@@ -195,13 +195,13 @@ function FeatureCard({
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.7, ease: "easeOut", delay: (index % 3) * 0.1 }}
       style={{
-        background: "#0A0A0A",
+        background: "#212121",
         padding: "32px",
         position: "relative",
         overflow: "hidden",
         cursor: "default",
       }}
-      whileHover={{ background: "#0D0D0D" }}
+      whileHover={{ background: "#262626" }}
     >
       {/* Glow de fundo ao hover */}
       <div

@@ -7,6 +7,7 @@ import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
+import { normalizeReferralCode } from "@/lib/referral";
 import { PRESET_SERVICES } from "./data";
 
 // Checagem antecipada de CPF para o Passo 1 do onboarding: permite bloquear o
@@ -127,6 +128,18 @@ export async function createBarbershop(
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
+  // Programa Embaixadores (A4): resolve o código de indicação (?ref=) para o id
+  // da barbearia indicadora. Validação SILENCIOSA — código ausente, inválido ou
+  // adulterado apenas resulta em referredByBarbershopId null; NUNCA bloqueia o
+  // onboarding. Lookup indexado por referralCode (@unique): barato e seguro.
+  const ref = normalizeReferralCode(formData.get("ref") as string | null);
+  const referrer = ref
+    ? await db.barbershop.findUnique({
+        where: { referralCode: ref },
+        select: { id: true },
+      })
+    : null;
+
   log.onboarding.info("criando barbearia", {
     userId,
     slug,
@@ -161,6 +174,7 @@ export async function createBarbershop(
           planStatus: PlanStatus.trial,
           trialEndsAt,
           ownerId: userId,
+          referredByBarbershopId: referrer?.id ?? null,
         },
       });
 

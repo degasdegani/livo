@@ -37,6 +37,8 @@ vi.mock("@/lib/db", () => ({
     service: { findFirst: vi.fn(), findMany: vi.fn() },
     businessHour: { findFirst: vi.fn() },
     appointment: { findMany: vi.fn() },
+    // Etapa 5: getRelatorioData agrega ClientPackage (a receber / recebido no periodo).
+    clientPackage: { aggregate: vi.fn() },
   },
 }));
 
@@ -142,6 +144,11 @@ beforeEach(() => {
     dayOfWeek: 6,
   } as never);
   vi.mocked(db.appointment.findMany).mockResolvedValue([]);
+  // Default sem pacotes: agregados de ClientPackage vazios (a receber / recebido).
+  vi.mocked(db.clientPackage.aggregate).mockResolvedValue({
+    _sum: { priceInCents: null },
+    _count: 0,
+  } as never);
 });
 
 // ── getRelatorioData — query bounds ──────────────────────────────────────────

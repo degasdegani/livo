@@ -24,7 +24,7 @@ export function HowItWorks() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+          <div className="bg-[#212121] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
             <p
               className="text-sm font-black text-[#FF2D55] mb-5"
               style={{ fontFamily: "var(--font-mono)" }}
@@ -49,7 +49,7 @@ export function HowItWorks() {
             </span>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+          <div className="bg-[#212121] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
             <p
               className="text-sm font-black text-[#00D4FF] mb-5"
               style={{ fontFamily: "var(--font-mono)" }}
@@ -74,7 +74,7 @@ export function HowItWorks() {
             </span>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+          <div className="bg-[#212121] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
             <p
               className="text-sm font-black text-[#00D4A0] mb-5"
               style={{ fontFamily: "var(--font-mono)" }}

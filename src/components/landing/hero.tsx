@@ -69,7 +69,7 @@ export function Hero() {
   return (
     <section
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-16"
-      style={{ backgroundColor: "#050505" }}
+      style={{ backgroundColor: "#191919" }}
     >
       {/* Grade de fundo */}
       <div
@@ -265,7 +265,7 @@ export function Hero() {
               <div
                 style={{
                   borderRadius: "19px",
-                  background: "#0A0A0A",
+                  background: "#212121",
                   overflow: "hidden",
                   boxShadow:
                     "0 40px 120px rgba(0,0,0,0.8), 0 0 60px rgba(255,45,85,0.05)",
@@ -463,7 +463,7 @@ export function Hero() {
                         <div
                           key={kpi.label}
                           style={{
-                            background: "#111111",
+                            background: "#262626",
                             border: "1px solid rgba(255,255,255,0.05)",
                             borderRadius: "10px",
                             padding: "12px",
@@ -497,7 +497,7 @@ export function Hero() {
 
                     <div
                       style={{
-                        background: "#0D0D0D",
+                        background: "#262626",
                         border: "1px solid rgba(255,255,255,0.05)",
                         borderRadius: "10px",
                         overflow: "hidden",
@@ -573,7 +573,7 @@ export function Hero() {
                               width: 28,
                               height: 28,
                               borderRadius: "50%",
-                              background: "#1A1A1A",
+                              background: "#303030",
                               border: `1.5px solid ${STATUS_COLORS[appt.status]}40`,
                               display: "flex",
                               alignItems: "center",
@@ -641,7 +641,7 @@ export function Hero() {
                 left: 0,
                 right: 0,
                 height: "120px",
-                background: "linear-gradient(transparent, #050505)",
+                background: "linear-gradient(transparent, #191919)",
                 borderRadius: "0 0 20px 20px",
                 pointerEvents: "none",
               }}
@@ -655,7 +655,7 @@ export function Hero() {
         className="absolute bottom-0 left-0 right-0 pointer-events-none"
         style={{
           height: "200px",
-          background: "linear-gradient(transparent, #050505)",
+          background: "linear-gradient(transparent, #191919)",
         }}
       />
     </section>

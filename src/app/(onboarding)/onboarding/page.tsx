@@ -6,6 +6,7 @@ import { CPFInput } from "@/components/ui/cpf-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isValidCPF } from "@/lib/masks";
 import { PLAN_PRICING } from "@/lib/pricing";
+import { readReferralCookie, readReferralFromUrl } from "@/lib/referral";
 import { createBarbershop, validateCpfStepAction } from "./actions";
 
 const brl = (v: number) =>
@@ -102,6 +103,12 @@ export default function OnboardingPage() {
     formData.set("state", state);
     formData.set("landline", landline);
     formData.set("plan", plan);
+
+    // Programa Embaixadores (A4): resolve o código de indicação e o propaga no
+    // mesmo padrão do "plan". Vem da URL (entrada direta em /onboarding?ref=) ou
+    // do cookie de curta duração gravado no /register. A action valida/ignora.
+    const ref = readReferralFromUrl() ?? readReferralCookie();
+    if (ref) formData.set("ref", ref);
 
     try {
       const result = await createBarbershop(formData);

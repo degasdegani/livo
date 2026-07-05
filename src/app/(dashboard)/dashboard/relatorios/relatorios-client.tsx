@@ -176,6 +176,7 @@ export function RelatoriosClient({
     topProdutos,
     rankingBarbeiros,
     evolucao,
+    pacotes,
     periodoLabel,
     role,
   } = dados;
@@ -282,6 +283,44 @@ export function RelatoriosClient({
         ) : (
           <GraficoBarras dados={evolucao} />
         )}
+      </div>
+
+      {/* ── Pacotes (seção separada — NÃO somada ao faturamento de comandas) ── */}
+      <div>
+        <h3
+          className="text-sm font-semibold uppercase tracking-wider mb-4"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Pacotes
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <KpiCard
+            titulo="A receber"
+            valor={fmt(pacotes.aReceberInCents)}
+            sub={`${pacotes.aReceberCount} ${
+              pacotes.aReceberCount === 1
+                ? "pacote pendente"
+                : "pacotes pendentes"
+            }`}
+            cor="var(--color-gold)"
+          />
+          <KpiCard
+            titulo="Recebido no período"
+            valor={fmt(pacotes.receitaPeriodoInCents)}
+            sub={`${pacotes.receitaPeriodoCount} ${
+              pacotes.receitaPeriodoCount === 1
+                ? "pacote pago"
+                : "pacotes pagos"
+            }`}
+            cor="var(--status-green)"
+          />
+        </div>
+        <p className="text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>
+          Receita reconhecida na data do pagamento. &quot;A receber&quot; é o
+          total pendente atual (independe do período); &quot;Recebido no
+          período&quot; segue o filtro acima. Não incluído no faturamento de
+          comandas.
+        </p>
       </div>
 
       {/* ── Grid: Serviços + Métodos de pagamento ── */}

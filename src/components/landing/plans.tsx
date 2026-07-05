@@ -101,7 +101,7 @@ export function Plans() {
               style={{
                 background: plan.featured
                   ? "linear-gradient(160deg,#1A0608,#0F0308)"
-                  : "#0A0A0A",
+                  : "#212121",
                 border: plan.featured
                   ? "1px solid rgba(255,45,85,0.3)"
                   : "1px solid rgba(255,255,255,0.06)",

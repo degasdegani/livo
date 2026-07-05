@@ -1,9 +1,17 @@
 # LIVO BARBER — DESIGN SYSTEM
 
-> **Versão:** 2.0 — 2026-06-15  
+> **Versão:** 2.1 — 2026-07-04  
 > **Fonte de verdade:** código real de produção (`globals.css`, componentes, páginas)  
 > **Substituiu:** versão 1.0 aspiracional (descolada do código)  
 > **Escopo:** tokens canônicos, arquitetura de componentes, layouts, fluxos operacionais
+>
+> **Changelog v2.1 (2026-07-04) — atualização de paleta:** a escala de fundo dark
+> migrou de preto puro para **carvão**. `--color-background` `#050505 → #191919`;
+> `surface-1 #0a0a0a → #212121`; `surface-2 #111111 → #262626`;
+> `surface-3 #1a1a1a → #303030`; `surface-4 #242424 → #3a3a3a`. Alias `--bg-sidebar`
+> passou a apontar para `surface-1` (`#212121`) e `--bg-input` para `surface-2`
+> (`#262626`). A landing/marketing (que ficara fora da migração original) foi
+> alinhada à nova escala nesta atualização. Tema claro inalterado.
 
 ---
 
@@ -50,21 +58,21 @@ Definidas em `src/app/globals.css` via `@theme inline`. Esta é a **única** fon
 #### Backgrounds (escuros → claros)
 
 ```
---color-background: #050505    ← base absoluta do sistema
---color-surface-1:  #0a0a0a    ← sidebar, cards base
---color-surface-2:  #111111    ← cards elevados, inputs, bg-card-elevated
---color-surface-3:  #1a1a1a    ← hover states, badges
---color-surface-4:  #242424    ← bordas de destaque, tags
+--color-background: #191919    ← base absoluta do sistema (carvão)
+--color-surface-1:  #212121    ← sidebar, cards base
+--color-surface-2:  #262626    ← cards elevados, inputs, bg-card-elevated
+--color-surface-3:  #303030    ← hover states, badges
+--color-surface-4:  #3a3a3a    ← bordas de destaque, tags
 ```
 
 **Aliases para uso em componentes (via `:root`):**
 
 ```css
-var(--bg-base)           /* #050505 */
-var(--bg-card)           /* surface-1: #0a0a0a */
-var(--bg-card-elevated)  /* surface-2: #111111 */
-var(--bg-sidebar)        /* #0a0a0a */
-var(--bg-input)          /* #111111 */
+var(--bg-base)           /* #191919 */
+var(--bg-card)           /* surface-1: #212121 */
+var(--bg-card-elevated)  /* surface-2: #262626 */
+var(--bg-sidebar)        /* surface-1: #212121 */
+var(--bg-input)          /* surface-2: #262626 */
 ```
 
 #### Texto
@@ -260,7 +268,7 @@ Arquivo: `src/components/ui/button.tsx` — CVA + Radix Slot
 Classe: `.livo-input` (CSS global)
 
 ```css
-background: var(--bg-input)               /* #111111 */
+background: var(--bg-input)               /* #262626 */
 border: 1px solid var(--color-border)     /* rgba(255,255,255,0.06) */
 border-radius: var(--radius-md)           /* 12px */
 color: var(--text-primary)
@@ -309,7 +317,7 @@ padding: 2px 8px
 Arquivo: `src/components/ui/modal.tsx`
 
 ```
-Background: var(--bg-card)     /* #0a0a0a */
+Background: var(--bg-card)     /* #212121 */
 Shadow: var(--shadow-modal)    /* 0 20px 60px rgba(0,0,0,0.8) */
 Border-radius: --radius-lg     /* 16px */
 Z-index: --z-modal             /* 50 */

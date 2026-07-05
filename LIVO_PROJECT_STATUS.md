@@ -1070,3 +1070,222 @@ de agendamento) e C4 (rate limit na pagina publica de agendamento). ---
   tsc=0; build OK.
 - Helpers prontos para reuso no proximo passo (Item 2B): foto de capa da
   barbearia.
+
+### Rodapé global S.A.L.A + limpeza do hero público — 2026-07-03
+
+- Novo <PublicFooter/> ("Product by S.A.L.A Tecnologia © 2026"), client component
+  com gate por usePathname, inserido 1x no layout raiz. Aparece em público/auth/
+  legal/onboarding; oculto em /dashboard, /tv e / (home). Nenhuma rota movida.
+- [slug]/page.tsx: removida a marca-dagua "livo" do topo e o footer antigo
+  "Agendamento online por Livo" (substituido pelo rodape global). Capa 200->240px;
+  overlap do logo -48->-32px.
+- [slug]/book/page.tsx: removida a marca-dagua "livo".
+- Confirmado: paginas estaticas (/vip, /tv) permaneceram estaticas (client
+  footer no root nao causou deopt de renderizacao).
+- Sem alteracao em coverPhotoUrl/logoUrl/upload nem no footer de marketing da home.
+  tsc=0, next build=0. Commit 96804d2 em main; push OK.
+- STATUS: validacao visual final em producao pendente de confirmacao do Edu
+  (print das rotas com/sem rodape, e se overlap/altura da capa ficaram bons).
+
+### Escala de fundo carvão + páginas públicas dark-locked — 2026-07-03
+
+- Escala dark trocada de preto puro para carvão: --color-background
+  #050505->#191919; surfaces 1..4 -> #212121/#262626/#303030/#3a3a3a. Os
+  bridges :root que eram hex fixo (--bg-base/sidebar/input/text-inverse)
+  agora apontam via var(). Contraste: --color-text-tertiary #52525b->#83838d
+  (~4.6:1, corrigido de #6b6b76 sugerido apos medicao reprovar AA),
+  --color-border 0.06->0.09. Novo bloco [data-theme="dark"] reafirma a
+  escala dark em subarvores.
+- 19 telas publicas/auth/legal/onboarding: hardcode #050505/#0A0A0A -> var(),
+  e data-theme="dark" explicito no root de cada uma (dark-locked -- nunca
+  herdam o tema claro do dashboard). Inclui a borda do recorte do logo em
+  [slug] e o PublicFooter.
+- 2 residuos hardcoded do dashboard (client-list, acessos-client) -> var()
+  (tema normal, sem dark-lock).
+- Tema claro, home/landing, TV e notification-bell inalterados. tsc=0,
+  next build=0. Commit 26faa11 em main; push OK.
+- STATUS: validacao visual + teste de dark-lock em producao pendente de
+  confirmacao do Edu.
+
+  ### E3 — Gate real de modulos PRO-only LIGADO — 2026-07-03
+
+- src/lib/modules.ts: +accessibleModulesFor (puro) e +getAccessibleModules
+  (1 query) -- hasModuleAccess/requireModuleAccess originais intocados.
+- Nav: layout.tsx alargou o findUnique existente (+plan/planStatus/
+  moduleAddOns, zero query extra); allowedModules passado como prop.
+  dashboard-layout-client.tsx: NavItem.module?, LockedNavItem (cadeado
+  "PRO", mesmo padrao visual do Clube); LiviaBubble so renderiza com
+  acesso ao modulo "livia".
+- Paginas navegaveis (comissoes/marketing/insights/profissionais):
+  hasModuleAccess + redirect("/dashboard/assinar") -- profissionais ganhou
+  guard no topo da page (antes so na action, divergencia corrigida).
+- Endpoints de escrita: requireModuleAccess (throw, padrao clube) em
+  updateProfessionalItemCommissions, dismissInsight, as 6 escritas de
+  profissionais, os 4 writes de TV + updateMembershipComissao em settings.
+  NAO gateado: recalcularComissoesPendentes (dependencia cruzada com
+  settings, indevido gatear a funcao compartilhada).
+- Settings: secao Ranking TV vira placeholder "Disponível no plano PRO"
+  quando sem "tv"; resto de Settings intacto. Desvio reportado: nao existe
+  sub-secao de comissao em Settings para condicionar -- gatear a action
+  (feito) e suficiente.
+- api/livia/route.ts: 403 apos getCurrentMembership. tv/api/pair e
+  tv/api/data: 403 defensivo apos resolver barbershopId (sem requireRole,
+  rotas sem sessao).
+- Convencao de erro de cada arquivo (throw vs return{error}) respeitada,
+  nao forcada -- confirmado por arquivo.
+- 48 testes quebrados pela ligacao do gate corrigidos via vi.mock("@/lib/modules")
+  em 5 arquivos (bypass -- a logica do gate ja tem cobertura propria em
+  modules.test.ts, 9/9). Suite: 47 failed | 774 passed (baseline estavel,
+  zero regressao nova). tsc=0; build OK.
+- TX (lifetime) com acesso total a todos os 6 modulos; 14 WaitlistLead
+  intocados. Rede de seguranca (plan=start + planStatus active/suspended)
+  confirmada vazia antes do deploy.
+- STATUS: validacao real em producao (conta START, conta PRO, TX) pendente
+  de confirmacao do Edu.
+
+### E4 — Parte 1: gravar plan na assinatura (bloqueante corrigido) — 2026-07-03
+
+- Achado critico da diagnose E4: desde a E1 (que corretamente removeu o
+  plan:"pro" forcado do webhook), NADA gravava o campo Barbershop.plan no
+  momento da assinatura -- toda conta ficaria presa em "start" mesmo pagando
+  PRO, e o gate da E3 bloquearia indevidamente. Sem vitima ate agora (R$0 MRR).
+- assinar/actions.ts (createSubscription): CAS ganhou plan:"pro" no data do
+  updateMany, junto do asaasSubscriptionId -- gravado na CRIACAO da
+  assinatura (nao no webhook, que continua so ativando planStatus).
+  Where/guard/cancelamento de orfa (C2/P1-B) intactos.
+- Teste ajustado preservando intencao (nao afrouxado): asserção do CAS
+  passou a esperar plan:"pro" no data; teste vizinho de "nao ativa
+  imediatamente" continua validando ausencia de planStatus (correto --
+  plan e planStatus sao coisas diferentes).
+- Suite: 45/45 em billing; 47 failed | 774 passed geral (baseline estavel).
+  tsc=0; build OK. Commit 7db8927.
+- Pendente: Parte 2 (UI de escolha de plano no onboarding + trial
+  diferenciado 7d/15d + adaptar /dashboard/assinar para vender START).
+
+### E4 — Escolha de plano + trial diferenciado (GRUPO E: 4/5 CONCLUIDO) — 2026-07-03
+
+--- Parte 1 (bloqueante corrigido, ja em producao) ---
+
+- assinar/actions.ts: CAS passou a gravar plan:"pro" no momento da criacao
+  da assinatura (antes, nada gravava plan desde a E1 -- toda conta ficaria
+  presa em "start" mesmo pagando PRO).
+
+--- Parte 2 (escolha real de plano) ---
+
+- onboarding/actions.ts: plan lido do formData com whitelist (start|pro,
+  default seguro start); trial diferenciado (start=7d, pro=15d); waitlist
+  continua 60d por cima, intocado. plan gravado no barbershop.create.
+- onboarding/page.tsx: seletor de 2 cards (START R$59,90/7d vs PRO
+  R$169,90/15d) no passo 2, estilo hardcoded local consistente com o resto
+  da tela.
+- assinar/actions.ts: le plan do formData (mesma whitelist); START coage
+  para mensal (sem anual); value/descricao dinamicos por
+  PLAN_PRICING[plan][billingType]; CAS grava o plan LIDO (nao mais fixo).
+- assinar/page.tsx: seletor START|PRO; toggle Anual so aparece para PRO;
+  headline/preco/features dinamicos por plano selecionado.
+- 3 testes de onboarding atualizados (30d->7d default), preservando
+  intencao (teste do default sem plan enviado = start = 7d correto).
+- Suite: 47 failed | 774 passed (baseline estavel). tsc=0; build OK.
+  Commit 77369ed.
+- Fora de escopo (anotado para futuro): upgrade START->PRO de conta ja
+  ativa; atualizacao da copy da landing/marketing (ainda mostra R$197 e
+  trial generico).
+- STATUS: validacao real em producao (onboarding + assinar, ambos planos)
+  pendente de confirmacao do Edu.
+
+### E4 — Escolha de plano + trial diferenciado (VALIDADA por teste) — 2026-07-03
+
+- 8 novos testes automatizados (onboarding.test.ts +4, create-subscription.test.ts
+  +4), exercitando as Server Actions de producao com sessao/FormData mockados --
+  sem necessidade de conta real. Confirmam: onboarding grava plan e trialEndsAt
+  corretos por plano (7d start / 15d pro), waitlist preserva 60d por cima;
+  whitelist server-side rejeita plano adulterado nos dois pontos (onboarding e
+  assinar); createSubscription usa PLAN_PRICING[plan][billingType] correto e
+  nunca cobra o preco anual inexistente do START. Todos 8/8 verdes.
+- Suite: 47 failed | 782 passed (829) -- baseline estavel, +8 passando, zero
+  falha nova. tsc=0; build OK. Commit f574bf8.
+- PENDENCIA CONHECIDA (nao bloqueante): validacao visual no navegador (criar
+  conta nova via onboarding real) ficou impedida pela falta de um CPF de teste
+  valido disponivel -- a validacao de CPF (do incidente anterior) esta
+  funcionando corretamente e recusou CPFs inventados. Cobertura por teste
+  automatizado é considerada suficiente para fechar a etapa; teste visual fica
+  para quando houver CPF de teste disponivel, ou uma conta ja existente puder
+  ser reaproveitada.
+
+--- GRUPO E: 4/5 CONCLUIDO (falta so E5 -- add-on avulso) ---
+
+### Fix — exclusao de servico em uso (P2003) — 2026-07-03
+
+- deleteService (settings/actions.ts): passou a tratar
+  Prisma.PrismaClientKnownRequestError code P2003 (servico com agendamento
+  vinculado, FK RESTRICT) retornando {error} amigavel em vez de throw cru
+  ("Este servico esta em uso em agendamentos existentes. Desative-o em vez
+  de excluir."). Erros inesperados continuam subindo ao boundary.
+- services-manager.tsx: handleDelete captura o retorno e exibe banner
+  inline (mesmo padrao visual de erro ja usado no arquivo).
+- Varredura confirmou: deleteProfessional JA fazia pre-checagem de uso
+  corretamente (nenhuma correcao necessaria); comandaItem.delete e
+  clientSubscription.delete sao leaf/baixo risco, nao alterados.
+- Testes: 28/28 passando (retrocompativel). tsc=0; build OK. Commit f467016.
+
+### Feature "Pacotes" — COMPLETA (Etapas 1-6) — 2026-07-04
+
+Pacotes pré-pagos de servicos, vinculados ao cliente, com saldo que nao
+reseta (diferente do Clube, que e recorrente mensal). Venda 100% manual
+(sem Asaas/cobranca automatica); reconhecimento de receita na data do
+PAGAMENTO, nao na venda nem no consumo.
+
+- Etapa 1 (schema): Package, PackageItem (catalogo, so servicos),
+  ClientPackage, ClientPackageItem (instancia por cliente, saldo em
+  contador direto sem tabela de periodo), enum PackagePaymentStatus
+  (pending/paid). FK aditiva clientPackageId em ComandaItem (onDelete
+  SetNull). Migration 100% aditiva.
+- Etapa 2: CRUD de catalogo em /dashboard/pacotes, espelhando Combos.
+  Padrao return {error} (nao throw) conscientemente escolhido sobre o
+  padrao do Combo.
+- Etapa 3: venda manual (sellPackageToClient) -- snapshot de preco/nome de
+  servico, expiresAt calculado de validityDays, reusa autocomplete de
+  cliente da agenda. markPackagePaid idempotente via updateMany atomico
+  (where paymentStatus:"pending", mesmo padrao do CAS de billing).
+- Etapa 4: consumo na Comanda (addPackageServiceToComanda) -- espelha o
+  Clube mas sem periodo (increment direto). Bloqueia consumo de pacote
+  pending ou expirado. Comissao por RATEIO PONDERADO (mesmo motor do
+  Combo): base_unidade = priceInCents x precoServico / soma ponderada;
+  comissao = round(base x commissionPercent/100). 121/121 testes de
+  comanda/comissao sem regressao; Clube (addPlanServiceToComanda)
+  comprovadamente intocado.
+- Etapa 5: secao "Pacotes" em Relatorios -- "A receber" (pending, sem
+  filtro de periodo) e "Recebido no periodo" (paid, filtrado por paidAt).
+  Fonte de receita SEPARADA do faturamento de comandas -- zero soma, zero
+  dupla contagem (consumos ja entram a R$0 na comanda).
+- Etapa 6: pagina publica /[slug]/pacotes -- vitrine dark-locked dos
+  pacotes ativos, SEM integracao com agendamento, SEM venda automatica.
+  CTA "Fale com a Barbearia" (wa.me com mensagem pre-definida mencionando
+  o pacote). Reusa o mesmo email-gate da pagina principal. Botao "Copiar
+  link" na gestao do dashboard.
+- Em todas as 6 etapas: TX Barbearia, 14 WaitlistLead, Clube, Combo,
+  gates (E1-E5), C1-C4, onboarding, cpf/email/terms-gate intocados. Zero
+  migration destrutiva. tsc=0 e build OK em cada etapa.
+
+### Migração de cor da landing (carvão) + atualização do Design System — 2026-07-04
+
+- Os 5 arquivos de landing/marketing (hero, how-it-works, plans, features,
+  footer) migrados da paleta antiga (preto puro #050505+derivados) para a
+  nova escala carvão (#191919/#212121/#262626/#303030/#3a3a3a) -- dívida
+  deixada deliberadamente de fora na migração anterior do dashboard/páginas
+  públicas.
+- Revalidação encontrou 2 ocorrências de #0D0D0D não mapeadas na diagnose
+  original (hero:500, features:204) -- corrigidas para #262626 em vez de
+  bump ingênuo, prevenindo inversão do hover nas cards de Features (hover
+  clareia, não escurece).
+- Gradientes de fade do hero (mockup + seção) ajustados para terminar em
+  #191919, preservando a transição contínua entre seções.
+- Footer mantido intencionalmente mais escuro que a base (#030303 -> #0D0D0D,
+  preservando a proporção original "mais escuro que o corpo").
+- Gradiente de marca do plano em destaque (#1A0608/#0F0308) preservado --
+  não é escala neutra, não deveria ser tocado.
+- LIVO_DESIGN_SYSTEM.md atualizado: tabela de tokens dark reflete os valores
+  reais atuais; nota de changelog v2.1 adicionada.
+- Escopo: só landing + doc. Dashboard, páginas dark-locked, tema claro,
+  Pacotes, gates, TX Barbearia, 14 WaitlistLead -- intocados. tsc=0; build
+  OK. grep de confirmação (paleta antiga em landing/) vazio.

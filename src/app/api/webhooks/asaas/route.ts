@@ -67,6 +67,42 @@ export async function POST(req: NextRequest) {
           subscriptionId: payment.subscription,
           paymentId: payment.id,
         });
+
+        // ── A3 (Programa Embaixadores) — crédito de mês grátis ao indicador ──
+        // Operação INDEPENDENTE do guard de ordering C1 acima. Detecta a PRIMEIRA
+        // mensalidade paga de verdade e, se a conta foi indicada, credita 1 mês
+        // grátis (interno, Fase 1 — aplicação manual depois, sem automação Asaas).
+        // Idempotência própria via CAS `firstPaymentConfirmedAt: null`: reentregas
+        // do Asaas e confirmações recorrentes seguintes não creditam de novo
+        // (mesmo padrão de C2/P1-B e do markPackagePaid de Pacotes). Guard
+        // `planStatus != lifetime` mantém a TX Barbearia 100% intocada.
+        const firstPaid = await db.barbershop.updateMany({
+          where: {
+            asaasSubscriptionId: payment.subscription,
+            planStatus: { not: PlanStatus.lifetime },
+            firstPaymentConfirmedAt: null,
+          },
+          data: { firstPaymentConfirmedAt: eventAt },
+        });
+        if (firstPaid.count > 0) {
+          const shop = await db.barbershop.findFirst({
+            where: { asaasSubscriptionId: payment.subscription },
+            select: { id: true, referredByBarbershopId: true },
+          });
+          if (shop?.referredByBarbershopId) {
+            await db.barbershop.update({
+              where: { id: shop.referredByBarbershopId },
+              data: { freeMonthCredits: { increment: 1 } },
+            });
+            log.billing.info("credito de mes gratis concedido ao indicador", {
+              correlationId,
+              event,
+              subscriptionId: payment.subscription,
+              paidBarbershopId: shop.id,
+              referrerBarbershopId: shop.referredByBarbershopId,
+            });
+          }
+        }
       }
     }
 

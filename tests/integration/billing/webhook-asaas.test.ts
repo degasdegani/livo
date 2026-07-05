@@ -32,7 +32,8 @@ import { POST } from "@/app/api/webhooks/asaas/route";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    barbershop: { updateMany: vi.fn() },
+    // findFirst/update: adicionados na A3 (crédito de mês grátis ao indicador).
+    barbershop: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -109,6 +110,12 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.barbershop.updateMany).mockResolvedValue({ count: 1 } as never);
+  // A3: por padrão a conta paga não tem indicador → nenhum crédito é concedido.
+  vi.mocked(db.barbershop.findFirst).mockResolvedValue({
+    id: "shop-paid",
+    referredByBarbershopId: null,
+  } as never);
+  vi.mocked(db.barbershop.update).mockResolvedValue({} as never);
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -524,6 +531,76 @@ describe("Webhook — idempotency", () => {
     const calls = vi.mocked(db.barbershop.updateMany).mock.calls;
     expect(calls[0][0].data).toMatchObject({ planStatus: PlanStatus.suspended });
     expect(calls[1][0].data).toMatchObject({ planStatus: PlanStatus.active });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// A3 — Programa Embaixadores: crédito de mês grátis ao indicador
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe("Webhook — A3 crédito ao indicador (Embaixador)", () => {
+  // Localiza o updateMany da A3 (o único cujo where filtra firstPaymentConfirmedAt).
+  function a3Call() {
+    return vi
+      .mocked(db.barbershop.updateMany)
+      .mock.calls.find(
+        (c) => "firstPaymentConfirmedAt" in ((c[0].where ?? {}) as object),
+      );
+  }
+
+  it("primeira mensalidade de conta INDICADA credita +1 no indicador", async () => {
+    vi.mocked(db.barbershop.findFirst).mockResolvedValue({
+      id: "shop-paid",
+      referredByBarbershopId: "referrer-1",
+    } as never);
+
+    const res = await POST(
+      makeReq({ body: paymentBody("PAYMENT_CONFIRMED", SUB_A) }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.barbershop.update)).toHaveBeenCalledWith({
+      where: { id: "referrer-1" },
+      data: { freeMonthCredits: { increment: 1 } },
+    });
+  });
+
+  it("A3 usa CAS firstPaymentConfirmedAt:null + guard lifetime (TX protegida)", async () => {
+    await POST(makeReq({ body: paymentBody("PAYMENT_CONFIRMED", SUB_A) }));
+
+    const call = a3Call();
+    expect(call).toBeDefined();
+    expect(call?.[0].where).toMatchObject({
+      asaasSubscriptionId: SUB_A,
+      firstPaymentConfirmedAt: null,
+      planStatus: { not: PlanStatus.lifetime },
+    });
+    expect(call?.[0].data).toMatchObject({
+      firstPaymentConfirmedAt: expect.any(Date),
+    });
+  });
+
+  it("re-entrega (firstPaid.count = 0) NÃO credita de novo", async () => {
+    // count:0 → firstPaymentConfirmedAt já estava setado (idempotência CAS).
+    vi.mocked(db.barbershop.updateMany).mockResolvedValue({ count: 0 } as never);
+
+    const res = await POST(
+      makeReq({ body: paymentBody("PAYMENT_CONFIRMED", SUB_A) }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.barbershop.findFirst)).not.toHaveBeenCalled();
+    expect(vi.mocked(db.barbershop.update)).not.toHaveBeenCalled();
+  });
+
+  it("conta sem indicador (referredByBarbershopId null) não credita nem falha", async () => {
+    // findFirst default do beforeEach: referredByBarbershopId null.
+    const res = await POST(
+      makeReq({ body: paymentBody("PAYMENT_CONFIRMED", SUB_A) }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(db.barbershop.update)).not.toHaveBeenCalled();
   });
 });
 

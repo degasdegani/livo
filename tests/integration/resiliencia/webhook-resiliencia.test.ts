@@ -31,7 +31,8 @@ import { POST } from "@/app/api/webhooks/asaas/route";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    barbershop: { updateMany: vi.fn() },
+    // findFirst/update: A3 (crédito de mês grátis ao indicador).
+    barbershop: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -88,6 +89,12 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.barbershop.updateMany).mockResolvedValue({ count: 1 } as never);
+  // A3: por padrão a conta paga não tem indicador → nenhum crédito concedido.
+  vi.mocked(db.barbershop.findFirst).mockResolvedValue({
+    id: "shop-paid",
+    referredByBarbershopId: null,
+  } as never);
+  vi.mocked(db.barbershop.update).mockResolvedValue({} as never);
 });
 
 // ── Malformed request body ────────────────────────────────────────────────────
@@ -241,7 +248,12 @@ describe("Idempotency — repeated webhook events", () => {
     await POST(makeReq({ body }));
     await POST(makeReq({ body }));
 
-    expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenCalledTimes(2);
+    // Isola as chamadas de ATIVAÇÃO C1 (as que carregam planStatus). A A3 adiciona
+    // um updateMany próprio por evento (firstPaymentConfirmedAt) — ignorado aqui.
+    const statusCalls = vi
+      .mocked(db.barbershop.updateMany)
+      .mock.calls.filter((c) => "planStatus" in ((c[0].data ?? {}) as object));
+    expect(statusCalls).toHaveLength(2);
     // Both calls use the same WHERE clause — DB upsert is naturally idempotent
     expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -256,14 +268,14 @@ describe("Idempotency — repeated webhook events", () => {
     await POST(makeReq({ body: paymentBody("PAYMENT_OVERDUE", SUB_ID) }));
     await POST(makeReq({ body: paymentBody("PAYMENT_CONFIRMED", SUB_ID) }));
 
-    // Second call must update to active
-    expect(vi.mocked(db.barbershop.updateMany)).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          planStatus: PlanStatus.active,
-        }),
-      }),
-    );
+    // A última ATIVAÇÃO C1 (chamada com planStatus) deve ser "active". A A3 pode
+    // ter sido a última chamada absoluta (firstPaymentConfirmedAt) — filtramos.
+    const statusCalls = vi
+      .mocked(db.barbershop.updateMany)
+      .mock.calls.filter((c) => "planStatus" in ((c[0].data ?? {}) as object));
+    expect(statusCalls.at(-1)?.[0].data).toMatchObject({
+      planStatus: PlanStatus.active,
+    });
   });
 
   it("reactivates when dateCreated is strictly later, no tie (ordering guard)", async () => {
@@ -291,7 +303,11 @@ describe("Idempotency — repeated webhook events", () => {
       }),
     );
 
-    const calls = vi.mocked(db.barbershop.updateMany).mock.calls;
+    // Isola as chamadas de ATIVAÇÃO/SUSPENSÃO C1 (com planStatus); a A3 adiciona
+    // um updateMany próprio (firstPaymentConfirmedAt) no evento CONFIRMED.
+    const calls = vi
+      .mocked(db.barbershop.updateMany)
+      .mock.calls.filter((c) => "planStatus" in ((c[0].data ?? {}) as object));
     expect(calls).toHaveLength(2);
     // 1º evento (mais antigo) suspende; 2º evento (mais recente) reativa.
     expect(calls[0][0].data).toMatchObject({ planStatus: PlanStatus.suspended });

@@ -1,8 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { persistReferralCookie, readReferralFromUrl } from "@/lib/referral";
 import { registerUser } from "./actions";
 
 function SubmitButton() {
@@ -24,6 +25,16 @@ function SubmitButton() {
 
 export default function RegisterPage() {
   const [state, action] = useActionState(registerUser, null);
+
+  // Programa Embaixadores (A4): /register é o primeiro ponto de entrada real do
+  // fluxo. Captura o ?ref= aqui e guarda num cookie de curta duração (24h) para
+  // que a indicação sobreviva até o /onboarding (fluxo separado; o signIn
+  // redirect descarta a querystring). Vale tanto para o cadastro por e-mail
+  // quanto para o Google (que passa por /dashboard -> /onboarding).
+  useEffect(() => {
+    const ref = readReferralFromUrl();
+    if (ref) persistReferralCookie(ref);
+  }, []);
 
   return (
     <div

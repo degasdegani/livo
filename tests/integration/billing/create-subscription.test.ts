@@ -538,3 +538,71 @@ describe("E4 — plano escolhido define preço e é gravado", () => {
     expect(casData().plan).toBe("pro");
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// A2 — preço fixo do Programa Embaixadores (customMonthlyPriceInCents override)
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe("A2 — customMonthlyPriceInCents override (Embaixador)", () => {
+  beforeEach(() => {
+    vi.mocked(getCurrentMembership).mockResolvedValue(makeOwnerMembership());
+  });
+
+  function subArgs(): { value: number; cycle: string } {
+    return vi.mocked(createAsaasSubscription).mock.calls[0][0] as never;
+  }
+  function casData(): { plan: string } {
+    const call = vi.mocked(db.barbershop.updateMany).mock.calls.find(
+      (c) => "asaasSubscriptionId" in ((c[0].data ?? {}) as object),
+    );
+    return call?.[0].data as { plan: string };
+  }
+
+  it("override 9990 → cobra R$99,90 mensal e mantém plan 'pro'", async () => {
+    vi.mocked(db.barbershop.findUnique).mockResolvedValue(
+      makeBarbershop({
+        asaasCustomerId: "cus-existing",
+        customMonthlyPriceInCents: 9990,
+      }) as never,
+    );
+
+    await createSubscription(null, makeFormData({ plan: "pro" }));
+
+    const args = subArgs();
+    expect(args.value).toBe(99.9); // 9990 centavos / 100
+    expect(args.cycle).toBe("MONTHLY");
+    expect(casData().plan).toBe("pro");
+  });
+
+  it("override ignora billingType=yearly → sempre mensal (99,90, cycle MONTHLY)", async () => {
+    vi.mocked(db.barbershop.findUnique).mockResolvedValue(
+      makeBarbershop({
+        asaasCustomerId: "cus-existing",
+        customMonthlyPriceInCents: 9990,
+      }) as never,
+    );
+
+    const result = await createSubscription(
+      null,
+      makeFormData({ plan: "pro", billingType: "yearly" }),
+    );
+
+    const args = subArgs();
+    expect(args.value).toBe(99.9); // NÃO usa preço anual do PRO
+    expect(args.cycle).toBe("MONTHLY"); // yearly forçado para mensal
+    expect(result.billingType).toBe("monthly");
+  });
+
+  it("sem override (null) → sem regressão: cobra preço normal do PRO (169,90)", async () => {
+    vi.mocked(db.barbershop.findUnique).mockResolvedValue(
+      makeBarbershop({
+        asaasCustomerId: "cus-existing",
+        customMonthlyPriceInCents: null,
+      }) as never,
+    );
+
+    await createSubscription(null, makeFormData({ plan: "pro" }));
+
+    expect(subArgs().value).toBe(169.9);
+  });
+});

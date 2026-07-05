@@ -288,6 +288,30 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
     }
   }
 
+  // ── Pacotes — secao SEPARADA, nunca somada ao faturamentoTotal de comandas ──
+  // Duas queries independentes da query de comandas acima:
+  //  (a) "A receber": todos os ClientPackage pendentes, SEM filtro de periodo
+  //      (saldo em aberto, nao um fluxo do periodo).
+  //  (b) "Recebido no periodo": pagos com paidAt dentro do intervalo do relatorio.
+  //      Receita reconhecida na data do pagamento; os consumos ja entram a R$0
+  //      na comanda (Etapa 4), entao nao ha dupla contagem.
+  const [aReceber, receitaPacotes] = await Promise.all([
+    db.clientPackage.aggregate({
+      where: { barbershopId, paymentStatus: "pending" },
+      _sum: { priceInCents: true },
+      _count: true,
+    }),
+    db.clientPackage.aggregate({
+      where: {
+        barbershopId,
+        paymentStatus: "paid",
+        paidAt: { gte: inicio, lte: fim },
+      },
+      _sum: { priceInCents: true },
+      _count: true,
+    }),
+  ]);
+
   return {
     periodoLabel: label,
     kpis: { faturamentoTotal, totalComandas, ticketMedio, clientesUnicos },
@@ -296,6 +320,12 @@ export async function getRelatorioData(periodo: PeriodoFiltro = "mes") {
     topProdutos,
     rankingBarbeiros,
     evolucao,
+    pacotes: {
+      aReceberInCents: aReceber._sum.priceInCents ?? 0,
+      aReceberCount: aReceber._count,
+      receitaPeriodoInCents: receitaPacotes._sum.priceInCents ?? 0,
+      receitaPeriodoCount: receitaPacotes._count,
+    },
     role,
   };
 }

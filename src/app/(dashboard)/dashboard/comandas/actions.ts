@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireMembership, requireRole } from "@/lib/permissions";
+import { getClientPackagesForClient } from "../pacotes/actions";
 
 export type ComandaWithItems = Prisma.ComandaGetPayload<{
   include: {
@@ -135,7 +136,19 @@ export async function getComanda(id: string) {
       })
     : null;
 
-  return { ...comanda, activeSubscription };
+  // Pacotes pagos do cliente com saldo disponivel (Etapa 4) — reusa a query
+  // de saldo da Etapa 3 (getClientPackagesForClient), sem duplicar. So entram
+  // no PDV os pacotes pagos, nao expirados e com saldo > 0 em algum servico.
+  const activePackages = comanda.clientId
+    ? (await getClientPackagesForClient(comanda.clientId)).filter(
+        (cp) =>
+          cp.paymentStatus === "paid" &&
+          (cp.expiresAt === null || cp.expiresAt > now) &&
+          cp.items.some((it) => it.quantityRemaining > 0),
+      )
+    : [];
+
+  return { ...comanda, activeSubscription, activePackages };
 }
 
 export type ComandaWithSubscription = NonNullable<
@@ -474,6 +487,51 @@ export async function fecharComanda(
             planItem.plan.barberCommissionMode === "fixed"
               ? planItem.barberCommissionInCents ?? 0
               : 0;
+        }
+      } else if (item.clientPackageId) {
+        // Camada pacote pre-pago: servico coberto pelo saldo do ClientPackage.
+        // O item vale R$0, entao a comissao usa Package.commissionPercent sobre
+        // uma base RATEADA do preco do pacote, ponderada por preco de tabela x
+        // quantidade (mesmo espirito do rateio ponderado ja usado nos Combos):
+        //   base_unidade = ClientPackage.priceInCents * precoServico / somaPesos
+        //   somaPesos    = Σ(precoServico_i * quantityTotal_i)
+        // commissionPercent null => sem comissao (0). Mantem pct = null (valor).
+        const clientPackage = await tx.clientPackage.findFirst({
+          where: { id: item.clientPackageId },
+          select: {
+            priceInCents: true,
+            package: { select: { commissionPercent: true } },
+            items: { select: { serviceId: true, quantityTotal: true } },
+          },
+        });
+
+        if (clientPackage) {
+          const commissionPercent = clientPackage.package.commissionPercent;
+          if (commissionPercent != null && item.serviceId) {
+            const serviceIds = clientPackage.items.map((i) => i.serviceId);
+            const svcPrices = await tx.service.findMany({
+              where: { id: { in: serviceIds } },
+              select: { id: true, priceInCents: true },
+            });
+            const priceMap = new Map(
+              svcPrices.map((s) => [s.id, s.priceInCents]),
+            );
+            const totalWeight = clientPackage.items.reduce(
+              (sum, i) => sum + (priceMap.get(i.serviceId) ?? 0) * i.quantityTotal,
+              0,
+            );
+            const thisServicePrice = priceMap.get(item.serviceId) ?? 0;
+            const baseUnit =
+              totalWeight > 0
+                ? (clientPackage.priceInCents * thisServicePrice) / totalWeight
+                : 0;
+            pct = null;
+            value = Math.round((baseUnit * commissionPercent) / 100);
+          } else {
+            // Pacote sem comissao configurada => sem comissao para o barbeiro.
+            pct = null;
+            value = 0;
+          }
         }
       } else if (item.type === "service") {
         const override = item.serviceId ? serviceOverrides.get(item.serviceId) : undefined;
@@ -1180,6 +1238,101 @@ export async function addPlanServiceToComanda(
         },
       });
     }
+
+    return { success: true };
+  });
+
+  if ("error" in result) return { error: result.error };
+
+  revalidatePath("/dashboard/comandas");
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// addPackageServiceToComanda — lanca servico coberto pelo saldo de um Pacote
+// pre-pago (Etapa 4). Espelha addPlanServiceToComanda, mas SEM janela de
+// periodo: o saldo e o contador direto quantityTotal/quantityUsed. So consome
+// pacote PAGO e nao expirado.
+// ---------------------------------------------------------------------------
+
+export async function addPackageServiceToComanda(
+  comandaId: string,
+  clientPackageId: string,
+  serviceId: string,
+) {
+  const { barbershopId } = await requireRole(["owner", "reception", "barber"]);
+
+  const now = new Date();
+
+  const result = await db.$transaction(async (tx) => {
+    // 1. Comanda aberta pertencente a barbearia
+    const comanda = await tx.comanda.findFirst({
+      where: { id: comandaId, barbershopId, status: "open" },
+      select: { id: true, clientId: true },
+    });
+    if (!comanda) {
+      return { error: "Comanda nao encontrada ou ja fechada." };
+    }
+
+    // 2. Item do pacote (do cliente da comanda), com o ClientPackage pai
+    const packageItem = await tx.clientPackageItem.findFirst({
+      where: {
+        serviceId,
+        clientPackageId,
+        clientPackage: {
+          barbershopId,
+          clientId: comanda.clientId ?? undefined,
+        },
+      },
+      select: {
+        id: true,
+        serviceName: true,
+        quantityTotal: true,
+        quantityUsed: true,
+        clientPackage: { select: { paymentStatus: true, expiresAt: true } },
+      },
+    });
+    if (!packageItem) {
+      return { error: "Servico nao encontrado neste pacote do cliente." };
+    }
+
+    // 3. Pagamento e validade — so pacote PAGO e nao expirado consome
+    if (packageItem.clientPackage.paymentStatus !== "paid") {
+      return { error: "Este pacote esta pendente de pagamento." };
+    }
+    if (
+      packageItem.clientPackage.expiresAt &&
+      packageItem.clientPackage.expiresAt < now
+    ) {
+      return { error: "Este pacote esta expirado." };
+    }
+
+    // 4. Saldo do servico (quantityTotal - quantityUsed) > 0
+    const remaining = packageItem.quantityTotal - packageItem.quantityUsed;
+    if (remaining <= 0) {
+      return { error: "Saldo deste servico no pacote ja foi utilizado." };
+    }
+
+    // 5. ComandaItem coberto (R$0), carimbando o clientPackageId
+    await tx.comandaItem.create({
+      data: {
+        comandaId,
+        type: "service",
+        serviceId,
+        serviceName: packageItem.serviceName,
+        quantity: 1,
+        unitPriceInCents: 0,
+        totalInCents: 0,
+        clientPackageId,
+        // Comissao resolvida no fecharComanda (rateio ponderado do pacote)
+      },
+    });
+
+    // 6. Decremento direto do saldo — SEM upsert, SEM tabela de periodo
+    await tx.clientPackageItem.update({
+      where: { id: packageItem.id },
+      data: { quantityUsed: { increment: 1 } },
+    });
 
     return { success: true };
   });

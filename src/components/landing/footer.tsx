@@ -23,7 +23,7 @@ export function Footer() {
     <footer
       style={{
         borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "#030303",
+        background: "#0D0D0D",
       }}
     >
       <Container>

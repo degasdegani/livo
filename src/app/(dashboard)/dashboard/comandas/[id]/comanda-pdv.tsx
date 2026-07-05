@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import {
   addComboToComanda,
+  addPackageServiceToComanda,
   addPlanServiceToComanda,
   addProductItem,
   addServiceItem,
@@ -227,6 +228,29 @@ export default function ComandaPDV({
     });
   }
 
+  // Serviço coberto pelo pacote: a action retorna { error } (não lança).
+  function handleAddPackageService(clientPackageId: string, serviceId: string) {
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await addPackageServiceToComanda(
+          comanda.id,
+          clientPackageId,
+          serviceId,
+        );
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        await refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Erro ao lançar serviço do pacote",
+        );
+      }
+    });
+  }
+
   function openCloseModal() {
     const totalLiq = Math.max(0, totalBruto - discountInCents);
     setPayments([{ method: "pix", amountInCents: totalLiq }]);
@@ -306,11 +330,13 @@ export default function ComandaPDV({
   type RenderGroup =
     | { kind: "single"; item: ComandaItem }
     | { kind: "combo"; comboId: string; name: string; items: ComandaItem[] }
-    | { kind: "plan"; items: ComandaItem[] };
+    | { kind: "plan"; items: ComandaItem[] }
+    | { kind: "package"; items: ComandaItem[] };
 
   const groupedItems: RenderGroup[] = [];
   const comboGroupIndex = new Map<string, number>();
   let planGroupIndex: number | null = null;
+  let packageGroupIndex: number | null = null;
   for (const item of comanda.items) {
     if (item.clientSubscriptionId) {
       // Itens cobertos pelo plano — agrupados juntos (mesmo padrão dos combos).
@@ -320,6 +346,15 @@ export default function ComandaPDV({
       } else {
         planGroupIndex = groupedItems.length;
         groupedItems.push({ kind: "plan", items: [item] });
+      }
+    } else if (item.clientPackageId) {
+      // Itens cobertos pelo pacote pré-pago — agrupados juntos (mesmo padrão do plano).
+      if (packageGroupIndex !== null) {
+        const group = groupedItems[packageGroupIndex];
+        if (group.kind === "package") group.items.push(item);
+      } else {
+        packageGroupIndex = groupedItems.length;
+        groupedItems.push({ kind: "package", items: [item] });
       }
     } else if (item.comboId) {
       const idx = comboGroupIndex.get(item.comboId);
@@ -378,6 +413,16 @@ export default function ComandaPDV({
               }}
             >
               {formatCents(0)} — Plano
+            </span>
+          ) : item.clientPackageId ? (
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+              style={{
+                backgroundColor: "rgba(0,212,160,0.1)",
+                color: "var(--status-green)",
+              }}
+            >
+              {formatCents(0)} — Pacote
             </span>
           ) : (
             <span className="font-medium" style={{ color: "var(--text-primary)" }}>
@@ -563,6 +608,40 @@ export default function ComandaPDV({
                   );
                 }
 
+                if (group.kind === "package") {
+                  return (
+                    <div
+                      key="package-group"
+                      className="rounded-lg p-2"
+                      style={{
+                        border: "1px solid rgba(0,212,160,0.2)",
+                        backgroundColor: "rgba(0,212,160,0.08)",
+                      }}
+                    >
+                      <div className="mb-2 flex items-center justify-between px-1">
+                        <span
+                          className="text-xs font-semibold uppercase"
+                          style={{
+                            color: "var(--status-green)",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Coberto pelo pacote
+                        </span>
+                        <span
+                          className="text-sm font-semibold"
+                          style={{ color: "var(--status-green)" }}
+                        >
+                          {formatCents(0)}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {group.items.map((item) => renderItemCard(item))}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={`combo-${group.comboId}`}
@@ -721,6 +800,71 @@ export default function ComandaPDV({
                     </div>
                   </div>
                 )}
+                {comanda.activePackages.map((clientPackage) => (
+                  <div
+                    key={clientPackage.id}
+                    className="mb-4 rounded-lg p-3"
+                    style={{
+                      border: "1px solid rgba(0,212,160,0.2)",
+                      backgroundColor: "rgba(0,212,160,0.08)",
+                    }}
+                  >
+                    <p
+                      className="mb-2 text-xs font-semibold uppercase"
+                      style={{ color: "var(--status-green)", letterSpacing: "0.05em" }}
+                    >
+                      Coberto pelo pacote — {clientPackage.package.name}
+                    </p>
+                    <div className="space-y-2">
+                      {clientPackage.items.map((packageItem) => {
+                        const remaining = packageItem.quantityRemaining;
+                        const disabled = remaining <= 0 || isPending;
+                        return (
+                          <button
+                            key={packageItem.id}
+                            type="button"
+                            onClick={() =>
+                              handleAddPackageService(
+                                clientPackage.id,
+                                packageItem.serviceId,
+                              )
+                            }
+                            disabled={disabled}
+                            className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-all disabled:cursor-not-allowed"
+                            style={{
+                              border: "1px solid var(--border)",
+                              backgroundColor: "var(--bg-card)",
+                              opacity: remaining <= 0 ? 0.55 : 1,
+                            }}
+                          >
+                            <p
+                              className="truncate text-sm font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {packageItem.serviceName}
+                            </p>
+                            <span
+                              className="ml-3 shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+                              style={
+                                remaining > 0
+                                  ? {
+                                      backgroundColor: "rgba(0,212,160,0.1)",
+                                      color: "var(--status-green)",
+                                    }
+                                  : {
+                                      backgroundColor: "var(--bg-card-elevated)",
+                                      color: "var(--text-tertiary)",
+                                    }
+                              }
+                            >
+                              {remaining} de {packageItem.quantityTotal}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
                 <input
                   type="text"
                   placeholder="Buscar serviço..."

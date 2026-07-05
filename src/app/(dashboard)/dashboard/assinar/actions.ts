@@ -124,8 +124,22 @@ export async function createSubscription(
       nextDueDate = due.toISOString().split("T")[0];
     }
 
-    // Preço do plano escolhido (START coagido para monthly acima → nunca null).
-    const value = PLAN_PRICING[plan][billingType] ?? PLAN_PRICING[plan].monthly;
+    // Preço fixo do Programa Embaixadores: customMonthlyPriceInCents (setado
+    // manualmente na conta, em CENTAVOS inteiros) sobrepõe o preço da tabela.
+    // É imune a mudanças futuras no preço padrão do PRO — o valor da assinatura
+    // Asaas é fixado na criação e nunca reescrito. O embaixador NÃO tem opção
+    // anual: força billingType="monthly", ignorando "yearly" do formulário
+    // (assim cycle/cycleLabel/billingType retornado ficam todos mensais).
+    const overridePriceInCents = barbershop.customMonthlyPriceInCents;
+    if (overridePriceInCents != null) billingType = "monthly";
+
+    // Conversão de unidade: customMonthlyPriceInCents é centavos inteiros
+    // (ex.: 9990) e PLAN_PRICING é reais decimais (ex.: 169.9) → centavos / 100.
+    // START coagido para monthly acima → PLAN_PRICING[plan][billingType] nunca null.
+    const value =
+      overridePriceInCents != null
+        ? overridePriceInCents / 100
+        : (PLAN_PRICING[plan][billingType] ?? PLAN_PRICING[plan].monthly);
     const cycle = billingType === "yearly" ? "YEARLY" : "MONTHLY";
     const cycleLabel = billingType === "yearly" ? "Anual" : "Mensal";
 

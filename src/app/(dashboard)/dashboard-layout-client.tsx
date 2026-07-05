@@ -6,6 +6,7 @@ import {
   CalendarDays,
   DollarSign,
   FileText,
+  Gift,
   Home,
   Layers,
   Lock,
@@ -115,6 +116,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Combos",
     href: "/dashboard/combos",
     icon: <Layers size={18} />,
+    roles: ["owner"],
+  },
+  {
+    label: "Pacotes",
+    href: "/dashboard/pacotes",
+    icon: <Gift size={18} />,
     roles: ["owner"],
   },
   {
