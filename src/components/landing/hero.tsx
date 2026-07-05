@@ -8,6 +8,7 @@
 
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { TRIAL_DAYS } from "@/lib/pricing";
 import { motion } from "framer-motion";
 
 // Dados dos stats do hero
@@ -224,10 +225,10 @@ export function Hero() {
           >
             <a href="/onboarding">
               <Button variant="primary" size="xl">
-                Começar grátis por 30 dias
+                Começar grátis por {TRIAL_DAYS.start} dias
               </Button>
             </a>
-            <a href="#produto">
+            <a href="/produto">
               <Button variant="secondary" size="xl">
                 Ver demonstração →
               </Button>

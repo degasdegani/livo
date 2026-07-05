@@ -63,9 +63,17 @@ const FEATURES = [
   },
 ] as const;
 
-export function Features() {
+interface FeaturesProps {
+  // Na Home mostramos só as primeiras `limit` funcionalidades + um CTA para a
+  // página /produto (moreHref). Em /produto, sem props = as 6 completas.
+  limit?: number;
+  moreHref?: string;
+}
+
+export function Features({ limit, moreHref }: FeaturesProps = {}) {
   const titleRef = useRef<HTMLDivElement>(null);
   const titleInView = useInView(titleRef, { once: true, margin: "-100px" });
+  const items = limit ? FEATURES.slice(0, limit) : FEATURES;
 
   return (
     <Section id="funcionalidades" padding="xl">
@@ -168,10 +176,27 @@ export function Features() {
             overflow: "hidden",
           }}
         >
-          {FEATURES.map((feature, i) => (
+          {items.map((feature, i) => (
             <FeatureCard key={feature.title} feature={feature} index={i} />
           ))}
         </div>
+
+        {moreHref && (
+          <div className="text-center mt-10">
+            <a
+              href={moreHref}
+              className="inline-flex items-center gap-2 px-8 py-4 font-bold text-base rounded-xl transition-all duration-200 hover:opacity-80"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#FFFFFF",
+                textDecoration: "none",
+              }}
+            >
+              Ver todas as funcionalidades →
+            </a>
+          </div>
+        )}
       </Container>
     </Section>
   );

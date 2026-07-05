@@ -21,3 +21,14 @@ export const PLAN_PRICING: Record<
   // prime ainda não é vendido — placeholder com os mesmos valores do pro.
   prime: { monthly: 169.9, yearly: 1839.9 },
 };
+
+// Dias de trial por plano — FONTE ÚNICA compartilhada. Antes o número vivia
+// hardcoded em onboarding/actions.ts (baseTrial = plan === "pro" ? 15 : 7) e a
+// landing repetia "30 dias" desatualizado. Centralizado aqui (módulo client-safe)
+// para o onboarding e a landing consumirem o mesmo valor sem divergir.
+export const TRIAL_DAYS: Record<Plan, number> = {
+  start: 7,
+  pro: 15,
+  // prime ainda não é vendido — espelha o pro por ora.
+  prime: 15,
+};

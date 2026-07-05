@@ -70,7 +70,7 @@ export default function RegisterPage() {
         Criar sua conta
       </h1>
       <p className="text-sm mb-8" style={{ color: "#52525B" }}>
-        30 dias gratis. Sem cartao de credito.
+        7 dias gratis. Sem cartao de credito.
       </p>
 
       <button

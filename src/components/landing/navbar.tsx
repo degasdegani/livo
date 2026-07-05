@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Produto", href: "#produto" },
-  { label: "Funcionalidades", href: "#funcionalidades" },
-  { label: "Planos", href: "#planos" },
-  { label: "Parceria", href: "#parceria" },
+  // "Funcionalidades" foi absorvido em /produto. Parceria continua na Home;
+  // usa /#parceria para funcionar mesmo a partir de /produto e /planos.
+  { label: "Produto", href: "/produto" },
+  { label: "Planos", href: "/planos" },
+  { label: "Parceria", href: "/#parceria" },
 ] as const;
 
 export function Navbar() {
@@ -40,7 +41,7 @@ export function Navbar() {
         <div
           className="absolute inset-0 transition-all duration-300"
           style={{
-            background: scrolled || mobileOpen ? "rgba(5,5,5,0.96)" : "rgba(5,5,5,0.5)",
+            background: scrolled || mobileOpen ? "rgba(25,25,25,0.96)" : "rgba(25,25,25,0.5)",
             backdropFilter: "blur(24px) saturate(180%)",
             borderBottom: scrolled || mobileOpen
               ? "1px solid rgba(255,255,255,0.08)"
@@ -128,7 +129,7 @@ export function Navbar() {
           <div
             className="md:hidden border-t"
             style={{
-              background: "rgba(5,5,5,0.98)",
+              background: "rgba(25,25,25,0.98)",
               borderColor: "rgba(255,255,255,0.08)",
             }}
           >

@@ -7,6 +7,7 @@ import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { CPF_TAKEN_MESSAGE, checkCpfAvailable } from "@/lib/cpf";
 import { log } from "@/lib/logger";
+import { TRIAL_DAYS } from "@/lib/pricing";
 import { normalizeReferralCode } from "@/lib/referral";
 import { PRESET_SERVICES } from "./data";
 
@@ -123,7 +124,8 @@ export async function createBarbershop(
 
   // Trial diferenciado por plano (START 7d, PRO 15d). O tratamento especial de
   // waitlist/TX (60d) permanece por cima — só o trial PADRÃO passa a variar.
-  const baseTrial = plan === "pro" ? 15 : 7;
+  // Valor vem da fonte única TRIAL_DAYS (compartilhada com a landing).
+  const baseTrial = TRIAL_DAYS[plan];
   const trialDays = isWaitlistLead ? 60 : baseTrial;
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);

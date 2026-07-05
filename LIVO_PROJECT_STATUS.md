@@ -1289,3 +1289,62 @@ PAGAMENTO, nao na venda nem no consumo.
 - Escopo: só landing + doc. Dashboard, páginas dark-locked, tema claro,
   Pacotes, gates, TX Barbearia, 14 WaitlistLead -- intocados. tsc=0; build
   OK. grep de confirmação (paleta antiga em landing/) vazio.
+
+### Programa Embaixadores — Frente A COMPLETA (A1-A5) — 2026-07-05
+
+Mecanismo tecnico do Programa Embaixadores: assinatura recorrente do PRO
+com preco fixo por conta (nao lifetime, nao pagamento unico), sistema de
+indicacao GERAL (qualquer conta pode indicar), credito de mes gratis
+automatico e idempotente via webhook, ativado por enquanto so para
+embaixadores (isEmbaixador). Selo da foto do Taxinha/TX Barbearia como
+embaixador oficial fica pendente da resposta dele (decisao de conteudo,
+nao de engenharia).
+
+- A1: schema aditivo -- customMonthlyPriceInCents, isEmbaixador,
+  referralCode (@unique), referredByBarbershopId (auto-relacao
+  Barbershop->Barbershop), freeMonthCredits, firstPaymentConfirmedAt.
+- A2: override de preco em createSubscription -- conta com
+  customMonthlyPriceInCents cobra esse valor fixo (sempre mensal,
+  independente de billingType), plan continua "pro" (modulos/gates
+  intactos). Imune a reajustes futuros do preco padrao do PRO.
+- A3: webhook detecta a 1a mensalidade paga de verdade (CAS via
+  firstPaymentConfirmedAt:null, idempotente contra reentrega) e credita
+  +1 freeMonthCredits no indicador. TX Barbearia protegida pelo mesmo
+  guard planStatus!=lifetime do C1. Fase 1: credito interno, aplicacao
+  manual por enquanto -- automacao real via Asaas fica para Fase 2.
+- A4: captura de ?ref=CODIGO via cookie de 24h, cobrindo os 3 pontos de
+  entrada reais (register direto, register->dashboard->onboarding via
+  Google, onboarding?ref= direto). Validacao silenciosa -- codigo
+  invalido nunca bloqueia o cadastro.
+- A5: secao "Indique e ganhe" em Settings, com geracao LAZY e idempotente
+  do referralCode (8 caracteres, alfabeto sem ambiguidade, protegido
+  contra corrida), link de indicacao copiavel, selo "Embaixador Livo"
+  condicional, saldo de freeMonthCredits exibido.
+- Em todas as 5 etapas: zero migration destrutiva, TX Barbearia e 14
+  WaitlistLead intocados, gates/Pacotes/onboarding-core/webhook-core
+  (C1)/CAS(C2) nunca alterados em comportamento -- so extensoes aditivas.
+  npx vitest run identico ao baseline (47/789) em cada etapa; tsc=0 e
+  build OK sempre.
+
+### Frente B (parte 1): reestruturação da landing — 2026-07-05
+
+- Home enxuta: Hero integral + 3 passos resumidos (CTA -> /produto) + 4
+  features em destaque (CTA -> /produto) + resumo Start/Pro (CTA -> /planos)
+  - Partnership (intocada) + Footer.
+- Novas paginas: /produto (6 features + AISection + passo-a-passo detalhado)
+  e /planos (3 cards completos, comparativo).
+- TRIAL_DAYS[plan] criado em pricing.ts como fonte unica (start:7, pro:15,
+  prime:15 placeholder); onboarding/actions.ts passou a consumir dali
+  (mesmos valores, zero mudanca de comportamento).
+- Toda copy de preco/trial desatualizada corrigida (R$197->R$169,90; "30
+  dias" -> 7/15 conforme o plano) em plans/hero/how-it-works/layout(SEO)/
+  register.
+- Armadilha de ancora eliminada: id="produto" (que apontava para "Como
+  funciona") removido; /produto agora e rota real.
+- Residuo de paleta antiga corrigido em navbar.tsx e partnership.tsx
+  (gradiente de marca preservado, nao virou cinza neutro).
+- Deixados intocados de proposito: oferta-30-dias/60-dias (campanhas com
+  prazo intencional) e termos/page.tsx (texto legal versionado -- fica
+  como pendencia PROPRIA, fora desta reestruturacao).
+- npx vitest run identico ao baseline (47/789); tsc=0; build OK.
+- /embaixadores NAO criado (Opcao A) -- proxima etapa da Frente B.

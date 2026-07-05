@@ -2,10 +2,10 @@ import { Container } from "@/components/layout/container";
 
 const LINKS = {
   Produto: [
-    { label: "Funcionalidades", href: "#funcionalidades" },
-    { label: "Planos", href: "#planos" },
-    { label: "IA integrada", href: "#ia" },
-    { label: "Parceiros", href: "#parceria" },
+    { label: "Funcionalidades", href: "/produto" },
+    { label: "Planos", href: "/planos" },
+    { label: "IA integrada", href: "/produto#ia" },
+    { label: "Parceiros", href: "/#parceria" },
   ],
   Acesso: [
     { label: "Criar conta", href: "/onboarding" },

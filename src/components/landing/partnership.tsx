@@ -32,7 +32,9 @@ export function Partnership() {
         <div
           className="relative rounded-3xl text-center overflow-hidden"
           style={{
-            background: "linear-gradient(180deg,#0A0408,#050306)",
+            // Vermelho-escuro de marca, mais escuro que a base #191919 (não
+            // vira cinza neutro). Substitui o resíduo #0A0408/#050306 da paleta antiga.
+            background: "linear-gradient(180deg,#221015,#170A0D)",
             border: "1px solid rgba(255,45,85,0.18)",
             padding: "80px 48px",
             boxShadow: "0 0 80px rgba(255,45,85,0.06)",
@@ -129,7 +131,7 @@ export function Partnership() {
               </a>
 
               <a
-                href="#produto"
+                href="/produto"
                 className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold text-base rounded-xl transition-all duration-200 hover:opacity-80"
                 style={{
                   background: "rgba(255,255,255,0.04)",

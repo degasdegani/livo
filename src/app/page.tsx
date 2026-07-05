@@ -1,10 +1,9 @@
 // ============================================================
-// LIVO — Landing Page
-// Página principal de marketing do produto
-// Monta todos os componentes da landing em ordem
+// LIVO — Landing Page (Home enxuta)
+// Home resumida: Hero + prova social (3 passos) + 4 features + resumo de
+// planos + Parceria. O conteúdo completo vive em /produto e /planos.
 // ============================================================
 
-import { AISection } from "@/components/landing/ai-section";
 import { Features } from "@/components/landing/features";
 import { Footer } from "@/components/landing/footer";
 import { Hero } from "@/components/landing/hero";
@@ -18,10 +17,13 @@ export default function LandingPage() {
     <>
       <Navbar />
       <Hero />
-      <Features />
-      <HowItWorks />
-      <AISection />
-      <Plans />
+      {/* 3 passos como prova social; detalhe completo em /produto */}
+      <HowItWorks variant="home" />
+      {/* 4 primeiras funcionalidades; todas em /produto */}
+      <Features limit={4} moreHref="/produto" />
+      {/* Resumo Start + Pro; comparativo completo em /planos */}
+      <Plans variant="summary" />
+      {/* Parceria permanece na Home por ora (id="parceria") */}
       <Partnership />
       <Footer />
     </>

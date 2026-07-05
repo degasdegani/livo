@@ -1,15 +1,35 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { PLAN_PRICING, TRIAL_DAYS } from "@/lib/pricing";
 import { Check, X } from "lucide-react";
 
-const PLANS = [
+// Formata reais no padrão pt-BR (59.9 -> "59,90"; 1839.9 -> "1.839,90").
+const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+type PlanCard = {
+  name: string;
+  // "money" mostra "R$ <valor> /mês"; "soon" mostra "Em breve".
+  priceType: "money" | "soon";
+  price: string;
+  annualNote?: string;
+  desc: string;
+  featured: boolean;
+  cta: string;
+  ctaHref: string;
+  features: { text: string; ok: boolean }[];
+};
+
+// Fonte de preço/trial: PLAN_PRICING + TRIAL_DAYS (fonte única, sem hardcode).
+const PLANS: PlanCard[] = [
   {
     name: "Livo Start",
-    price: "Trial",
-    originalPrice: undefined,
+    priceType: "money",
+    price: brl(PLAN_PRICING.start.monthly), // 59,90
     desc: "Para o barbeiro solo que está digitalizando o negócio.",
     featured: false,
-    cta: "Começar grátis — 30 dias",
+    cta: `Começar grátis — ${TRIAL_DAYS.start} dias`,
+    ctaHref: "/onboarding",
     features: [
       { text: "1 profissional", ok: true },
       { text: "Agendamentos ilimitados", ok: true },
@@ -24,11 +44,15 @@ const PLANS = [
   },
   {
     name: "Livo Pro",
-    price: "197",
-    originalPrice: undefined,
+    priceType: "money",
+    price: brl(PLAN_PRICING.pro.monthly), // 169,90
+    annualNote: PLAN_PRICING.pro.yearly
+      ? `ou R$ ${brl(PLAN_PRICING.pro.yearly)}/ano`
+      : undefined, // 1.839,90/ano
     desc: "Para barbearias estabelecidas que querem crescer.",
     featured: true,
-    cta: "Começar grátis — 30 dias",
+    cta: `Começar grátis — ${TRIAL_DAYS.pro} dias`,
+    ctaHref: "/onboarding",
     features: [
       { text: "Até 3 profissionais", ok: true },
       { text: "Agendamentos ilimitados", ok: true },
@@ -43,8 +67,8 @@ const PLANS = [
   },
   {
     name: "Livo Prime",
+    priceType: "soon",
     price: "Em breve",
-    originalPrice: undefined,
     desc: "Para barbearias premium com máximo em IA e automação.",
     featured: false,
     cta: "Entrar na lista de espera",
@@ -63,9 +87,21 @@ const PLANS = [
   },
 ];
 
-export function Plans() {
+interface PlansProps {
+  // "full" = 3 cards (Start + Pro + Prime), usado em /planos.
+  // "summary" = 2 cards (Start + Pro) + CTA para o comparativo, usado na Home.
+  variant?: "full" | "summary";
+}
+
+export function Plans({ variant = "full" }: PlansProps) {
+  const isSummary = variant === "summary";
+  // Resumo da Home mostra só Start + Pro (sem Prime).
+  const plans = isSummary
+    ? PLANS.filter((p) => p.name !== "Livo Prime")
+    : PLANS;
+
   return (
-    <Section id="planos" padding="xl">
+    <Section id={isSummary ? undefined : "planos"} padding="xl">
       <Container>
         <div className="text-center mb-16">
           <p
@@ -89,12 +125,19 @@ export function Plans() {
               lineHeight: 1.7,
             }}
           >
-            30 dias grátis para testar. Cancele quando quiser.
+            Teste grátis de {TRIAL_DAYS.start} a {TRIAL_DAYS.pro} dias, conforme o
+            plano. Cancele quando quiser.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PLANS.map((plan) => (
+        <div
+          className={
+            isSummary
+              ? "grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto"
+              : "grid grid-cols-1 md:grid-cols-3 gap-5"
+          }
+        >
+          {plans.map((plan) => (
             <div
               key={plan.name}
               className="rounded-2xl p-8 flex flex-col relative"
@@ -133,38 +176,10 @@ export function Plans() {
                 {plan.name}
               </p>
 
-              {plan.originalPrice && (
-                <div className="mb-1">
+              <div className="flex items-baseline gap-1 mb-1">
+                {plan.priceType === "money" && (
                   <span
-                    style={{
-                      color: "#52525B",
-                      fontSize: "16px",
-                      textDecoration: "line-through",
-                    }}
-                  >
-                    R$ {plan.originalPrice}
-                  </span>
-                  <span
-                    className="ml-2 font-bold rounded-full px-2 py-0.5"
-                    style={{
-                      background: "rgba(255,45,85,0.15)",
-                      color: "#FF2D55",
-                      fontSize: "11px",
-                    }}
-                  >
-                    OFERTA
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-baseline gap-1 mb-3">
-                {plan.price !== "Trial" && plan.price !== "Em breve" && (
-                  <span
-                    style={{
-                      color: "#A1A1AA",
-                      fontSize: "22px",
-                      fontWeight: 600,
-                    }}
+                    style={{ color: "#A1A1AA", fontSize: "22px", fontWeight: 600 }}
                   >
                     R$
                   </span>
@@ -172,7 +187,7 @@ export function Plans() {
                 <span
                   className="font-black"
                   style={{
-                    fontSize: plan.price === "Trial" || plan.price === "Em breve" ? "32px" : "56px",
+                    fontSize: plan.priceType === "soon" ? "32px" : "56px",
                     letterSpacing: "-2px",
                     color: plan.featured ? "#FF2D55" : "#FFFFFF",
                     lineHeight: 1,
@@ -180,10 +195,18 @@ export function Plans() {
                 >
                   {plan.price}
                 </span>
-                {plan.price !== "Trial" && plan.price !== "Em breve" && (
+                {plan.priceType === "money" && (
                   <span style={{ color: "#52525B", fontSize: "14px" }}>/mês</span>
                 )}
               </div>
+
+              {/* Nota de preço anual (Pro) — altura reservada p/ alinhar cards */}
+              <p
+                className="mb-3 text-xs"
+                style={{ color: "#52525B", minHeight: "16px" }}
+              >
+                {plan.annualNote ?? ""}
+              </p>
 
               <p
                 className="text-sm leading-relaxed mb-6"
@@ -204,20 +227,11 @@ export function Plans() {
 
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {plan.features.map((feat) => (
-                  <li
-                    key={feat.text}
-                    className="flex items-center gap-3 text-sm"
-                  >
+                  <li key={feat.text} className="flex items-center gap-3 text-sm">
                     {feat.ok ? (
-                      <Check
-                        size={14}
-                        style={{ color: "#00D4A0", flexShrink: 0 }}
-                      />
+                      <Check size={14} style={{ color: "#00D4A0", flexShrink: 0 }} />
                     ) : (
-                      <X
-                        size={14}
-                        style={{ color: "#3F3F46", flexShrink: 0 }}
-                      />
+                      <X size={14} style={{ color: "#3F3F46", flexShrink: 0 }} />
                     )}
                     <span style={{ color: feat.ok ? "#A1A1AA" : "#3F3F46" }}>
                       {feat.text}
@@ -227,15 +241,11 @@ export function Plans() {
               </ul>
 
               <a
-                href={"ctaHref" in plan ? plan.ctaHref : "/onboarding"}
+                href={plan.ctaHref}
                 className="block text-center py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90"
                 style={{
-                  background: plan.featured
-                    ? "#FF2D55"
-                    : "rgba(255,255,255,0.04)",
-                  border: plan.featured
-                    ? "none"
-                    : "1px solid rgba(255,255,255,0.1)",
+                  background: plan.featured ? "#FF2D55" : "rgba(255,255,255,0.04)",
+                  border: plan.featured ? "none" : "1px solid rgba(255,255,255,0.1)",
                   textDecoration: "none",
                   boxShadow: plan.featured
                     ? "0 8px 24px rgba(255,45,85,0.3)"
@@ -248,9 +258,26 @@ export function Plans() {
           ))}
         </div>
 
-        <p className="text-center text-xs mt-8" style={{ color: "#3F3F46" }}>
-          Sem cartão de crédito · Cancele quando quiser · Suporte em português
-        </p>
+        {isSummary ? (
+          <div className="text-center mt-10">
+            <a
+              href="/planos"
+              className="inline-flex items-center gap-2 px-8 py-4 font-bold text-base rounded-xl transition-all duration-200 hover:opacity-80"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#FFFFFF",
+                textDecoration: "none",
+              }}
+            >
+              Ver comparativo completo →
+            </a>
+          </div>
+        ) : (
+          <p className="text-center text-xs mt-8" style={{ color: "#3F3F46" }}>
+            Sem cartão de crédito · Cancele quando quiser · Suporte em português
+          </p>
+        )}
       </Container>
     </Section>
   );
