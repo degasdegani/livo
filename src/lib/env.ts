@@ -29,6 +29,9 @@ const SERVER_ENV_VARS: EnvVar[] = [
   // Payments
   { key: "ASAAS_KEY", description: "Asaas payment gateway API key", critical: true },
   { key: "ASAAS_WEBHOOK_TOKEN", description: "Asaas webhook authentication token", critical: true },
+  { key: "ASAAS_CLUBE_WEBHOOK_TOKEN", description: "Token de autenticação do webhook do Clube de Assinatura", critical: true },
+  { key: "ASAAS_WEBHOOK_EMAIL", description: "Email usado na configuração do webhook Asaas", critical: false },
+  { key: "NEXT_PUBLIC_ASAAS_SANDBOX", description: "Flag de ambiente sandbox/produção da Asaas", critical: false },
 
   // AI
   { key: "ANTHROPIC_API_KEY", description: "Anthropic (Claude) API key for Lívia", critical: true },
