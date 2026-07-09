@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: "Produto", href: "/produto" },
   { label: "Planos", href: "/planos" },
   { label: "Embaixadores", href: "/#embaixadores" },
+  { label: "Entrar", href: "/login" },
 ] as const;
 
 export function Navbar() {
@@ -52,27 +53,17 @@ export function Navbar() {
 
         <Container className="relative flex items-center justify-between h-16">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3">
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--livo-gold-solid)",
-                display: "inline-block",
-                boxShadow: "0 0 12px rgba(138,100,37,0.6)",
-              }}
-            />
+          <a href="/" className="flex items-center">
             <span
               className={poppins.className}
               style={{
-                fontSize: "20px",
-                fontWeight: 500,
-                letterSpacing: "0.08em",
-                color: "var(--livo-cream)",
+                fontSize: "24px",
+                fontWeight: 300,
+                letterSpacing: "0.35em",
+                color: "#FFFFFF",
               }}
             >
-              Livo
+              L I V O
             </span>
           </a>
 
@@ -91,7 +82,7 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <a href="/onboarding" className="hidden md:block">
-            <Button variant="gold" size="sm">
+            <Button variant="red" size="sm">
               Começar agora
             </Button>
           </a>
@@ -156,7 +147,7 @@ export function Navbar() {
                 </a>
               ))}
               <a href="/onboarding" className="mt-4" onClick={() => setMobileOpen(false)}>
-                <Button variant="gold" size="lg" className="w-full">
+                <Button variant="red" size="lg" className="w-full">
                   Começar agora
                 </Button>
               </a>

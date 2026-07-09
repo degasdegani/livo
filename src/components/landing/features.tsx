@@ -20,7 +20,7 @@ const FEATURES = [
     title: "Agenda inteligente",
     description:
       "Clientes agendam sozinhos 24h por dia. Sem WhatsApp, sem ligação, sem confusão. Visão mensal e operacional em tempo real.",
-    color: "#8A6425",
+    color: "#F5EDD9",
     tag: "Core",
   },
   {
@@ -60,7 +60,7 @@ const FEATURES = [
     title: "Comandas e estoque",
     description:
       "PDV integrado para registrar serviços e produtos. Controle de estoque automático. Comissões por barbeiro calculadas na hora.",
-    color: "#8A6425",
+    color: "#F5EDD9",
     tag: "PDV",
   },
 ] as const;
@@ -91,14 +91,14 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
           >
             <span
               className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"
-              style={{ color: "var(--livo-gold-bright)" }}
+              style={{ color: "var(--livo-cream)" }}
             >
               <span
                 style={{
                   display: "inline-block",
                   width: 24,
                   height: 1,
-                  background: "var(--livo-gold-solid)",
+                  background: "rgba(255,255,255,0.4)",
                 }}
               />
               Funcionalidades
@@ -107,7 +107,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
                   display: "inline-block",
                   width: 24,
                   height: 1,
-                  background: "var(--livo-gold-solid)",
+                  background: "rgba(255,255,255,0.4)",
                 }}
               />
             </span>
@@ -138,16 +138,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
             >
               Tudo que sua barbearia{" "}
             </span>
-            <span
-              style={{
-                background: "linear-gradient(135deg, #8A6425, #D6C099)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              precisa.
-            </span>
+            <span style={{ color: "#FFFFFF" }}>precisa.</span>
           </motion.h2>
 
           {/* Subtítulo */}
@@ -267,7 +258,7 @@ function FeatureCard({
 
       {/* Ícone */}
       <div style={{ marginBottom: "16px" }}>
-        <feature.icon size={28} strokeWidth={1.5} color="var(--livo-gold-solid)" />
+        <feature.icon size={28} strokeWidth={1.5} color="var(--livo-cream)" />
       </div>
 
       {/* Título */}

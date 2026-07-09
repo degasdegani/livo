@@ -135,9 +135,9 @@ export function Hero() {
             <div
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-widest uppercase"
               style={{
-                background: "rgba(138,100,37,0.08)",
-                border: "1px solid rgba(138,100,37,0.3)",
-                color: "var(--livo-gold-bright)",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.16)",
+                color: "var(--livo-cream)",
               }}
             >
               <motion.span
@@ -146,8 +146,8 @@ export function Hero() {
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  background: "var(--livo-gold-bright)",
-                  boxShadow: "0 0 10px var(--livo-gold-bright)",
+                  background: "var(--livo-cream)",
+                  boxShadow: "0 0 10px var(--livo-cream)",
                 }}
                 animate={{ opacity: [1, 0.3, 1] }}
                 transition={{
@@ -189,11 +189,7 @@ export function Hero() {
               <span
                 style={{
                   display: "block",
-                  background:
-                    "linear-gradient(135deg, #8A6425 0%, #D6C099 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
+                  color: "#FFFFFF",
                 }}
               >
                 no próximo nível.
@@ -226,7 +222,7 @@ export function Hero() {
             className="flex flex-wrap gap-4 justify-center"
           >
             <a href="/onboarding">
-              <Button variant="gold" size="xl">
+              <Button variant="red" size="xl">
                 Começar grátis por {TRIAL_DAYS.start} dias
               </Button>
             </a>
@@ -262,7 +258,7 @@ export function Hero() {
                 borderRadius: "20px",
                 padding: "1px",
                 background:
-                  "linear-gradient(135deg, rgba(138,100,37,0.35) 0%, rgba(255,255,255,0.05) 50%, rgba(0,212,255,0.2) 100%)",
+                  "linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 50%, rgba(0,212,255,0.2) 100%)",
               }}
             >
               <div

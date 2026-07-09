@@ -19,8 +19,8 @@ export default function LandingPage() {
       <Hero />
       {/* 3 passos como prova social; detalhe completo em /produto */}
       <HowItWorks variant="home" />
-      {/* 4 primeiras funcionalidades; todas em /produto */}
-      <Features limit={4} moreHref="/produto" />
+      {/* 6 funcionalidades completas na grade 3x2 */}
+      <Features limit={6} moreHref="/produto" />
       {/* Resumo Start + Pro; comparativo completo em /planos */}
       <Plans variant="summary" />
       {/* Embaixadores permanece na Home por ora (id="embaixadores") */}

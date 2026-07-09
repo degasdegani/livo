@@ -41,11 +41,11 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           <div
             className="rounded-2xl p-8 relative overflow-hidden"
-            style={{ background: "#0A0A0A", border: "1px solid rgba(138,100,37,0.2)" }}
+            style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <p
               className="text-sm font-black mb-5"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-gold-bright)" }}
+              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-cream)" }}
             >
               01
             </p>
@@ -61,7 +61,7 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
             </p>
             <span
               className="text-xs font-semibold"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-gold-bright)" }}
+              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-cream)" }}
             >
               Configuração em 5 minutos
             </span>
@@ -120,7 +120,7 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
 
         <div
           className="text-center rounded-2xl p-10"
-          style={{ border: "1px solid rgba(138,100,37,0.2)", background: "rgba(138,100,37,0.05)" }}
+          style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}
         >
           <p
             className="text-xl font-bold mb-2"
@@ -135,7 +135,11 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
           <a
             href={cta.href}
             className="inline-flex items-center gap-2 px-8 py-4 font-bold text-base rounded-xl no-underline hover:-translate-y-0.5 transition-all duration-200"
-            style={{ background: "var(--livo-gold-solid)", color: "var(--livo-cream)" }}
+            style={{
+              background: "linear-gradient(180deg, #E43B49, #C62E3C)",
+              color: "#FFFFFF",
+              boxShadow: "0 8px 24px rgba(198,46,60,0.35)",
+            }}
           >
             {cta.label}
           </a>

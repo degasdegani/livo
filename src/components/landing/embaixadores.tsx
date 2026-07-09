@@ -70,7 +70,7 @@ export function Embaixadores() {
             >
               Embaixador Oficial é o título de quem representa a LIVO com
               autoridade — acesso a conteúdos, mentorias e benefícios
-              exclusivos da marca. TX Barbearia carrega esse título hoje.
+              exclusivos. TX Barbearia carrega esse título hoje.
               Selecionamos barbearias de referência para representar a LIVO
               em suas regiões — se você lidera uma barbearia de peso na sua
               cidade, essa conversa é pra você.

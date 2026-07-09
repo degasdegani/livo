@@ -107,7 +107,7 @@ export function Plans({ variant = "full" }: PlansProps) {
         <div className="text-center mb-16">
           <p
             className="text-xs font-semibold tracking-widest uppercase mb-4"
-            style={{ color: "var(--livo-gold-bright)" }}
+            style={{ color: "var(--livo-cream)" }}
           >
             Planos e preços
           </p>
@@ -152,7 +152,7 @@ export function Plans({ variant = "full" }: PlansProps) {
                   ? "linear-gradient(160deg, rgba(85,62,32,0.35), #000000)"
                   : "#0A0A0A",
                 border: plan.featured
-                  ? "1px solid rgba(138,100,37,0.4)"
+                  ? "1px solid rgba(255,255,255,0.18)"
                   : "1px solid rgba(255,255,255,0.06)",
                 boxShadow: plan.featured
                   ? "0 0 60px rgba(138,100,37,0.1)"
@@ -163,8 +163,8 @@ export function Plans({ variant = "full" }: PlansProps) {
                 <span
                   className="absolute top-6 right-6 font-black rounded-full px-3 py-1"
                   style={{
-                    background: "var(--livo-gold-solid)",
-                    color: "var(--livo-cream)",
+                    background: "#FFFFFF",
+                    color: "#000000",
                     fontSize: "9px",
                     letterSpacing: "2px",
                   }}
@@ -176,7 +176,7 @@ export function Plans({ variant = "full" }: PlansProps) {
               <p
                 className="text-xs font-bold tracking-widest uppercase mb-3"
                 style={{
-                  color: plan.featured ? "var(--livo-gold-bright)" : "#52525B",
+                  color: plan.featured ? "var(--livo-cream)" : "#52525B",
                   fontFamily: "var(--font-mono)",
                 }}
               >
@@ -196,7 +196,7 @@ export function Plans({ variant = "full" }: PlansProps) {
                   style={{
                     fontSize: plan.priceType === "soon" ? "32px" : "56px",
                     letterSpacing: "-2px",
-                    color: plan.featured ? "var(--livo-gold-bright)" : "var(--livo-cream)",
+                    color: plan.featured ? "#FFFFFF" : "var(--livo-cream)",
                     lineHeight: 1,
                   }}
                 >
@@ -227,7 +227,7 @@ export function Plans({ variant = "full" }: PlansProps) {
                 style={{
                   height: "1px",
                   background: plan.featured
-                    ? "rgba(138,100,37,0.3)"
+                    ? "rgba(255,255,255,0.14)"
                     : "rgba(255,255,255,0.06)",
                 }}
               />
@@ -251,13 +251,10 @@ export function Plans({ variant = "full" }: PlansProps) {
                 href={plan.ctaHref}
                 className="block text-center py-3 rounded-xl font-bold text-sm transition-all duration-200 hover:opacity-90"
                 style={{
-                  background: plan.featured ? "var(--livo-gold-solid)" : "rgba(255,255,255,0.04)",
-                  border: plan.featured ? "none" : "1px solid rgba(255,255,255,0.1)",
-                  color: "var(--livo-cream)",
+                  background: "linear-gradient(180deg, #E43B49, #C62E3C)",
+                  color: "#FFFFFF",
                   textDecoration: "none",
-                  boxShadow: plan.featured
-                    ? "0 8px 24px rgba(138,100,37,0.35)"
-                    : "none",
+                  boxShadow: "0 8px 24px rgba(198,46,60,0.35)",
                 }}
               >
                 {plan.cta}

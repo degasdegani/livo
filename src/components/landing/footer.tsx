@@ -30,27 +30,17 @@ export function Footer() {
       <Container>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-16">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "var(--livo-gold-solid)",
-                  display: "inline-block",
-                  boxShadow: "0 0 10px rgba(138,100,37,0.5)",
-                }}
-              />
+            <div className="flex items-center mb-4">
               <span
                 className={poppins.className}
                 style={{
-                  fontSize: "20px",
-                  fontWeight: 500,
-                  letterSpacing: "0.08em",
-                  color: "var(--livo-cream)",
+                  fontSize: "24px",
+                  fontWeight: 300,
+                  letterSpacing: "0.35em",
+                  color: "#FFFFFF",
                 }}
               >
-                Livo
+                L I V O
               </span>
             </div>
             <p

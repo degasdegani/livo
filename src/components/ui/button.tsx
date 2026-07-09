@@ -89,7 +89,7 @@ const buttonVariants = cva(
           "h-auto px-0 py-0",
         ],
 
-        // Botão gold — EXCLUSIVO do site institucional (LIVO-032-A).
+        // Botão gold — EXCLUSIVO da seção Embaixadores do site institucional.
         // Não usar em telas logadas (dashboard segue no variant "primary").
         gold: [
           "bg-[#8A6425] text-[#F5EDD9]",
@@ -99,6 +99,18 @@ const buttonVariants = cva(
           "hover:-translate-y-0.5",
           "active:translate-y-0 active:shadow-none",
           "focus-visible:ring-[#D6C099]",
+        ],
+
+        // Botão red — EXCLUSIVO do site institucional (LIVO-035). CTAs
+        // principais fora da seção Embaixadores. Não usar em telas logadas.
+        red: [
+          "bg-gradient-to-b from-[#E43B49] to-[#C62E3C] text-white",
+          "shadow-[0_4px_16px_rgba(198,46,60,0.35)]",
+          "hover:from-[#EF4D5A] hover:to-[#D63B49]",
+          "hover:shadow-[0_6px_24px_rgba(198,46,60,0.5)]",
+          "hover:-translate-y-0.5",
+          "active:translate-y-0 active:shadow-none",
+          "focus-visible:ring-[#E43B49]",
         ],
       },
 
