@@ -81,10 +81,10 @@ export function Footer() {
           style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
         >
           <div className="text-center md:text-left">
-            <p style={{ fontSize: "12px", color: "#27272A" }}>
+            <p style={{ fontSize: "12px", color: "#A1A1AA" }}>
               SALA Tecnologia Ltda. — CNPJ 67.696.612/0001-31
             </p>
-            <p style={{ fontSize: "12px", color: "#27272A" }}>
+            <p style={{ fontSize: "12px", color: "#A1A1AA" }}>
               © 2026 SALA Tecnologia. Todos os direitos reservados.
             </p>
           </div>
