@@ -1,5 +1,6 @@
 // src/auth.ts
 import { db } from "@/lib/db";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
@@ -7,29 +8,25 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 
 // Rate limiter de login — 5 tentativas falhas por e-mail em 15 minutos.
-// Em multi-instância serverless cada instância mantém seu próprio Map.
-type LoginRateLimitEntry = { count: number; resetAt: number };
-const loginRateLimitMap = new Map<string, LoginRateLimitEntry>();
+// Chamado SOMENTE dentro de authorize() (Node Runtime, Route Handler /api/auth).
+// NUNCA referenciar dentro dos callbacks jwt/session (Edge) — ver comentários abaixo.
+// checkRateLimit incrementa a cada chamada (sucesso ou falha); login bem-sucedido
+// chama resetLoginRateLimit para "perdoar" as tentativas, replicando o
+// loginRateLimitMap.delete(email) do mecanismo anterior.
 const LOGIN_RATE_LIMIT_MAX = 5;
-const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60_000;
+const LOGIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
 
-function trackLoginFailure(email: string): void {
-  const now = Date.now();
-  const entry = loginRateLimitMap.get(email);
-  if (entry && now < entry.resetAt) {
-    entry.count += 1;
-  } else {
-    loginRateLimitMap.set(email, {
-      count: 1,
-      resetAt: now + LOGIN_RATE_LIMIT_WINDOW_MS,
-    });
-  }
+async function isLoginRateLimited(email: string): Promise<boolean> {
+  const { success } = await checkRateLimit(
+    `login:${email}`,
+    LOGIN_RATE_LIMIT_MAX,
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+  );
+  return !success;
 }
 
-function isLoginRateLimited(email: string): boolean {
-  const now = Date.now();
-  const entry = loginRateLimitMap.get(email);
-  return !!entry && now < entry.resetAt && entry.count >= LOGIN_RATE_LIMIT_MAX;
+async function resetLoginRateLimit(email: string): Promise<void> {
+  await resetRateLimit(`login:${email}`, LOGIN_RATE_LIMIT_MAX, LOGIN_RATE_LIMIT_WINDOW_SECONDS);
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -73,12 +70,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const email = (credentials.email as string).toLowerCase();
 
-        if (isLoginRateLimited(email)) return null;
+        if (await isLoginRateLimited(email)) return null;
 
         const user = await db.user.findUnique({ where: { email } });
 
         if (!user || !user.password) {
-          trackLoginFailure(email);
           return null;
         }
 
@@ -88,11 +84,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         if (!passwordMatch) {
-          trackLoginFailure(email);
           return null;
         }
 
-        loginRateLimitMap.delete(email);
+        await resetLoginRateLimit(email);
         return user;
       },
     }),

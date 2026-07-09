@@ -1,31 +1,27 @@
 import crypto from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
-// Rate limit in-memory (mesmo padrão do login/Lívia)
+// Rate limit — Upstash Redis (src/lib/rate-limit.ts)
 // ---------------------------------------------------------------------------
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_REQUESTS = 3;
-const WINDOW_MS = 60 * 60 * 1000; // 1 hora
+const WINDOW_SECONDS = 60 * 60; // 1 hora
 
-export function checkOtpRateLimit(
+export async function checkOtpRateLimit(
   barbershopId: string,
   phone: string
-): { allowed: boolean; retryAfterMs?: number } {
-  const key = `${barbershopId}:${phone}`;
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
+): Promise<{ allowed: boolean; retryAfterMs?: number }> {
+  const key = `otp-clube:${barbershopId}:${phone}`;
+  const { success, reset } = await checkRateLimit(key, MAX_REQUESTS, WINDOW_SECONDS);
 
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return { allowed: true };
+  if (!success) {
+    return {
+      allowed: false,
+      retryAfterMs: reset ? Math.max(0, reset - Date.now()) : WINDOW_SECONDS * 1000,
+    };
   }
 
-  if (entry.count >= MAX_REQUESTS) {
-    return { allowed: false, retryAfterMs: entry.resetAt - now };
-  }
-
-  entry.count += 1;
   return { allowed: true };
 }
 

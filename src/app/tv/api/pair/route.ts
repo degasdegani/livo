@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hasModuleAccess } from "@/lib/modules";
+import { checkRateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
-// Rate-limit em memória: 5 tentativas por IP em 15 minutos.
-// Mesmo padrão Map<chave, { count, resetAt }> ja usado em api/livia/route.ts.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+// Rate-limit: 5 tentativas por IP em 15 minutos.
 const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
+const WINDOW_SECONDS = 15 * 60;
 
 function getIp(req: NextRequest): string {
   return (
@@ -17,22 +16,11 @@ function getIp(req: NextRequest): string {
   );
 }
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= MAX_ATTEMPTS) return false;
-  entry.count += 1;
-  return true;
-}
-
 export async function POST(req: NextRequest) {
   const ip = getIp(req);
 
-  if (!checkRateLimit(ip)) {
+  const { success: allowed } = await checkRateLimit(`tv-pair:${ip}`, MAX_ATTEMPTS, WINDOW_SECONDS);
+  if (!allowed) {
     return NextResponse.json(
       { error: "Muitas tentativas. Aguarde 15 minutos." },
       { status: 429 },

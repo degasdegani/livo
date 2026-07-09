@@ -43,6 +43,10 @@ const SERVER_ENV_VARS: EnvVar[] = [
   // Product analytics (non-critical — app works without them)
   { key: "POSTHOG_API_KEY", description: "PostHog project API key (product analytics)", critical: false },
   { key: "POSTHOG_HOST", description: "PostHog ingestion host (e.g. https://app.posthog.com)", critical: false },
+
+  // Rate limiting (non-critical — fail-open by design, see src/lib/rate-limit.ts)
+  { key: "UPSTASH_REDIS_REST_URL", description: "Upstash Redis REST URL (rate limiting)", critical: false },
+  { key: "UPSTASH_REDIS_REST_TOKEN", description: "Upstash Redis REST token (rate limiting)", critical: false },
 ];
 
 export type EnvValidationResult = {

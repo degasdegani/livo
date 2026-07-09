@@ -13,13 +13,11 @@ import { db } from "@/lib/db";
 import { sendAppointmentConfirmation } from "@/lib/email";
 import { log } from "@/lib/logger";
 import { isValidPhoneBR } from "@/lib/masks";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── Rate limit: agendamento público ──────────────────────────
-// In-memory por instância serverless — mesmo padrão de src/auth.ts.
-type BookingRateLimitEntry = { count: number; resetAt: number };
-const bookingRateLimitMap = new Map<string, BookingRateLimitEntry>();
 const BOOKING_RATE_LIMIT_MAX = 10;
-const BOOKING_RATE_LIMIT_WINDOW_MS = 60 * 60_000; // 1 hora
+const BOOKING_RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hora
 
 async function getClientIp(): Promise<string> {
   try {
@@ -34,36 +32,29 @@ async function getClientIp(): Promise<string> {
   return "unknown";
 }
 
-function isBookingRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = bookingRateLimitMap.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    bookingRateLimitMap.set(ip, { count: 1, resetAt: now + BOOKING_RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  if (entry.count >= BOOKING_RATE_LIMIT_MAX) return true;
-  entry.count += 1;
-  return false;
+async function isBookingRateLimited(ip: string): Promise<boolean> {
+  const { success } = await checkRateLimit(
+    `book:${ip}`,
+    BOOKING_RATE_LIMIT_MAX,
+    BOOKING_RATE_LIMIT_WINDOW_SECONDS,
+  );
+  return !success;
 }
 
 // ── Rate limit: consulta de slots (enumeração) ───────────────
 // Bucket PRÓPRIO, separado do de createAppointment. Muito mais folgado:
 // getAvailableSlots é chamada com alta frequência na navegação legítima
 // (troca de data/profissional/serviço). Retorna só disponibilidade, sem PII.
-const slotsRateLimitMap = new Map<string, BookingRateLimitEntry>();
 const SLOTS_RATE_LIMIT_MAX = 120;
-const SLOTS_RATE_LIMIT_WINDOW_MS = 60 * 60_000; // 1 hora
+const SLOTS_RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hora
 
-function isSlotsRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = slotsRateLimitMap.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    slotsRateLimitMap.set(ip, { count: 1, resetAt: now + SLOTS_RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  if (entry.count >= SLOTS_RATE_LIMIT_MAX) return true;
-  entry.count += 1;
-  return false;
+async function isSlotsRateLimited(ip: string): Promise<boolean> {
+  const { success } = await checkRateLimit(
+    `slots:${ip}`,
+    SLOTS_RATE_LIMIT_MAX,
+    SLOTS_RATE_LIMIT_WINDOW_SECONDS,
+  );
+  return !success;
 }
 
 // ── Buscar slots disponíveis ──────────────────────────────────
@@ -86,7 +77,7 @@ export async function getAvailableSlots({
     // Rate limit de enumeração. IP "unknown" compartilha um único balde
     // (nunca fail-open), mesma decisão do createAppointment.
     const ip = await getClientIp();
-    if (isSlotsRateLimited(ip)) {
+    if (await isSlotsRateLimited(ip)) {
       log.agenda.warn("rate limit de consulta de slots atingido", { ip, barbershopId });
       return [];
     }
@@ -182,7 +173,7 @@ export async function createAppointment(
     if (ip === "unknown") {
       log.agenda.warn("agendamento público sem IP identificável (balde compartilhado)", { barbershopId: data.barbershopId });
     }
-    if (isBookingRateLimited(ip)) {
+    if (await isBookingRateLimited(ip)) {
       log.agenda.warn("rate limit de agendamento público atingido", { ip, barbershopId: data.barbershopId });
       return { error: "Muitas tentativas. Tente novamente em algumas horas." };
     }

@@ -3,32 +3,14 @@
 import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { createPasswordResetToken } from "@/lib/password-reset";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "noreply@livobarber.com.br";
 const BASE_URL = process.env.NEXTAUTH_URL ?? "https://livobarber.com.br";
 
-type RateLimitEntry = { count: number; resetAt: number };
-const rateLimitMap = new Map<string, RateLimitEntry>();
 const RATE_LIMIT_MAX = 3;
-const RATE_LIMIT_WINDOW_MS = 15 * 60_000;
-
-function isRateLimited(email: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(email);
-  if (!entry || now >= entry.resetAt) return false;
-  return entry.count >= RATE_LIMIT_MAX;
-}
-
-function trackAttempt(email: string): void {
-  const now = Date.now();
-  const entry = rateLimitMap.get(email);
-  if (entry && now < entry.resetAt) {
-    entry.count += 1;
-  } else {
-    rateLimitMap.set(email, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-  }
-}
+const RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
 
 export async function requestPasswordReset(
   email: string,
@@ -39,10 +21,14 @@ export async function requestPasswordReset(
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  if (isRateLimited(normalizedEmail)) {
+  const { success: allowed } = await checkRateLimit(
+    `forgot-password:${normalizedEmail}`,
+    RATE_LIMIT_MAX,
+    RATE_LIMIT_WINDOW_SECONDS,
+  );
+  if (!allowed) {
     return { error: "Muitas tentativas. Tente novamente em 15 minutos." };
   }
-  trackAttempt(normalizedEmail);
 
   try {
     const user = await db.user.findUnique({ where: { email: normalizedEmail } });

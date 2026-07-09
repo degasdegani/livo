@@ -6,14 +6,11 @@ import { getCurrentMembership } from "@/lib/permissions";
 import { hasModuleAccess } from "@/lib/modules";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-// Rate limiter em memória — 20 req/min por userId (1:1 com barbershopId no modelo atual).
-// Em multi-instância serverless cada instância mantém seu próprio Map — suficiente para
-// a escala atual. Migrar para Redis/Upstash quando necessário.
-type RateLimitEntry = { count: number; resetAt: number };
-const rateLimitMap = new Map<string, RateLimitEntry>();
+// Rate limiter — 20 req/min por userId (1:1 com barbershopId no modelo atual).
 const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 export async function POST(req: NextRequest) {
   const correlationId = req.headers.get("x-correlation-id") ?? undefined;
@@ -33,27 +30,21 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = membership.userId;
-    const now = Date.now();
-    const entry = rateLimitMap.get(userId);
-
-    if (entry && now < entry.resetAt) {
-      if (entry.count >= RATE_LIMIT_MAX) {
-        log.livia.warn("rate limit atingido", {
-          correlationId,
-          userId,
-          barbershopId: membership.barbershopId,
-        });
-        return NextResponse.json(
-          { error: "Limite de mensagens atingido. Tente novamente em breve." },
-          { status: 429 },
-        );
-      }
-      entry.count += 1;
-    } else {
-      rateLimitMap.set(userId, {
-        count: 1,
-        resetAt: now + RATE_LIMIT_WINDOW_MS,
+    const { success: allowed } = await checkRateLimit(
+      `livia:${userId}`,
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_SECONDS,
+    );
+    if (!allowed) {
+      log.livia.warn("rate limit atingido", {
+        correlationId,
+        userId,
+        barbershopId: membership.barbershopId,
       });
+      return NextResponse.json(
+        { error: "Limite de mensagens atingido. Tente novamente em breve." },
+        { status: 429 },
+      );
     }
 
     const { messages } = await req.json();

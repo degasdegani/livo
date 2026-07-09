@@ -91,7 +91,7 @@ export async function requestClientCode(
   }
 
   // Rate limit
-  const rl = checkOtpRateLimit(barbershopId, phoneDigits);
+  const rl = await checkOtpRateLimit(barbershopId, phoneDigits);
   if (!rl.allowed) {
     const minutes = Math.ceil((rl.retryAfterMs ?? 0) / 60000);
     return { error: `Muitas tentativas. Aguarde ${minutes} minuto(s).` };
