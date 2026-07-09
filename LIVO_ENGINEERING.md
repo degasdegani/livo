@@ -1,989 +1,145 @@
 # LIVO ENGINEERING
 
 Versão: 1.0
-
-Arquitetura Oficial, Engenharia, Escalabilidade e Padrões Técnicos do Ecossistema LIVO
+Nível 7 na hierarquia documental (LIVO_INDEX.md)
 
 ---
 
 # PROPÓSITO
 
-Este documento define os padrões oficiais de engenharia do ecossistema LIVO.
+Este documento reúne, em um único lugar, todas as regras arquiteturais invioláveis do ecossistema LIVO que hoje existem apenas como convenção tácita, memória de sessões anteriores ou enforcement automatizado sem registro formal.
 
-Toda implementação técnica deve seguir as diretrizes aqui estabelecidas.
+Sua criação responde diretamente ao Princípio de Governança do LIVO_DECISION_FRAMEWORK.md:
 
-O objetivo é garantir:
+"Nenhuma regra importante deve existir apenas no código."
 
-- Escalabilidade
-- Manutenibilidade
-- Performance
-- Segurança
-- Observabilidade
-- Consistência
+Se uma regra crítica não está aqui, ela não existe para fins de governança — deve ser adicionada antes de ser cobrada de qualquer execução futura (humana ou IA).
 
 ---
 
-# PRINCÍPIO FUNDAMENTAL
+# POSIÇÃO NA HIERARQUIA
 
-A arquitetura deve durar mais do que a tecnologia.
+Este documento está subordinado a:
 
----
-
-Frameworks mudam.
-
-Bibliotecas mudam.
-
-Linguagens mudam.
-
----
-
-A arquitetura deve permanecer.
-
----
-
-# FILOSOFIA DE ENGENHARIA
-
-O objetivo não é apenas construir software funcional.
-
-O objetivo é construir uma plataforma sustentável por décadas.
-
----
-
-Toda decisão técnica deve considerar:
-
-Curto prazo.
-
-Médio prazo.
-
-Longo prazo.
-
----
-
-# PRINCÍPIOS INEGOCIÁVEIS
-
-Clareza.
-
-Escalabilidade.
-
-Modularidade.
-
-Observabilidade.
-
-Segurança.
-
-Performance.
-
-Simplicidade.
-
----
-
-# ARQUITETURA GERAL
-
-O LIVO deve ser construído como uma plataforma modular.
-
----
-
-Camadas principais:
-
-Frontend
-
-↓
-
-API Layer
-
-↓
-
-Application Layer
-
-↓
-
-Domain Layer
-
-↓
-
-Infrastructure Layer
-
-↓
-
-Database
-
----
-
-Nenhuma camada deve violar responsabilidades.
-
----
-
-# ESTRATÉGIA DE DOMÍNIO
-
-Toda regra de negócio deve viver no domínio.
-
----
-
-Nunca espalhar regras críticas pela interface.
-
----
-
-Nunca colocar lógica de negócio em componentes visuais.
-
----
-
-# ESTRATÉGIA MULTI-TENANT
-
-O LIVO nasce multi-tenant.
-
----
-
-Toda entidade deve pertencer a:
-
-Tenant
-
-↓
-
-Empresa
-
-↓
-
-Usuários
-
-↓
-
-Dados
-
----
-
-Nenhuma informação pode cruzar fronteiras organizacionais.
-
----
-
-# REGRA ABSOLUTA
-
-Toda tabela relevante deve possuir:
-
-tenant_id
-
-created_at
-
-updated_at
-
-created_by
-
-updated_by
-
-status
-
----
-
-# ORGANIZAÇÃO DE MÓDULOS
-
-Cada módulo deve ser isolado.
-
----
-
-Exemplos:
-
-Agenda
-
-Clientes
-
-Financeiro
-
-Produtos
-
-Comandas
-
-Comissões
-
-Marketing
-
-IA
-
-Configurações
-
----
-
-Cada módulo deve possuir:
-
-Domain
-
-Application
-
-Infrastructure
-
-UI
-
-Tests
-
----
-
-# FRONTEND ARCHITECTURE
-
-Objetivos:
-
-Escalabilidade.
-
-Performance.
-
-Reutilização.
-
----
-
-Estrutura:
-
-app/
-
-components/
-
-features/
-
-hooks/
-
-services/
-
-lib/
-
-types/
-
-styles/
-
-providers/
-
----
-
-# COMPONENTES
-
-Separação obrigatória:
-
-UI Components
-
-↓
-
-Business Components
-
-↓
-
-Pages
-
----
-
-Nunca misturar responsabilidades.
-
----
-
-# COMPONENT LIBRARY
-
-Toda interface deve utilizar:
-
-LIVO Component Library
-
----
-
-Não criar componentes fora do Design System.
-
----
-
-# ESTADO GLOBAL
-
-Utilizar apenas quando necessário.
-
----
-
-Preferir:
-
-Local State
-
-↓
-
-Feature State
-
-↓
-
-Global State
-
----
-
-Evitar estados globais excessivos.
-
----
-
-# BACKEND ARCHITECTURE
-
-Objetivos:
-
-Escala.
-
-Clareza.
-
-Manutenção.
-
----
-
-Estrutura:
-
-Controllers
-
-↓
-
-Services
-
-↓
-
-Use Cases
-
-↓
-
-Repositories
-
-↓
-
-Database
-
----
-
-# USE CASES
-
-Toda regra de negócio deve existir em casos de uso.
-
----
-
-Nunca em controllers.
-
----
-
-Nunca em componentes.
-
----
-
-# APIs
-
-Toda API deve seguir:
-
-Consistência.
-
-Versionamento.
-
-Documentação.
-
-Observabilidade.
-
----
-
-Padrão:
-
-/api/v1
-
----
-
-Preparado para:
-
-/api/v2
-
----
-
-# PADRÕES DE RESPOSTA
-
-Success
-
-Data
-
-Metadata
-
-Pagination
-
-Errors
-
----
-
-Formato consistente em toda plataforma.
-
----
-
-# BANCO DE DADOS
-
-Princípios:
-
-Normalização.
-
-Performance.
-
-Integridade.
-
-Escalabilidade.
-
----
-
-Evitar duplicação.
-
----
-
-Evitar relacionamentos desnecessários.
-
----
-
-# EVENT DRIVEN MINDSET
-
-Toda ação importante deve gerar eventos.
-
----
-
-Exemplos:
-
-Cliente criado.
-
-Agendamento realizado.
-
-Venda concluída.
-
-Produto alterado.
-
-Pagamento recebido.
-
----
-
-# EVENTOS
-
-Eventos alimentam:
-
-Logs
-
-Auditoria
-
-Analytics
-
-IA
-
-Automações
-
-Integrações
-
----
-
-# OBSERVABILIDADE
-
-Toda funcionalidade deve ser observável.
-
----
-
-Obrigatório:
-
-Logs
-
-Metrics
-
-Tracing
-
-Auditoria
-
----
-
-# LOGGING
-
-Logs devem responder:
-
-Quem?
-
-Quando?
-
-Onde?
-
-O quê?
+1. README.md
+2. LIVO_INDEX.md
+3. LIVO_OPERATING_SYSTEM.md
+4. LIVO_DECISION_FRAMEWORK.md
 
-Resultado?
+Em caso de conflito entre uma regra técnica aqui descrita e a visão de produto ou experiência do usuário, os documentos de nível superior vencem — mas nenhuma regra de segurança de dados (proteção de registros, escopo multi-tenant) pode ser flexibilizada por conveniência de produto.
 
 ---
 
-# AUDITORIA
+# 1. REGRAS INVIOLÁVEIS DE PRODUÇÃO
 
-Registrar:
+Estas regras nunca podem ser violadas em nenhuma sessão, nenhum ticket, nenhuma refatoração — independentemente de quem execute o trabalho.
 
-Criação
+## 1.1 Registros protegidos
 
-Edição
+- A barbearia **TX Barbearia** possui `planStatus=lifetime` e `seatLimitOverride=-1`. Nunca deve ser bloqueada, cobrada ou ter esses campos alterados por nenhuma lógica de billing, migration ou script.
+- Os **14 registros de `WaitlistLead`** nunca devem ser deletados ou modificados.
+- Antes de qualquer `DELETE` em contas de usuário: rodar `SELECT` de barbearia e membership para confirmar que não há dado real antes de prosseguir.
 
-Exclusão
+## 1.2 Schema e banco de dados
 
-Ações críticas
+- `@@map()` só é aplicado em nomes de tabela — nunca em campos individuais.
+- `$transaction` do Prisma é sempre usado como callback assíncrono (`prisma.$transaction(async (tx) => {...})`), nunca como array de promises.
+- Toda escrita no banco é escopada por `barbershopId`. Nenhuma query de escrita pode cruzar fronteiras de tenant.
+- `prisma migrate diff` é obrigatório antes de qualquer `migrate dev`. Qualquer `DROP` (TABLE/COLUMN/CONSTRAINT/INDEX) é hard stop até revisão explícita.
 
----
-
-# MONITORAMENTO
-
-Monitorar:
-
-APIs
-
-Banco
-
-Filas
-
-IA
-
-Integrações
-
-Frontend
-
----
-
-# PERFORMANCE
-
-Performance é requisito funcional.
-
----
-
-Não é opcional.
-
----
-
-# METAS
-
-First Load:
-
-< 3s
-
----
-
-Interações:
-
-< 100ms
-
----
-
-APIs:
-
-< 300ms
-
----
-
-# CACHE
-
-Utilizar cache quando:
-
-Existir ganho real.
-
----
-
-Nunca cachear sem estratégia clara.
-
----
-
-# SEGURANÇA
-
-Segurança deve ser considerada desde o início.
-
----
-
-Nunca como etapa final.
-
----
-
-# AUTENTICAÇÃO
-
-Obrigatória.
-
----
-
-Preparada para:
-
-Email
-
-Google
-
-Microsoft
-
-Apple
-
-SSO
-
----
-
-# AUTORIZAÇÃO
-
-Baseada em:
-
-Roles
-
-Permissions
-
-Policies
-
----
-
-# PAPÉIS
-
-Owner
-
-Admin
-
-Manager
-
-Professional
-
-Assistant
-
-Viewer
-
----
-
-# LGPD
-
-Toda implementação deve respeitar:
-
-Consentimento.
-
-Portabilidade.
-
-Anonimização.
-
-Exclusão.
-
-Rastreabilidade.
-
----
-
-# CRIPTOGRAFIA
-
-Dados sensíveis devem ser protegidos.
-
----
-
-Nunca armazenar informações críticas em texto puro.
-
----
-
-# TESTES
-
-Pirâmide obrigatória:
-
-Unit Tests
-
-↓
-
-Integration Tests
-
-↓
-
-E2E Tests
-
----
-
-# COBERTURA
-
-Prioridade máxima:
-
-Regras de negócio.
-
----
-
-# TESTES UNITÁRIOS
-
-Use Cases
-
-Services
-
-Domain Logic
-
----
-
-# TESTES DE INTEGRAÇÃO
-
-API
-
-Banco
-
-Serviços
-
----
-
-# TESTES E2E
-
-Fluxos críticos:
-
-Login
-
-Agendamento
-
-Pagamento
-
-Comandas
-
-Clientes
-
----
-
-# QUALIDADE DE CÓDIGO
-
-Todo código deve ser:
-
-Legível.
+## 1.3 Runtime e autenticação
 
-Previsível.
+- `Prisma` (ou `@prisma/client`, ou `db.`) nunca aparece dentro dos callbacks `jwt` ou `session` do Auth.js — incompatibilidade com Edge Runtime. Essa regra existe porque sua violação já causou uma queda de login em produção para toda a base de usuários.
+- Tratamento de sessão inválida pertence a Server Components (Node Runtime), nunca aos callbacks `jwt`/`session`.
 
-Testável.
+## 1.4 Encoding e arquivos-fonte
 
-Documentado.
+- Nenhum emoji cru em arquivos `.ts`/`.tsx`. Caracteres astrais (`> 0xFFFF`) e `U+FE0F` corrompem para `\uFFFD` no Windows durante escrita de arquivo.
+- Exceção: ícones de UI isolados fora de risco de corrupção (`✓ 0x2713`, `✕ 0x2715`, `✦ 0x2726`, `✉ 0x2709`, `⚠ 0x26A0`) — allowlist explícita, não extensível sem atualizar o guardrail.
+- Emoji destinado ao cliente final (WhatsApp, e-mail, mensagens da Lívia) é preservado via escape Unicode `\u{XXXX}` no arquivo-fonte, mantendo o emoji real na entrega.
 
----
-
-# NOMENCLATURA
-
-Nomes devem explicar intenção.
-
----
-
-Evitar abreviações desnecessárias.
-
----
-
-# DOCUMENTAÇÃO
-
-Toda arquitetura relevante deve ser documentada.
-
----
-
-Toda decisão importante deve possuir contexto.
-
----
-
-# FEATURE FLAGS
-
-Preparar estrutura para:
-
-Lançamentos graduais.
-
-Testes.
-
-Experimentos.
-
-Beta Features.
-
----
-
-# FILAS
-
-Utilizar para:
-
-Notificações.
-
-Processamentos longos.
-
-Integrações.
-
-IA.
-
----
-
-Nunca bloquear fluxos críticos.
-
----
-
-# INTEGRAÇÕES
-
-Toda integração deve possuir:
-
-Logs.
-
-Retry.
-
-Fallback.
-
-Monitoramento.
-
----
-
-# IA READY
-
-Toda arquitetura deve considerar integração com a Lívia.
-
----
-
-Toda funcionalidade deve produzir contexto útil.
-
----
-
-# DADOS PARA IA
-
-Toda entidade deve responder:
-
-Que insights ela pode gerar?
-
----
-
-Que automações ela permite?
-
----
-
-Que previsões ela suporta?
-
----
-
-# ESCALABILIDADE HORIZONTAL
-
-Arquitetura preparada para crescimento.
-
----
+## 1.5 Qualidade e validação
 
-Não assumir:
+- `npx tsc --noEmit` deve retornar 0 erros antes de qualquer tarefa ser declarada concluída.
+- Validação de mudanças visuais/funcionais ocorre em preview deployments da Vercel — nunca em localhost (restrição de performance do ambiente local).
 
-Poucos usuários.
-
-Poucos dados.
-
-Poucas empresas.
-
----
-
-# RESILIÊNCIA
-
-Falhas devem ser isoladas.
-
----
-
-Um módulo não pode derrubar toda a plataforma.
-
----
-
-# DEPLOY
-
-Automatizado.
-
-Reproduzível.
-
-Versionado.
-
-Auditável.
-
----
-
-# CI/CD
-
-Obrigatório.
-
----
-
-Todo deploy deve passar por:
-
-Lint
-
-Tests
-
-Build
-
-Validation
-
----
-
-# VERSIONAMENTO
-
-Semantic Versioning
-
 ---
 
-MAJOR
+# 2. GUARDRAILS AUTOMATIZADOS
 
-Mudanças incompatíveis
+Três scripts standalone (dependência apenas de `fs`/`path`, sem instalar ESLint) protegem as regras da Seção 1 automaticamente a cada build. Todos plugados em `"build"` no `package.json`, executados nesta ordem:
 
----
-
-MINOR
-
-Novas funcionalidades
-
----
-
-PATCH
-
-Correções
-
----
+## 2.1 `scripts/guardrail-migrate-diff.js`
 
-# GOVERNANÇA TÉCNICA
+- **Protege:** regra 1.2 (hard stop em `DROP` de migration).
+- **Mecanismo:** baseline versionado (`scripts/.migrate-guard-baseline.json`) marca a última migration já aprovada; só migrations mais novas que o baseline são escaneadas. Allowlist versionada (`scripts/.migrate-guard-allowlist.json`) permite exceção explícita e auditável por nome de migration.
+- **Por quê baseline em vez de escanear tudo:** 4 migrations antigas (maio/junho 2026) já têm DROP legítimo aplicado em produção (refatorações de nomenclatura e reestruturação de comissão); a regra não é retroativa.
+- **Por quê allowlist em vez de env var:** uma flag global pode ficar ligada silenciosamente e virar guardrail decorativo; a allowlist fica visível em code review.
+- **Comando isolado:** `npm run guardrail:migrate-diff`
+- **Ticket de origem:** LIVO-016. Commit `f35fbb8`.
 
-Nenhuma decisão estrutural importante deve existir apenas na cabeça de uma pessoa.
+## 2.2 `scripts/guardrail-prisma-edge.js`
 
----
+- **Protege:** regra 1.3 (Prisma fora de callbacks `jwt`/`session`).
+- **Mecanismo:** isola o corpo dos callbacks `jwt` e `session` em `src/auth.ts` via parsing de chaves balanceadas; bloqueia se detectar `db.`, `prisma.`, `PrismaClient` ou import de `@prisma/client` dentro desses blocos. Não gera falso-positivo em `authorize`/`events`, que usam Prisma legitimamente em Node Runtime.
+- **Comando isolado:** `npm run guardrail:prisma-edge`
+- **Ticket de origem:** LIVO-004. Commit `da62f0a`.
 
-Toda decisão relevante deve ser documentada.
+## 2.3 `scripts/guardrail-emoji.js`
 
----
+- **Protege:** regra 1.4 (emoji cru em `.ts`/`.tsx`).
+- **Mecanismo:** varre `src/**/*.ts(x)`, bloqueia qualquer codepoint astral, qualquer `U+FE0F`, e qualquer caractere em range de emoji fora da allowlist de 5 codepoints listada em 1.4.
+- **Comando isolado:** `npm run guardrail:emoji`
+- **Ticket de origem:** LIVO-027. Limpeza de 34 ocorrências legadas (17 → lucide-react, 9 → escape Unicode). Commit `db0b13e`.
 
-# DÍVIDA TÉCNICA
+## 2.4 Adicionar um novo guardrail
 
-Dívidas técnicas são permitidas.
+Ao criar um novo guardrail: seguir o mesmo padrão (script standalone, sem dependência de banco, plugado em `"build"`), documentar aqui na Seção 2, e registrar o ticket/commit de origem.
 
 ---
-
-Mas devem ser:
 
-Documentadas.
+# 3. PADRÕES DE EXECUÇÃO E VERIFICAÇÃO
 
-Priorizadas.
+## 3.1 Sequenciamento
 
-Resolvidas.
+- Diagnóstico read-only primeiro, depois implementação, depois validação em produção — nunca inverter essa ordem.
+- Comandos são executados um de cada vez, com resultado reportado antes de prosseguir.
+- `npx tsc --noEmit` é conferido antes de qualquer avanço de etapa.
 
----
-
-Nunca ignoradas.
-
----
+## 3.2 Verificação de estado do banco
 
-# REGRA ABSOLUTA
+- **Neon SQL Editor** (queries ao vivo) é a única fonte confiável para verificar estado de conta — nunca Prisma Studio, que mostra cache desatualizado.
+- IDs do tipo CUID contêm caracteres visualmente ambíguos (`l`/`1`, `0`/`O`). Nunca digitar um ID manualmente — sempre consultar via subquery usando `ownerId`/`slug`.
 
-Não construir para o cenário atual.
+## 3.3 Governança de mudança
 
-Construir para a visão futura.
+- Nenhuma mudança estrutural (schema, arquitetura, regra de negócio crítica) ocorre sem um ADR formal quando ela se desvia de uma condição de roadmap já documentada.
+- Commits são feitos por ticket, não por blob de feature — exceto quando dois tickets modificam o mesmo arquivo de forma entrelaçada (ex: `package.json`), caso em que um commit único com ambos os tickets citados é aceitável.
 
 ---
 
-Toda implementação deve considerar:
+# 4. DÉBITO TÉCNICO E EXCEÇÕES CONHECIDAS
 
-LIVO Barber
+Registradas aqui para não serem redescobertas do zero em sessões futuras.
 
-LIVO Beauty
+- **`ASAAS_API_KEY`** é uma variável de ambiente órfã no Vercel, não referenciada em nenhum código. A chave ativa é `ASAAS_KEY`, compartilhada entre billing principal e Clube de Assinatura. Remoção da variável órfã é debt de limpeza sem urgência (LIVO-033).
+- **4 migrations antigas** (maio/junho 2026) contêm `DROP` legítimo, anteriores ao baseline do guardrail de migrate-diff — não re-escaneadas, por decisão explícita (ver 2.1).
+- **`src/components/landing/ai-section.tsx`** (`AISection`) está no barrel export mas não é renderizado em nenhuma página — decisão de destino pendente (LIVO-036, baixa prioridade).
 
-LIVO Med
-
-LIVO Pet
-
-LIVO Fit
-
-LIVO Services
-
-Marketplace
-
-IA
-
-Ecossistema
-
 ---
-
-# DEFINIÇÃO DE BOA ENGENHARIA
 
-Boa engenharia é aquela que:
+# 5. REFERÊNCIAS CRUZADAS
 
-Resolve problemas.
+- ADR-002 — antecipação do redesign institucional (LIVO-032-A) em relação às condições de bloqueio originais do LIVO-032.
+- LIVO_BACKLOG.md — histórico completo de tickets, incluindo os três guardrails desta seção 2 e as decisões técnicas registradas durante sua implementação.
 
-Escala.
-
-Permite evolução.
-
-Reduz riscos.
-
-Mantém simplicidade.
-
 ---
 
-# VISÃO FINAL
-
-O objetivo da engenharia do LIVO não é apenas sustentar um software.
-
-É sustentar uma plataforma de operação inteligente capaz de atender milhares de empresas, milhões de usuários e bilhões de eventos ao longo dos próximos anos.
-
-Toda linha de código deve contribuir para essa visão.
-
----
+# REGRA FINAL
 
-# MISSÃO FINAL
+Todo novo padrão arquitetural inviolável — descoberto por incidente, decisão de founder, ou revisão de código — é adicionado a este documento antes de ser cobrado em qualquer execução futura, humana ou de IA.
 
-Construir uma base tecnológica robusta, escalável e sustentável capaz de suportar a evolução contínua do ecossistema LIVO por décadas.
+Se não está aqui, não existe.
 
 ---
 
