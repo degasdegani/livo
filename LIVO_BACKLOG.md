@@ -69,9 +69,10 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Status:** ✅ Resolvido, testado e ativo no pipeline de build.
 **Problema que era:** A prevenção do bug que já derrubou o login de toda a base dependia de conhecimento tácito ("nunca usar Prisma em callbacks jwt/session"), sem barreira automatizada.
 **Achado durante a execução:** ESLint não está instalado no projeto (`next lint` não funciona — sem `eslint.config.*` nem dependência instalada). A solução original prevista (regra ESLint) foi substituída por script standalone em Node puro.
-**O que foi feito:** Criado `scripts/guardrail-prisma-edge.js` — isola o corpo dos callbacks `jwt` e `session` em `src/auth.ts` via parsing de chaves balanceadas e bloqueia (exit 1) se detectar uso de `db.`, `prisma.`, `PrismaClient` ou import de `@prisma/client` dentro desses blocos, sem falso-positivo em `authorize`/`events` (que usam Prisma legitimamente em Node Runtime, fora do Edge). Plugado em `"build"` no `package.json` (`node scripts/guardrail-prisma-edge.js && prisma generate && next build`) — protege todo deploy na Vercel automaticamente. Também disponível isolado via `npm run guardrail:prisma-edge`.
+**O que foi feito:** Criado `scripts/guardrail-prisma-edge.js` — isola o corpo dos callbacks `jwt` e `session` em `src/auth.ts` via parsing de chaves balanceadas e bloqueia (exit 1) se detectar uso de `db.`, `prisma.`, `PrismaClient` ou import de `@prisma/client` dentro desses blocos, sem falso-positivo em `authorize`/`events` (que usam Prisma legitimamente em Node Runtime, fora do Edge). Plugado em `"build"` no `package.json` — protege todo deploy na Vercel automaticamente. Também disponível isolado via `npm run guardrail:prisma-edge`.
 **Validação:** Testado em 3 cenários — arquivo real (OK), violação direta injetada no `jwt` (bloqueou, exit 1), violação aninhada em `if` no `session` (bloqueou, exit 1). `npx tsc --noEmit` limpo. `auth.ts` restaurado ao original após os testes.
-**Débito relacionado:** A ausência de ESLint no projeto também afeta LIVO-016 e LIVO-027 (ambos previstos originalmente como "regra de lint") — a mesma decisão de abordagem (script standalone vs. instalar ESLint do zero) precisará ser tomada quando forem executados.
+**Commit:** `da62f0a` — comitado junto com LIVO-008 (Vercel Analytics), pois ambos os tickets modificavam `package.json` de forma entrelaçada; decisão pragmática de commit único, mensagem citando os dois tickets.
+**Débito relacionado:** A ausência de ESLint no projeto também afetou LIVO-016 e LIVO-027 (ambos previstos originalmente como "regra de lint") — a mesma decisão de abordagem (script standalone vs. instalar ESLint do zero) foi confirmada e aplicada em ambos.
 
 ### LIVO-005 — Auditoria de rate limiting em endpoints públicos (OTP, booking público, referral)
 
@@ -123,19 +124,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 2. Reescrever com `include`/agregação em query única onde possível.
 3. Medir antes/depois via log de tempo de resposta em produção (Vercel).
 
-### LIVO-008 — Ativação do Vercel Analytics
+### LIVO-008 — [CONCLUÍDO 09/07/2026] Ativação do Vercel Analytics
 
-**Objetivo:** Obter visibilidade imediata de performance e uso sem esforço de integração.
-**Problema atual:** Recomendado, mas não ativado.
-**Impacto no negócio:** Falta de dado de uso/performance real prejudica priorização.
-**Prioridade:** Alta (quick win)
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** Vercel Analytics ativo no projeto de produção, dashboard acessível.
-**Passos técnicos:**
-
-1. Ativar no painel Vercel.
-2. Confirmar coleta de Web Vitals em produção.
+**Status:** ✅ Resolvido e validado em produção.
+**O que foi feito:** Web Analytics ativado no painel Vercel (plano Hobby, 50.000 eventos/mês incluídos). Pacote `@vercel/analytics` instalado via npm. Componente `<Analytics />` adicionado em `src/app/layout.tsx`, como irmão de `<ToastProvider>` dentro de `<body>` — cobre automaticamente todas as rotas via layout raiz (auth, dashboard, legal, onboarding, tv, institucional), sem necessidade de duplicar em cada grupo de rotas.
+**Commit:** `da62f0a` — comitado junto com LIVO-004 (guardrail Prisma/Edge), já que ambos modificavam `package.json`/`package-lock.json` de forma entrelaçada.
+**Validação:** `npx tsc --noEmit` limpo. Confirmado em produção: dashboard Vercel Analytics mostrando 1 visitante, 7 page views, rotas capturadas corretamente (`/`, `/dashboard`, `/planos`, `/produto`), coleta em tempo real ("1 online").
+**Nota:** Push feito diretamente em `main` (produção) — não passou por preview deployment isolado, pois não havia branch separada configurada para este ciclo. Validação ocorreu direto em produção, com resultado confirmado antes de considerar o ticket fechado.
 
 ---
 
@@ -239,20 +234,22 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 3. Integrar Z-API respeitando idempotência (evitar reenvio duplicado).
 4. Testar em conta Vortex antes de produção.
 
-### LIVO-013 — Setup de PostHog com eventos tenant-level
+### LIVO-013 — [CONCLUÍDO 09/07/2026] Setup de PostHog com eventos tenant-level
 
-**Objetivo:** Instrumentar produto para gerar inteligência (Princípio da Lívia/Dados do Operating System).
-**Problema atual:** Não implementado; apenas recomendado.
-**Impacto no negócio:** Sem eventos, não há dado para IA nem para decisões de produto — contraria diretamente o "Sistema de Dados" do Operating System.
-**Prioridade:** Alta
-**Complexidade:** Média
-**Dependências:** LIVO-008 (Vercel Analytics deve subir primeiro, é mais rápido)
-**Critérios de aceite:** Eventos-chave (criação de agendamento, fechamento de comanda, novo cliente, churn) disparam no PostHog com `barbershopId` como propriedade.
-**Passos técnicos:**
+**Status:** ✅ Resolvido e validado em produção (evento `agendamento_criado` confirmado no dashboard PostHog, via conta Vortex).
+**O que foi feito:** Criado wrapper server-side lazy `src/lib/posthog.ts` (client `posthog-node` instanciado sob demanda, nunca em `instrumentation.ts`, para não rodar em contexto compartilhado com Edge). Adicionadas `POSTHOG_API_KEY`/`POSTHOG_HOST` em `SERVER_ENV_VARS` (`src/lib/env.ts`), ambas `critical: false`. `captureEvent(distinctId, event, barbershopId, properties?)` exige `barbershopId` como parâmetro posicional obrigatório (não apenas mais uma property opcional) e sempre o injeta nas properties enviadas — impossível de esquecer por design de tipo, mesmo princípio dos guardrails já existentes no projeto.
+**6 eventos instrumentados, 8 pontos de código cobertos** (`distinctId = barbershopId` em todos; `try/catch` silencioso ao redor de cada `captureEvent`, logado via `@/lib/logger`, nunca relançado — analytics nunca quebra a Server Action; disparo sempre depois do commit de qualquer `$transaction`, nunca dentro dela):
 
-1. Definir lista mínima de eventos-chave com Edu.
-2. Implementar client/server-side tracking respeitando isolamento multi-tenant.
-3. Validar eventos chegando no dashboard PostHog.
+1. `agendamento_criado` — `createAppointmentCore` (`src/lib/appointment-core.ts`).
+2. `agendamento_cancelado` — 3 caminhos: `updateAppointmentStatusCore` (`source: "cancelamento_manual"`), `cancelarComanda` em `comandas/actions.ts` (`source: "cancelamento_via_comanda"`), `markWhatsappSent(..., "noshow")` em `agenda-actions.ts` (`source: "marcado_como_noshow"`).
+3. `comanda_fechada` — `fecharComanda` (`comandas/actions.ts`), com `totalInCents`, sem dado pessoal do cliente.
+4. `cliente_criado` — 3 caminhos: `createClient` em `clients/actions.ts` (`source: "crm_manual"`), criação automática por telefone novo em `createAppointmentCore`/`updateAppointmentCore` (`source: "agendamento_automatico"`), `verifyClientCode` em `clube/actions.ts` (`source: "clube_publico"`).
+5. `assinatura_cancelada` — webhook Asaas (`webhooks/asaas/route.ts`), blocos `PAYMENT_DELETED` e `SUBSCRIPTION_DELETED`, com `planStatus: { not: lifetime }` repetido como defesa em profundidade na query que resolve o `barbershopId` antes do evento (redundante com o guard já existente, mas intencional sobre a TX Barbearia).
+6. `profissional_adicionado` — 2 caminhos: `createProfessional` em `profissionais/actions.ts` (`source: "perfil_sem_login"`), `acceptInvitationAction` em `convite/[token]/actions.ts` (`source: "convite_aceito"`, disparado só quando a `Membership` é de fato criada — não em `createInvitationAction`, que é apenas o envio do convite).
+
+**Commit:** `fcbb6fa` — 12 arquivos (296 inserções, 2 remoções), incluindo `posthog-node` como nova dependência (`package.json`/`package-lock.json`); sem incluir `LIVO_BACKLOG.md`.
+**Validação:** `npx tsc --noEmit` limpo em todas as etapas (0 erros, 0 diagnostics). Confirmado em produção: evento `agendamento_criado` recebido no dashboard PostHog (conta Vortex), library `posthog-node`, `distinct_id` = `barbershopId` correto.
+**Nota de processo (débito registrado):** Push feito diretamente em `main`, sem branch de feature/preview isolado — repete o mesmo padrão do LIVO-008. Sinalizado como débito de processo: configurar branch de feature (com preview deployment próprio) nas próximas sessões, em vez de validar direto em produção.
 
 ### LIVO-030 — Migração de conta Asaas para CNPJ da empresa (subconta Clube de Assinatura)
 
@@ -313,20 +310,21 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 3. Aplicar `migrate dev` local, validar, depois produção.
 4. Confirmar via Neon SQL Editor que TX Barbearia permanece `lifetime`/inalterada.
 
-### LIVO-016 — Formalização de CI check para `prisma migrate diff`
+### LIVO-016 — [CONCLUÍDO 09/07/2026] Formalização de CI check para `prisma migrate diff`
 
-**Objetivo:** Automatizar a regra "hard stop em qualquer DROP" já praticada manualmente.
-**Problema atual:** Regra é seguida por disciplina manual, não por automação.
-**Impacto no negócio:** Reduz risco de perda de dados em produção.
-**Prioridade:** Alta
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** Pipeline de CI roda `prisma migrate diff` e falha automaticamente se detectar `DROP` no output.
-**Passos técnicos:**
+**Status:** ✅ Resolvido, testado e ativo no pipeline de build.
+**Problema que era:** Regra "hard stop em qualquer DROP" seguida apenas por disciplina manual, sem enforcement automatizado.
+**Achado durante a execução:** Sem `.github/workflows` configurado — deploy é via integração direta Vercel↔Git. O único gate automatizado real é o script `"build"` do `package.json`. Diagnóstico também revelou 4 migrations antigas (maio/junho 2026) com DROP legítimo já aplicado em produção (refatorações: rename de campos em `barbershops`, migração de tabelas para nomenclatura capitalizada, comissão movida de `memberships` para `Professional`) — a regra não pode ser retroativa, ou o build quebraria permanentemente.
+**O que foi feito:** Criado `scripts/guardrail-migrate-diff.js` — script standalone (só `fs`/`path`, mesmo padrão do `guardrail-prisma-edge.js`), sem dependência de banco de dados. Funcionamento:
 
-1. Criar script que roda `migrate diff` e faz grep por `DROP`.
-2. Adicionar como step obrigatório antes de deploy.
-3. Testar com uma migration proposital contendo DROP para confirmar bloqueio.
+- Baseline versionado (`scripts/.migrate-guard-baseline.json`) marca a última migration já aprovada — na primeira execução, foi inicializado com `20260704232108_add_embaixador_referral_fields`, aposentando as 4 migrations antigas com DROP sem exigir ação manual.
+- Só migrations **mais novas** que o baseline são escaneadas por `DROP TABLE|COLUMN|CONSTRAINT|INDEX`.
+- Allowlist versionada (`scripts/.migrate-guard-allowlist.json`, array vazio por padrão) permite exceção explícita e auditável por nome de migration — decisão tomada em vez de env var, para evitar uma flag global que pode ficar ligada silenciosamente e virar um guardrail decorativo. Qualquer exceção fica visível no Git/code review.
+- Migration nova com DROP fora da allowlist → `exit 1`, build falha, com mensagem indicando nome da migration, statement encontrado e instrução de como aprovar.
+- Ao final de uma execução limpa, o baseline avança automaticamente.
+  **Plugado em:** `"build"` do `package.json`, **antes** do `guardrail-prisma-edge.js`. Também disponível isolado via `npm run guardrail:migrate-diff`.
+  **Validação:** 6 cenários testados — (1) primeira execução sem baseline: criou baseline, passou, sem escanear DROPs antigos; (2) segunda execução sem migrations novas: passou, nada re-escaneado; (3) migration fake com DROP TABLE: falhou corretamente (exit 1) com mensagem clara; (4) fake adicionada à allowlist: passou com aviso de exceção aprovada; (5) fake removida, allowlist e baseline revertidos ao estado limpo, confirmado sem lixo de teste; (6) `npx tsc --noEmit` limpo (0 erros).
+  **Commit:** `f35fbb8` — escopo isolado (`package.json`, `scripts/guardrail-migrate-diff.js`, `scripts/.migrate-guard-baseline.json`, `scripts/.migrate-guard-allowlist.json`), sem incluir `LIVO_BACKLOG.md` (que estava modificado no working tree por edição manual, não relacionada a este ticket).
 
 ### LIVO-017 — Extensões de schema para inventário (Grupo D)
 
@@ -499,19 +497,25 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **O que foi feito:** Adicionadas `ASAAS_CLUBE_WEBHOOK_TOKEN` (critical: true), `ASAAS_WEBHOOK_EMAIL` (critical: false) e `NEXT_PUBLIC_ASAAS_SANDBOX` (critical: false) em `SERVER_ENV_VARS` (`src/lib/env.ts`). Variável `ASAAS_CLUBE_WEBHOOK_TOKEN` gerada (GUID) e configurada no Vercel (Production e Preview) antes do deploy.
 **Achado adicional (não bloqueante, debt de limpeza):** Existe uma variável `ASAAS_API_KEY` configurada no Vercel que não é lida por nenhum código (órfã). `ASAAS_KEY` é a única realmente usada, compartilhada entre billing principal (`asaas.ts`) e Clube (`asaas-clube.ts`, como "chave da conta raiz"). Remover `ASAAS_API_KEY` do Vercel quando conveniente — sem urgência, não afeta nada.
 
-### LIVO-027 — Guardrail automatizado contra emojis em arquivos `.ts`
+### LIVO-027 — [CONCLUÍDO 09/07/2026] Guardrail automatizado contra emojis em arquivos `.ts`
 
-**Objetivo:** Prevenir corrupção de arquivo (`\uFFFD`) no Windows.
-**Problema atual:** Regra seguida manualmente, sem enforcement automático.
-**Impacto no negócio:** Baixo risco individual, mas repetido — e o Operating System define "erro repetido é falha de sistema".
-**Prioridade:** Média
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** CI/lint bloqueia commit com emoji em arquivo `.ts`/`.tsx`.
-**Passos técnicos:**
+**Status:** ✅ Resolvido, testado e ativo no pipeline de build.
+**Problema que era:** Regra "sem emoji cru em .ts/.tsx" seguida apenas por disciplina manual, sem enforcement automático (bug já causou corrupção `\uFFFD` no Windows).
+**Achado durante a execução:** Diagnóstico read-only encontrou 55 ocorrências de caracteres em ranges Unicode de emoji no código — mas nem todas eram risco real. Análise por codepoint revelou que o mecanismo de corrupção afeta especificamente caracteres astrais (`> 0xFFFF`, par substituto) e caracteres com variation selector `U+FE0F` forçando apresentação emoji — não símbolos BMP isolados como `✓ ✕ ✦ ✉ ⚠`, já usados intencionalmente como ícones de UI em ~21 lugares do código sem risco de corrupção. Divisão real: **34 ocorrências de emoji verdadeiro** (candidatas à regra) vs. **21 ícones de UI legítimos** (fora do escopo).
+**O que foi feito:**
 
-1. Adicionar regra de lint (regex de range Unicode de emoji) em arquivos `.ts`/`.tsx`.
-2. Integrar ao pipeline de pre-commit ou CI.
+1. **Limpeza completa das 34 ocorrências legadas** (decisão do founder: fazer o serviço completo, não usar baseline/tolerância como no LIVO-016):
+   - 17 substituídas por ícones `lucide-react` (telas de UI: agenda, clientes, relatórios, onboarding, convite, erro global, vip, booking público, perfil público, hero institucional).
+   - 9 substituídas por escape Unicode `\u{XXXX}` (texto enviado a cliente final — mensagens de WhatsApp em `marketing-client.tsx`, assuntos/corpo de e-mail em `email.ts`, texto da Lívia em `livia-bubble.tsx` — mantém o emoji real na entrega ao cliente, mas protege o arquivo-fonte da corrupção de encoding).
+2. **Guardrail criado:** `scripts/guardrail-emoji.js` (mesmo padrão standalone dos outros dois guardrails, só `fs`/`path`) — varre `src/**/*.ts(x)`, bloqueia (exit 1) qualquer codepoint astral (`> 0xFFFF`), qualquer `U+FE0F`, e qualquer caractere em range de emoji fora de uma allowlist explícita de 5 codepoints (`✓ 0x2713`, `✕ 0x2715`, `✦ 0x2726`, `✉ 0x2709`, `⚠ 0x26A0`).
+3. Plugado em `"build"` do `package.json`, encadeado após `guardrail-migrate-diff.js` e `guardrail-prisma-edge.js`. Disponível isolado via `npm run guardrail:emoji`.
+   **Validação:** `node scripts/guardrail-emoji.js` isolado → exit 0 (nenhuma violação restante). `npx tsc --noEmit` → 0 erros. Validado visualmente em produção (Vercel) — ícones renderizando corretamente, mensagens de WhatsApp e assuntos de e-mail preservando o emoji original para o cliente final.
+   **Commit:** `db0b13e` — 17 arquivos alterados (164 inserções, 45 remoções), escopo isolado, sem incluir `LIVO_BACKLOG.md` (edição manual pendente, não relacionada).
+   **Decisões técnicas registradas durante a execução:**
+   - `assinar/page.tsx`: `className="text-5xl"` removido do ícone lucide (ícones SVG não respondem a `font-size` do Tailwind) — usado `size={56}` diretamente.
+   - `relatorios-client.tsx`: tipo de `linhas` em `TabelaSimples` ampliado de `string[][]` para `(string | ReactNode)[][]` para acomodar `<Award />` condicional no ranking.
+   - `hero.tsx`: objeto de ícones do mockup do sidebar mistura string (`"◼"` Dashboard, `"✦"` IA Livo — fora do escopo, mantidos) com componentes lucide; anotado como `{ icon: string | LucideIcon; ... }[]` com renderização condicional.
+   - `livia-bubble.tsx`: um emoji estava em texto JSX solto (não string literal) — envolvido em `{"\u{1F44B}"}`, já que escape Unicode só é interpretado dentro de literais de string JS.
 
 ### LIVO-028 — Documentação formal de decisões de negócio pendentes (ADR)
 
@@ -528,20 +532,15 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 2. Registrar as duas decisões pendentes como "ADR em aberto".
 3. Preencher assim que Edu decidir.
 
-### LIVO-029 — Consolidação de guardrails de arquitetura em um único documento de Engineering
+### LIVO-029 — [CONCLUÍDO 09/07/2026] Consolidação de guardrails de arquitetura em um único documento de Engineering
 
-**Objetivo:** LIVO_INDEX referencia `LIVO_ENGINEERING.md`, mas as regras invioláveis hoje vivem espalhadas (memória + convenção).
-**Problema atual:** Regras críticas (Prisma fora do Edge, `$transaction` como callback, `@@map()` só em tabela, etc.) não estão em um documento oficial dentro da hierarquia de nível 7.
-**Impacto no negócio:** Viola diretamente o "Princípio de Governança" do Decision Framework ("nenhuma regra importante deve existir apenas no código").
-**Prioridade:** Alta
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** Documento `LIVO_ENGINEERING.md` existe e contém todas as regras invioláveis atualmente conhecidas apenas por convenção.
-**Passos técnicos:**
-
-1. Compilar lista de regras invioláveis já praticadas.
-2. Redigir `LIVO_ENGINEERING.md` seguindo o tom dos documentos existentes.
-3. Adicionar ao projeto e à hierarquia do LIVO_INDEX.
+**Status:** ✅ Resolvido, testado e ativo na hierarquia documental.
+**Problema que era:** LIVO_INDEX referenciava `LIVO_ENGINEERING.md` como documento de Nível 7, mas as regras invioláveis reais do projeto (Prisma fora do Edge, `$transaction` como callback, `@@map()` só em tabela, escopo por `barbershopId`, registros protegidos, os 3 guardrails já implementados) viviam apenas em memória de sessão e convenção tácita.
+**Achado crítico durante a execução:** já existia um `LIVO_ENGINEERING.md` versionado no repositório (990 linhas), mas era um template genérico/aspiracional — arquitetura em camadas, multi-tenant, testes, LGPD, criptografia, CI/CD, visão de ecossistema Barber/Beauty/Med/Pet/Fit/Services — sem nenhuma referência concreta ao projeto real. Confirmado via busca por termos-chave (`TX Barbearia`, `WaitlistLead`, `barbershopId`, `@@map`, `guardrail`, `Asaas`, `CNPJ`, `Auth.js`, `Edge Runtime`): zero ocorrências no arquivo anterior. A substituição integral foi considerada segura — não havia conteúdo concreto a mesclar, apenas a estrutura de scaffold do `create-next-app`/boilerplate nunca preenchida com as regras reais.
+**O que foi feito:** Reescrita completa do documento (990 → 76 linhas), cobrindo: registros protegidos (TX Barbearia, WaitlistLeads), regras de schema/transaction/barbershopId/migrate-diff, regra de Prisma fora do Edge Runtime, regra de encoding/emoji, os 3 guardrails automatizados com mecanismo e ticket/commit de origem, padrões de execução (sequenciamento, Neon SQL Editor vs. Prisma Studio, governança de mudança) e débito técnico conhecido (`ASAAS_API_KEY` órfã, 4 migrations pré-baseline, `ai-section.tsx` órfão).
+**Detalhe de execução:** `Set-Content -Encoding UTF8` do PowerShell 5.1 gravou o arquivo com BOM (`EF BB BF`), inconsistente com o restante do repositório (UTF-8 sem BOM) — corrigido antes do commit via `[System.IO.File]::WriteAllText` com `UTF8Encoding($false)`.
+**Validação:** `npx tsc --noEmit` limpo (0 erros) após a remoção do BOM.
+**Commit:** `b2aef98` — escopo isolado (`LIVO_ENGINEERING.md`, 76 inserções / 920 remoções), sem incluir `LIVO_BACKLOG.md`.
 
 ---
 
@@ -551,20 +550,24 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 
 Prioridade: proteger o que já está em produção antes de adicionar o novo.
 
+**Status: concluída** (exceto bloco Asaas, pausado por decisão de negócio externa ao escopo técnico).
+
 - ~~LIVO-004 (guardrail Prisma/Edge)~~ ✅ Concluído 09/07/2026
 - ~~LIVO-002 (validação webhook Asaas)~~ ⏸️ Pausado — bloco Asaas, retomar só com conta PJ aprovada
-- LIVO-016 (CI check migrate diff)
-- LIVO-027 (guardrail emoji)
-- LIVO-029 (consolidar LIVO_ENGINEERING.md)
+- ~~LIVO-016 (CI check migrate diff)~~ ✅ Concluído 09/07/2026
+- ~~LIVO-027 (guardrail emoji)~~ ✅ Concluído 09/07/2026
+- ~~LIVO-029 (consolidar LIVO_ENGINEERING.md)~~ ✅ Concluído 09/07/2026, commit `b2aef98`
 - ~~LIVO-030 (diagnóstico read-only da integração Asaas)~~ ⏸️ Pausado — bloco Asaas, retomar só com conta PJ aprovada
 
 ## Fase 1 — Visibilidade e Dados (1-2 semanas)
 
 Sem dado, não há inteligência (princípio do Operating System).
 
-- **LIVO-008 (Vercel Analytics — quick win)** ← próximo item ativo da fila
-- LIVO-013 (PostHog + eventos tenant-level)
-- LIVO-005 (rate limiting endpoints públicos)
+**Status: em andamento.**
+
+- ~~LIVO-008 (Vercel Analytics)~~ ✅ Concluído 09/07/2026
+- ~~LIVO-013 (PostHog + eventos tenant-level)~~ ✅ Concluído 09/07/2026, commit `fcbb6fa`, validado em produção
+- **LIVO-005 (rate limiting endpoints públicos)** ← próximo item ativo da fila
 - LIVO-003 (auditoria LGPD)
 
 ## Fase 1.5 — Pendências correntes de negócio (paralelo, assim que possível)
@@ -615,19 +618,26 @@ Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam ex
 1. ~~**LIVO-030 (diagnóstico)**~~ — diagnóstico read-only concluído 08/07/2026. Execução do bloco Asaas pausada por decisão do founder até aprovação da conta PJ.
 2. ~~**LIVO-004** — guardrail contra Prisma no Edge~~ ✅ Concluído 09/07/2026
 3. ~~**LIVO-002** — validar assinatura do webhook Asaas~~ ⏸️ Pausado, parte do bloco Asaas junto com LIVO-030
-4. **LIVO-008** — ativar Vercel Analytics (esforço mínimo, ganho imediato) ← próximo item ativo
+4. ~~**LIVO-008** — ativar Vercel Analytics~~ ✅ Concluído 09/07/2026
 5. ~~**LIVO-031** — Programa Embaixadores no site~~ ✅ Concluído 09/07/2026
-6. **LIVO-016** — CI check no `migrate diff` (protege dado de produção)
+6. ~~**LIVO-016** — CI check no `migrate diff`~~ ✅ Concluído 09/07/2026
+7. ~~**LIVO-027** — guardrail contra emoji em `.ts`/`.tsx`~~ ✅ Concluído 09/07/2026
+8. ~~**LIVO-029** — consolidar `LIVO_ENGINEERING.md`~~ ✅ Concluído 09/07/2026, commit `b2aef98`
+9. ~~**LIVO-013** — setup de PostHog com eventos tenant-level~~ ✅ Concluído 09/07/2026, commit `fcbb6fa`, validado em produção
+10. **LIVO-005** — rate limiting em endpoints públicos ← próximo item ativo (Fase 1)
+
+**Fase 0 está encerrada** (exceto o bloco Asaas, pausado por decisão de negócio, não técnica). A base de governança e segurança (guardrails de Prisma/Edge, migrate-diff, emoji, e agora o registro formal dessas regras em `LIVO_ENGINEERING.md`) está protegendo produção automaticamente a cada build.
 
 Concluído fora da ordem original, por decisão do founder (ver ADR-002): **LIVO-032-A** (redesign do site institucional) e **LIVO-034** (footer duplicado, achado durante o LIVO-032-A) — publicados em produção em 09/07/2026, antecipando parte da Fase 6.
 
-Concluído dentro da Fase 0: **LIVO-004** (guardrail Prisma/Edge Runtime) — 09/07/2026.
+Concluído dentro da Fase 0: **LIVO-004** (guardrail Prisma/Edge Runtime) — 09/07/2026. **LIVO-016** (guardrail migrate diff / DROP) — 09/07/2026, commit `f35fbb8`. **LIVO-027** (guardrail emoji + limpeza de 34 ocorrências legadas) — 09/07/2026, commit `db0b13e`. **LIVO-029** (consolidação de `LIVO_ENGINEERING.md`, substituindo template genérico sem conteúdo real) — 09/07/2026, commit `b2aef98`.
+
+Concluído dentro da Fase 1: **LIVO-008** (Vercel Analytics) — 09/07/2026, validado em produção com coleta de dados confirmada. **LIVO-013** (PostHog + eventos tenant-level) — 09/07/2026, commit `fcbb6fa`, validado em produção (evento `agendamento_criado` confirmado no dashboard PostHog, conta Vortex).
 
 Pausado por decisão de negócio (09/07/2026): bloco Asaas completo (**LIVO-030** + **LIVO-002**), agrupado para execução em etapa única quando a conta PJ for aprovada.
 
-Esses itens restantes são pequenos individualmente, mas formam a base de segurança, observabilidade e crescimento sobre a qual o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e o redesign das telas internas (LIVO-032-B) devem ser construídos.
+A partir daqui, o próximo item ativo da Fase 1 é **LIVO-005** (rate limiting em endpoints públicos), seguido de LIVO-003 (auditoria LGPD) — visibilidade e dados já com LIVO-008/LIVO-013 concluídos, base para o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e o redesign das telas internas (LIVO-032-B).
 
 ---
 
 FIM DO DOCUMENTO
-1
