@@ -33,12 +33,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 ### LIVO-002 — Auditoria de validação de assinatura do webhook Asaas
 
+**Status:** ⏸️ **Pausado por decisão do founder (09/07/2026).** Faz parte do bloco Asaas (junto com LIVO-030) — retomar apenas quando a conta PJ estiver com documentos 100% aprovados. Não iniciar isoladamente antes disso.
 **Objetivo:** Garantir que apenas requisições autênticas da Asaas sejam processadas.
 **Problema atual:** Não há confirmação registrada de que o endpoint de webhook valida assinatura/token de origem antes de processar eventos de billing.
 **Impacto no negócio:** Risco de fraude de billing (falsos eventos de pagamento/cancelamento afetando `planStatus`).
-**Prioridade:** Crítica
+**Prioridade:** Crítica (retomada) — hoje pausada por decisão de negócio
 **Complexidade:** Pequena
-**Dependências:** Nenhuma
+**Dependências:** Bloco Asaas liberado (ver LIVO-030)
 **Critérios de aceite:** Requisições sem assinatura/token válido são rejeitadas com 401 antes de qualquer leitura no banco; teste automatizado cobre caso de payload forjado.
 **Passos técnicos de implementação:**
 
@@ -63,20 +64,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 3. Implementar com escopo por `barbershopId`.
 4. Documentar processo em doc oficial (governança).
 
-### LIVO-004 — Guardrail contra Prisma em Edge Runtime (regressão do JWTSessionError)
+### LIVO-004 — [CONCLUÍDO 09/07/2026] Guardrail contra Prisma em Edge Runtime (regressão do JWTSessionError)
 
-**Objetivo:** Prevenir reincidência do bug que já quebrou login de todos os usuários.
-**Problema atual:** A prevenção depende de conhecimento tácito ("nunca usar Prisma em callbacks jwt/session"), sem barreira automatizada.
-**Impacto no negócio:** Um único PR mal revisado pode derrubar login de toda a base.
-**Prioridade:** Crítica
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** CI falha automaticamente se houver import de `@prisma/client` dentro dos callbacks `jwt`/`session` do Auth.js.
-**Passos técnicos:**
-
-1. Escrever regra ESLint customizada ou script de lint estático que detecte import do Prisma no arquivo de config do Auth.js dentro dos callbacks.
-2. Adicionar step no pipeline de CI (ou pre-commit) que bloqueia o build.
-3. Testar com um import proposital para confirmar bloqueio.
+**Status:** ✅ Resolvido, testado e ativo no pipeline de build.
+**Problema que era:** A prevenção do bug que já derrubou o login de toda a base dependia de conhecimento tácito ("nunca usar Prisma em callbacks jwt/session"), sem barreira automatizada.
+**Achado durante a execução:** ESLint não está instalado no projeto (`next lint` não funciona — sem `eslint.config.*` nem dependência instalada). A solução original prevista (regra ESLint) foi substituída por script standalone em Node puro.
+**O que foi feito:** Criado `scripts/guardrail-prisma-edge.js` — isola o corpo dos callbacks `jwt` e `session` em `src/auth.ts` via parsing de chaves balanceadas e bloqueia (exit 1) se detectar uso de `db.`, `prisma.`, `PrismaClient` ou import de `@prisma/client` dentro desses blocos, sem falso-positivo em `authorize`/`events` (que usam Prisma legitimamente em Node Runtime, fora do Edge). Plugado em `"build"` no `package.json` (`node scripts/guardrail-prisma-edge.js && prisma generate && next build`) — protege todo deploy na Vercel automaticamente. Também disponível isolado via `npm run guardrail:prisma-edge`.
+**Validação:** Testado em 3 cenários — arquivo real (OK), violação direta injetada no `jwt` (bloqueou, exit 1), violação aninhada em `if` no `session` (bloqueou, exit 1). `npx tsc --noEmit` limpo. `auth.ts` restaurado ao original após os testes.
+**Débito relacionado:** A ausência de ESLint no projeto também afeta LIVO-016 e LIVO-027 (ambos previstos originalmente como "regra de lint") — a mesma decisão de abordagem (script standalone vs. instalar ESLint do zero) precisará ser tomada quando forem executados.
 
 ### LIVO-005 — Auditoria de rate limiting em endpoints públicos (OTP, booking público, referral)
 
@@ -261,27 +256,27 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 ### LIVO-030 — Migração de conta Asaas para CNPJ da empresa (subconta Clube de Assinatura)
 
-**Status (08/07/2026):** Diagnóstico concluído. Aguardando aprovação de documentos pela Asaas (bloqueador externo). Achados:
+**Status:** ⏸️ **Pausado por decisão do founder (09/07/2026).** Todo o bloco Asaas (LIVO-030 + LIVO-002) fica agrupado para execução em uma única etapa, somente quando a conta PJ estiver com documentos 100% aprovados. Diagnóstico read-only já foi concluído em 08/07/2026 (achados abaixo permanecem válidos), mas a execução — incluindo qualquer novo diagnóstico adicional — não deve ser retomada isoladamente antes da aprovação.
+**Achados do diagnóstico (08/07/2026, ainda válidos):**
 
 - `ASAAS_KEY` é única e compartilhada entre billing principal e Clube — trocar esse único valor cobre os dois fluxos.
 - Query no Neon confirmou **zero** registros com `clubAsaasWalletId` preenchido e **zero** com `asaasCustomerId` preenchido — nenhum dado real de cliente/assinatura em produção hoje. **Não há migração de dados a fazer, só troca de credencial.**
 - `ASAAS_CLUBE_WEBHOOK_TOKEN` não vem da Asaas — é gerado pela LIVO e informado à Asaas via `configureClubWebhook`. Já resolvido em LIVO-033.
-  **Próximo passo real (só quando a Asaas aprovar):** gerar nova `ASAAS_KEY` no painel da conta PJ, atualizar no Vercel, redeploy, testar assinatura fictícia na conta Vortex.
+  **Próximo passo real (só quando a Asaas aprovar E o bloco for retomado):** gerar nova `ASAAS_KEY` no painel da conta PJ, atualizar no Vercel, redeploy, testar assinatura fictícia na conta Vortex.
 
 **Objetivo:** Trocar as chaves de API do Asaas no Vercel e vincular a nova conta PJ assim que aprovada, sem quebrar assinantes já vinculados à integração anterior.
-**Problema atual:** A subconta anterior não foi aprovada por exigir conta PJ. Uma nova conta Asaas foi aberta hoje com o CNPJ da SALA Tecnologia e está aguardando aprovação de documentos.
+**Problema atual:** A subconta anterior não foi aprovada por exigir conta PJ. Uma nova conta Asaas foi aberta com o CNPJ da SALA Tecnologia e está aguardando aprovação de documentos.
 **Impacto no negócio:** Bloqueia a consolidação em produção do Clube de Assinatura (feature já implementada em 7 fases); risco de retrabalho se houver dado vinculado à integração antiga.
-**Prioridade:** Crítica (bloqueador de negócio) — **Bloqueada** até a Asaas aprovar os documentos.
+**Prioridade:** Crítica (quando retomado) — **Pausado** por decisão do founder até a Asaas aprovar os documentos.
 **Complexidade:** Pequena/Média
-**Dependências:** Aprovação externa da Asaas. Relacionado a LIVO-002 (validação de webhook deve ser retestada com a nova conta).
+**Dependências:** Aprovação externa da Asaas. Relacionado a LIVO-002 (validação de webhook deve ser retestada com a nova conta) — os dois formam o bloco Asaas único.
 **Critérios de aceite:** Variáveis de ambiente da Asaas atualizadas no Vercel (Production); nenhuma assinatura ativa quebra; webhook segue validando corretamente com a nova conta; teste de assinatura fictícia (conta Vortex) bem-sucedido.
-**Passos técnicos:**
+**Passos técnicos (retomar somente quando o bloco for liberado):**
 
-1. Diagnóstico read-only (pode ser feito **agora**, sem esperar a aprovação): mapear todas as variáveis de ambiente e referências no código relacionadas à Asaas (chave de API, webhook secret, ID de subconta).
-2. Verificar se existe algum `asaasSubaccountId` ou similar já persistido no banco vinculado à conta antiga/reprovada, que precisará ser migrado ou invalidado.
-3. Assim que a conta nova for aprovada: atualizar as variáveis no Vercel (Production, e Preview se aplicável).
-4. Reexecutar teste de webhook com a nova conta (ver LIVO-002).
-5. Validar em produção com uma assinatura de teste na conta Vortex antes de liberar para clientes reais.
+1. Verificar se existe algum `asaasSubaccountId` ou similar já persistido no banco vinculado à conta antiga/reprovada, que precisará ser migrado ou invalidado.
+2. Assim que a conta nova for aprovada: atualizar as variáveis no Vercel (Production, e Preview se aplicável).
+3. Reexecutar teste de webhook com a nova conta (ver LIVO-002).
+4. Validar em produção com uma assinatura de teste na conta Vortex antes de liberar para clientes reais.
 
 ### LIVO-014 — Roteamento de domínio multi-marca (livobeauty.com.br)
 
@@ -556,25 +551,25 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 
 Prioridade: proteger o que já está em produção antes de adicionar o novo.
 
-- LIVO-004 (guardrail Prisma/Edge)
-- LIVO-002 (validação webhook Asaas)
+- ~~LIVO-004 (guardrail Prisma/Edge)~~ ✅ Concluído 09/07/2026
+- ~~LIVO-002 (validação webhook Asaas)~~ ⏸️ Pausado — bloco Asaas, retomar só com conta PJ aprovada
 - LIVO-016 (CI check migrate diff)
 - LIVO-027 (guardrail emoji)
 - LIVO-029 (consolidar LIVO_ENGINEERING.md)
-- **LIVO-030 (diagnóstico read-only da integração Asaas — iniciar já, sem esperar aprovação)**
+- ~~LIVO-030 (diagnóstico read-only da integração Asaas)~~ ⏸️ Pausado — bloco Asaas, retomar só com conta PJ aprovada
 
 ## Fase 1 — Visibilidade e Dados (1-2 semanas)
 
 Sem dado, não há inteligência (princípio do Operating System).
 
-- LIVO-008 (Vercel Analytics — quick win)
+- **LIVO-008 (Vercel Analytics — quick win)** ← próximo item ativo da fila
 - LIVO-013 (PostHog + eventos tenant-level)
 - LIVO-005 (rate limiting endpoints públicos)
 - LIVO-003 (auditoria LGPD)
 
 ## Fase 1.5 — Pendências correntes de negócio (paralelo, assim que possível)
 
-- **LIVO-030 (parte 2)** — trocar chaves Asaas no Vercel assim que a conta PJ for aprovada (bloqueador externo)
+- ⏸️ **Bloco Asaas (LIVO-030 + LIVO-002)** — pausado por decisão do founder (09/07/2026). Executar em uma única etapa, somente quando a conta PJ estiver com documentos 100% aprovados.
 - ~~**LIVO-031** — Programa Embaixadores no site principal~~ ✅ Concluído 09/07/2026
 - ~~**LIVO-032-A** — Redesign do site institucional~~ ✅ Concluído 09/07/2026, antecipado via **ADR-002** (ver seção 4)
 - **LIVO-036** — decidir destino do componente órfão `ai-section.tsx` (baixa prioridade, sem pressa)
@@ -617,17 +612,22 @@ Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam ex
 
 # O QUE DEVE SER FEITO PRIMEIRO PARA LANÇAMENTO (próximos itens acionáveis)
 
-1. **LIVO-030 (diagnóstico)** — mapear todas as referências a Asaas no código enquanto aguarda aprovação da conta PJ (pode ser feito hoje, sem bloqueio)
-2. **LIVO-004** — guardrail contra Prisma no Edge (evita repetir o pior incidente já registrado)
-3. **LIVO-002** — validar assinatura do webhook Asaas (retestar quando a nova conta entrar)
-4. **LIVO-008** — ativar Vercel Analytics (esforço mínimo, ganho imediato)
+1. ~~**LIVO-030 (diagnóstico)**~~ — diagnóstico read-only concluído 08/07/2026. Execução do bloco Asaas pausada por decisão do founder até aprovação da conta PJ.
+2. ~~**LIVO-004** — guardrail contra Prisma no Edge~~ ✅ Concluído 09/07/2026
+3. ~~**LIVO-002** — validar assinatura do webhook Asaas~~ ⏸️ Pausado, parte do bloco Asaas junto com LIVO-030
+4. **LIVO-008** — ativar Vercel Analytics (esforço mínimo, ganho imediato) ← próximo item ativo
 5. ~~**LIVO-031** — Programa Embaixadores no site~~ ✅ Concluído 09/07/2026
 6. **LIVO-016** — CI check no `migrate diff` (protege dado de produção)
 
 Concluído fora da ordem original, por decisão do founder (ver ADR-002): **LIVO-032-A** (redesign do site institucional) e **LIVO-034** (footer duplicado, achado durante o LIVO-032-A) — publicados em produção em 09/07/2026, antecipando parte da Fase 6.
+
+Concluído dentro da Fase 0: **LIVO-004** (guardrail Prisma/Edge Runtime) — 09/07/2026.
+
+Pausado por decisão de negócio (09/07/2026): bloco Asaas completo (**LIVO-030** + **LIVO-002**), agrupado para execução em etapa única quando a conta PJ for aprovada.
 
 Esses itens restantes são pequenos individualmente, mas formam a base de segurança, observabilidade e crescimento sobre a qual o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e o redesign das telas internas (LIVO-032-B) devem ser construídos.
 
 ---
 
 FIM DO DOCUMENTO
+1

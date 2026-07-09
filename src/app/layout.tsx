@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import { PublicFooter } from "@/components/public-footer";
 import { ToastProvider } from "@/components/ui/toast";
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -29,6 +30,7 @@ export default function RootLayout({
           {children}
           <PublicFooter />
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   );
