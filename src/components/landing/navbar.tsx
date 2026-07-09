@@ -41,7 +41,7 @@ export function Navbar() {
     <>
       <header className="fixed top-0 left-0 right-0 z-50">
         <div
-          className="absolute inset-0 transition-all duration-300"
+          className="absolute inset-0 z-0 transition-all duration-300"
           style={{
             background: scrolled || mobileOpen ? "rgba(0,0,0,0.96)" : "rgba(0,0,0,0.5)",
             backdropFilter: "blur(24px) saturate(180%)",
@@ -124,7 +124,7 @@ export function Navbar() {
         {/* Mobile menu panel */}
         {mobileOpen && (
           <div
-            className="md:hidden border-t"
+            className="md:hidden border-t relative z-10"
             style={{
               background: "rgba(0,0,0,0.98)",
               borderColor: "rgba(255,255,255,0.08)",
