@@ -9,7 +9,15 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 ## 1. BUGS
 
+### LIVO-034 — [CONCLUÍDO 09/07/2026] Footer duplicado em /produto e /planos
+
+**Status:** ✅ Resolvido e deployado (branch preview/redesign-institucional, mesclado em main).
+**Problema que era:** `PublicFooter` (src/components/public-footer.tsx) tinha uma denylist de rotas onde não deveria renderizar, mas não incluía `/produto` e `/planos` — essas rotas renderizavam tanto o `Footer` da landing quanto o `PublicFooter` empilhados na mesma página. Bug pré-existente desde o commit 15107c9 (extração de /produto e /planos da Home), exposto durante a execução do LIVO-032-A.
+**O que foi feito:** Adicionado `/produto` e `/planos` à denylist de `PublicFooter`, mesma lógica já usada para `/`. Verificado que `/oferta-30-dias`, `/oferta-60-dias` e `/vip` não tinham o mesmo problema.
+**Validação:** `npx tsc --noEmit` limpo, confirmado visualmente em preview do Vercel.
+
 ### LIVO-001 — Nenhum bug ativo reportado
+
 **Objetivo:** Manter rastreabilidade de defeitos.
 **Problema atual:** Nenhum bug foi reportado com logs/reprodução nesta sessão.
 **Impacto no negócio:** N/A até que haja reporte.
@@ -24,6 +32,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 2. SEGURANÇA
 
 ### LIVO-002 — Auditoria de validação de assinatura do webhook Asaas
+
 **Objetivo:** Garantir que apenas requisições autênticas da Asaas sejam processadas.
 **Problema atual:** Não há confirmação registrada de que o endpoint de webhook valida assinatura/token de origem antes de processar eventos de billing.
 **Impacto no negócio:** Risco de fraude de billing (falsos eventos de pagamento/cancelamento afetando `planStatus`).
@@ -32,12 +41,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Requisições sem assinatura/token válido são rejeitadas com 401 antes de qualquer leitura no banco; teste automatizado cobre caso de payload forjado.
 **Passos técnicos de implementação:**
+
 1. Diagnóstico read-only: localizar rota do webhook Asaas e verificar se há checagem de header/token.
 2. Se ausente, implementar validação conforme doc oficial da Asaas.
 3. Adicionar teste (Vitest) simulando payload sem assinatura.
 4. Validar em produção (Vercel) com evento de teste.
 
 ### LIVO-003 — Auditoria LGPD: exportação e exclusão de dados do titular
+
 **Objetivo:** Garantir conformidade com LGPD para clientes finais (CRM) e assinantes do Clube.
 **Problema atual:** Não há fluxo documentado de exportação/exclusão de dados pessoais a pedido do titular.
 **Impacto no negócio:** Risco regulatório e reputacional; bloqueador para contratos B2B maiores.
@@ -46,12 +57,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Definição jurídica de escopo de dados pessoais (CRM, comandas, OTP).
 **Critérios de aceite:** Existe endpoint/processo interno para exportar e para anonimizar/excluir dados de um cliente final mediante solicitação, respeitando os registros protegidos (TX Barbearia, WaitlistLeads).
 **Passos técnicos:**
+
 1. Mapear todas as tabelas com dado pessoal de cliente final.
 2. Desenhar fluxo de exportação (JSON) e anonimização (sem quebrar histórico financeiro/comissão).
 3. Implementar com escopo por `barbershopId`.
 4. Documentar processo em doc oficial (governança).
 
 ### LIVO-004 — Guardrail contra Prisma em Edge Runtime (regressão do JWTSessionError)
+
 **Objetivo:** Prevenir reincidência do bug que já quebrou login de todos os usuários.
 **Problema atual:** A prevenção depende de conhecimento tácito ("nunca usar Prisma em callbacks jwt/session"), sem barreira automatizada.
 **Impacto no negócio:** Um único PR mal revisado pode derrubar login de toda a base.
@@ -60,11 +73,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** CI falha automaticamente se houver import de `@prisma/client` dentro dos callbacks `jwt`/`session` do Auth.js.
 **Passos técnicos:**
+
 1. Escrever regra ESLint customizada ou script de lint estático que detecte import do Prisma no arquivo de config do Auth.js dentro dos callbacks.
 2. Adicionar step no pipeline de CI (ou pre-commit) que bloqueia o build.
 3. Testar com um import proposital para confirmar bloqueio.
 
 ### LIVO-005 — Auditoria de rate limiting em endpoints públicos (OTP, booking público, referral)
+
 **Objetivo:** Garantir que endpoints públicos não fiquem expostos a abuso/enumeração.
 **Problema atual:** OTP já é rate-limited; não há confirmação sobre página pública de booking e geração de códigos de referral.
 **Impacto no negócio:** Risco de abuso (spam de SMS/WhatsApp, geração massiva de códigos, scraping de agenda).
@@ -73,6 +88,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Todos os endpoints públicos sensíveis têm rate limit documentado e testado.
 **Passos técnicos:**
+
 1. Listar todos os endpoints públicos (sem auth).
 2. Verificar rate limit existente em cada um.
 3. Implementar onde faltar (mesma abordagem usada no OTP).
@@ -82,6 +98,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 3. PERFORMANCE
 
 ### LIVO-006 — Auditoria de índices para queries escopadas por `barbershopId`
+
 **Objetivo:** Garantir performance em escala de milhares de barbearias.
 **Problema atual:** Não há confirmação de que todas as tabelas de alto volume (agenda, comandas, movimentações de estoque) têm índice composto começando por `barbershopId`.
 **Impacto no negócio:** Degradação de performance conforme a base cresce (Horizonte 2/3 do Operating System).
@@ -90,12 +107,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Acesso ao schema Prisma atual.
 **Critérios de aceite:** Todas as queries de listagem (agenda, comandas, movimentações) usam índice; `EXPLAIN ANALYZE` no Neon confirma uso de índice, não sequential scan.
 **Passos técnicos:**
+
 1. Diagnóstico: `prisma schema` + queries mais frequentes.
 2. Rodar `EXPLAIN ANALYZE` no Neon SQL Editor nas queries críticas.
 3. Adicionar índices compostos faltantes via migration aditiva.
 4. Validar `migrate diff` sem DROP.
 
 ### LIVO-007 — Auditoria de N+1 queries no fluxo de comanda/PDV com rateio de comissão
+
 **Objetivo:** Evitar lentidão no fechamento de comanda em horário de pico.
 **Problema atual:** O cálculo de rateio ponderado por combo/serviço pode gerar múltiplas queries por item se não usar `include`/`select` otimizado.
 **Impacto no negócio:** Fechamento de comanda lento prejudica experiência no balcão (momento crítico de pagamento).
@@ -104,11 +123,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-006
 **Critérios de aceite:** Fechamento de comanda com múltiplos itens/combos gera no máximo 1-2 roundtrips ao banco além da transação de escrita.
 **Passos técnicos:**
+
 1. Diagnóstico: revisar código de fechamento de comanda com foco em loops que chamam Prisma.
 2. Reescrever com `include`/agregação em query única onde possível.
 3. Medir antes/depois via log de tempo de resposta em produção (Vercel).
 
 ### LIVO-008 — Ativação do Vercel Analytics
+
 **Objetivo:** Obter visibilidade imediata de performance e uso sem esforço de integração.
 **Problema atual:** Recomendado, mas não ativado.
 **Impacto no negócio:** Falta de dado de uso/performance real prejudica priorização.
@@ -117,6 +138,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Vercel Analytics ativo no projeto de produção, dashboard acessível.
 **Passos técnicos:**
+
 1. Ativar no painel Vercel.
 2. Confirmar coleta de Web Vitals em produção.
 
@@ -125,6 +147,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 4. UX/UI
 
 ### LIVO-009 — Melhorias de onboarding self-service (Grupo D)
+
 **Objetivo:** Reduzir fricção/abandono no cadastro de novas barbearias sem intervenção manual.
 **Problema atual:** Onboarding atual (CPF check, ToS, criação de conta) tem pontos de melhoria identificados mas não implementados.
 **Impacto no negócio:** Afeta diretamente ativação (Growth) e CAC efetivo.
@@ -133,11 +156,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Taxa de conclusão do onboarding aumenta (medir antes/depois via PostHog quando disponível, ou log manual).
 **Passos técnicos:**
+
 1. Mapear etapas atuais do onboarding e pontos de abandono prováveis.
 2. Redesenhar etapas seguindo Princípio da Clareza/Simplicidade (Decision Framework).
 3. Implementar incrementalmente, validando cada etapa em produção.
 
 ### LIVO-010 — UX de exportação de relatórios (Grupo D)
+
 **Objetivo:** Permitir que o dono da barbearia leve dados para fora da plataforma (contador, planilhas).
 **Problema atual:** Módulo de Relatórios não possui exportação (CSV/PDF).
 **Impacto no negócio:** Retenção — donos de barbearia frequentemente pedem isso ao contador; ausência gera atrito.
@@ -146,11 +171,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-013 (backend de exportação)
 **Critérios de aceite:** Usuário consegue exportar relatório financeiro/comissão em CSV a partir da tela de Relatórios.
 **Passos técnicos:**
+
 1. Definir quais relatórios exportar primeiro (financeiro, comissão, "a receber" de pacotes).
 2. Design do botão/fluxo de exportação seguindo Design System.
 3. Integrar com backend de geração de arquivo.
 
 ### LIVO-011 — Refinamentos de UX em agendamento multi-serviço
+
 **Objetivo:** Reduzir confusão visual quando um agendamento tem múltiplos serviços/profissionais.
 **Problema atual:** Item listado no Grupo D como refinamento pendente, sem detalhamento de qual fricção específica.
 **Impacto no negócio:** Experiência na tela mais usada do produto (Agenda).
@@ -159,34 +186,50 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Levantamento específico de feedback com Edu (quais telas exatas).
 **Critérios de aceite:** A definir após levantamento.
 **Passos técnicos:**
+
 1. Levantar com Edu exemplos concretos de confusão relatada por usuários.
 2. Priorizar 1-2 ajustes de maior impacto.
 3. Implementar seguindo padrões de componentização (Design System).
 
 ### LIVO-032 — Redesign completo do sistema baseado em templates de referência
-**Objetivo:** Elevar a experiência visual do LIVO ao padrão definido pelos templates que Edu vai fornecer (fidelidade exata: fontes, cores, layout).
-**Problema atual:** Design atual funcional; Edu já possui templates de referência que definem uma nova direção visual e quer réplica fiel dessas imagens.
-**Impacto no negócio:** Percepção de produto premium (Princípio da Experiência Premium — Decision Framework).
-**Prioridade:** Média — **explicitamente adiada por Edu** até o fechamento de todas as pendências atuais.
-**Complexidade:** Grande
+
+**Status:** Desmembrado em dois sub-tickets via **ADR-002** (09/07/2026), antecipando o site institucional em relação às condições de bloqueio originais. Ver `ADR-002-redesign-antecipado.md`.
+
+#### LIVO-032-A — Redesign do site institucional (livobarber.com.br)
+
+**Status:** ✅ **Concluído e publicado em produção** (09/07/2026).
+**Escopo:** Header, Hero, Como Funciona, Funcionalidades, Planos, Embaixadores (LIVO-031), Footer — apenas rotas do site institucional (`/`, `/produto`, `/planos`).
+**O que foi feito:**
+
+- Nova identidade visual: fundo preto puro, branco/cream como acento principal em texto/badges/labels/ícones, vermelho (`#E43B49` → `#C62E3C`) nos botões de CTA (exceto o botão da seção Embaixadores, que mantém tratamento dourado próprio).
+- Fonte Poppins (via `next/font/google`) nos headlines e wordmark, substituindo a sans genérica anterior — mantendo Satoshi intacta no restante do produto.
+- Wordmark "L I V O" fiel à identidade oficial (letras espaçadas, sem marcador/bolinha, branco).
+- Ícones emoji substituídos por `lucide-react` (line-art) em `features.tsx` e `ai-section.tsx`.
+- Variant `red` adicionado ao `Button` compartilhado (aditivo — variant `gold` preservado para uso exclusivo da seção Embaixadores).
+- Grade de Funcionalidades expandida de 4 para 6 cards (todas as features já existentes no array, sem espaço vazio).
+- Navegação do header expandida para 5 itens (Produto, Planos, Embaixadores, Entrar, Começar agora), reduzindo dependência do rodapé para ações comuns.
+- Bug de empilhamento CSS no menu mobile corrigido (backdrop de blur cobria os links do menu por falta de `z-index` explícito).
+- Contraste do copyright/CNPJ no rodapé corrigido (`#27272A` → `#A1A1AA`).
+  **Não incluído neste escopo:** novo mockup de dashboard no Hero (mantido com paleta antiga, por representar uma tela real ainda não redesenhada).
+  **Validação:** `npx tsc --noEmit` limpo em todas as etapas; responsividade confirmada em mobile e na faixa crítica de tablet (768–900px).
+
+#### LIVO-032-B — Redesign das telas internas (dashboard, agenda, comandas, etc.)
+
+**Status:** Bloqueado — mantém as condições originais do ADR anterior a este desmembramento.
 **Dependências (BLOQUEADO até):**
+
 1. LIVO-030 (migração Asaas) concluída
-2. LIVO-031 (Embaixadores) no ar
-3. "Errinhos" pendentes reportados e corrigidos
-4. Sistema estável em produção
-**Critérios de aceite:** A definir após recebimento dos templates — inclui identificação de fontes (comparação visual/ferramentas de font-matching), extração de paleta de cores (hex), e atualização formal do Design System antes de qualquer implementação.
-**Passos técnicos (somente quando desbloqueado):**
-1. Receber as imagens/templates de referência de Edu.
-2. Identificar fontes utilizadas e paleta de cores exata.
-3. Consolidar tokens (cor, tipografia, espaçamento) em documento formal de Design System.
-4. Aplicar por módulo, de forma incremental — nunca big-bang em todas as telas de uma vez.
-5. Validar cada tela redesenhada isoladamente em produção antes de avançar.
+2. "Errinhos" pendentes reportados e corrigidos
+3. Sistema estável em produção
+   **Racional de manter bloqueado:** alterar UI logada tem risco direto sobre a operação diária de barbearias pagantes — diferente do site institucional, que é superfície separada do produto (não toca em billing, autenticação ou dados de cliente).
+   **Passos técnicos (somente quando desbloqueado):** os mesmos já previstos originalmente — identificar fontes/paleta exatas, consolidar Design System formal, aplicar por módulo de forma incremental, validar cada tela isoladamente em produção.
 
 ---
 
 ## 5. INFRAESTRUTURA
 
 ### LIVO-012 — Integração WhatsApp via Z-API
+
 **Objetivo:** Expandir alertas via WhatsApp usando Z-API como camada de envio.
 **Problema atual:** Alertas WhatsApp existem, mas integração via Z-API ainda não implementada.
 **Impacto no negócio:** Canal de comunicação crítico para lembretes de agendamento e marketing (clientes inativos, aniversariantes).
@@ -195,12 +238,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Conta/credenciais Z-API.
 **Critérios de aceite:** Mensagens de alerta (confirmação de agendamento, lembrete, marketing) são enviadas via Z-API com log de sucesso/falha por `barbershopId`.
 **Passos técnicos:**
+
 1. Diagnóstico: mapear pontos atuais de envio de WhatsApp no código.
 2. Criar camada de abstração de "provedor de mensagem" para permitir troca futura de provedor.
 3. Integrar Z-API respeitando idempotência (evitar reenvio duplicado).
 4. Testar em conta Vortex antes de produção.
 
 ### LIVO-013 — Setup de PostHog com eventos tenant-level
+
 **Objetivo:** Instrumentar produto para gerar inteligência (Princípio da Lívia/Dados do Operating System).
 **Problema atual:** Não implementado; apenas recomendado.
 **Impacto no negócio:** Sem eventos, não há dado para IA nem para decisões de produto — contraria diretamente o "Sistema de Dados" do Operating System.
@@ -209,16 +254,19 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-008 (Vercel Analytics deve subir primeiro, é mais rápido)
 **Critérios de aceite:** Eventos-chave (criação de agendamento, fechamento de comanda, novo cliente, churn) disparam no PostHog com `barbershopId` como propriedade.
 **Passos técnicos:**
+
 1. Definir lista mínima de eventos-chave com Edu.
 2. Implementar client/server-side tracking respeitando isolamento multi-tenant.
 3. Validar eventos chegando no dashboard PostHog.
 
 ### LIVO-030 — Migração de conta Asaas para CNPJ da empresa (subconta Clube de Assinatura)
+
 **Status (08/07/2026):** Diagnóstico concluído. Aguardando aprovação de documentos pela Asaas (bloqueador externo). Achados:
+
 - `ASAAS_KEY` é única e compartilhada entre billing principal e Clube — trocar esse único valor cobre os dois fluxos.
 - Query no Neon confirmou **zero** registros com `clubAsaasWalletId` preenchido e **zero** com `asaasCustomerId` preenchido — nenhum dado real de cliente/assinatura em produção hoje. **Não há migração de dados a fazer, só troca de credencial.**
 - `ASAAS_CLUBE_WEBHOOK_TOKEN` não vem da Asaas — é gerado pela LIVO e informado à Asaas via `configureClubWebhook`. Já resolvido em LIVO-033.
-**Próximo passo real (só quando a Asaas aprovar):** gerar nova `ASAAS_KEY` no painel da conta PJ, atualizar no Vercel, redeploy, testar assinatura fictícia na conta Vortex.
+  **Próximo passo real (só quando a Asaas aprovar):** gerar nova `ASAAS_KEY` no painel da conta PJ, atualizar no Vercel, redeploy, testar assinatura fictícia na conta Vortex.
 
 **Objetivo:** Trocar as chaves de API do Asaas no Vercel e vincular a nova conta PJ assim que aprovada, sem quebrar assinantes já vinculados à integração anterior.
 **Problema atual:** A subconta anterior não foi aprovada por exigir conta PJ. Uma nova conta Asaas foi aberta hoje com o CNPJ da SALA Tecnologia e está aguardando aprovação de documentos.
@@ -228,6 +276,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Aprovação externa da Asaas. Relacionado a LIVO-002 (validação de webhook deve ser retestada com a nova conta).
 **Critérios de aceite:** Variáveis de ambiente da Asaas atualizadas no Vercel (Production); nenhuma assinatura ativa quebra; webhook segue validando corretamente com a nova conta; teste de assinatura fictícia (conta Vortex) bem-sucedido.
 **Passos técnicos:**
+
 1. Diagnóstico read-only (pode ser feito **agora**, sem esperar a aprovação): mapear todas as variáveis de ambiente e referências no código relacionadas à Asaas (chave de API, webhook secret, ID de subconta).
 2. Verificar se existe algum `asaasSubaccountId` ou similar já persistido no banco vinculado à conta antiga/reprovada, que precisará ser migrado ou invalidado.
 3. Assim que a conta nova for aprovada: atualizar as variáveis no Vercel (Production, e Preview se aplicável).
@@ -235,6 +284,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 5. Validar em produção com uma assinatura de teste na conta Vortex antes de liberar para clientes reais.
 
 ### LIVO-014 — Roteamento de domínio multi-marca (livobeauty.com.br)
+
 **Objetivo:** Preparar infraestrutura para o lançamento da vertical Beauty sob o mesmo deployment.
 **Problema atual:** Arquitetura decidida (single codebase/DB, middleware detecta marca), mas roteamento de domínio ainda não implementado.
 **Impacto no negócio:** Bloqueador direto para Fase 2 do roadmap (LIVO BEAUTY).
@@ -243,6 +293,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-018 (VerticalType no schema)
 **Critérios de aceite:** Acessar `livobeauty.com.br` resolve a mesma aplicação com `data-brand` correto, sem afetar tráfego de `livobarber.com.br`.
 **Passos técnicos:**
+
 1. Configurar domínio adicional no Vercel apontando para o mesmo projeto.
 2. Implementar middleware de detecção de host → `data-brand`.
 3. Testar isoladamente em preview deployment antes de produção.
@@ -252,6 +303,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 6. BANCO DE DADOS
 
 ### LIVO-015 — Adição aditiva do enum `VerticalType`
+
 **Objetivo:** Suportar multi-vertical (Barber → Beauty → Med) sem migração destrutiva.
 **Problema atual:** Decisão arquitetural tomada, implementação não iniciada.
 **Impacto no negócio:** Base estrutural para Fase 2 do roadmap estratégico.
@@ -260,12 +312,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** `prisma migrate diff` mostra apenas ADD COLUMN/enum, sem DROP; TX Barbearia e demais registros existentes não são afetados (default seguro para `barber`).
 **Passos técnicos:**
+
 1. Adicionar enum `VerticalType` e campo em `Barbershop` com default `barber`.
 2. Rodar `prisma migrate diff` — hard stop se houver DROP.
 3. Aplicar `migrate dev` local, validar, depois produção.
 4. Confirmar via Neon SQL Editor que TX Barbearia permanece `lifetime`/inalterada.
 
 ### LIVO-016 — Formalização de CI check para `prisma migrate diff`
+
 **Objetivo:** Automatizar a regra "hard stop em qualquer DROP" já praticada manualmente.
 **Problema atual:** Regra é seguida por disciplina manual, não por automação.
 **Impacto no negócio:** Reduz risco de perda de dados em produção.
@@ -274,11 +328,13 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Pipeline de CI roda `prisma migrate diff` e falha automaticamente se detectar `DROP` no output.
 **Passos técnicos:**
+
 1. Criar script que roda `migrate diff` e faz grep por `DROP`.
 2. Adicionar como step obrigatório antes de deploy.
 3. Testar com uma migration proposital contendo DROP para confirmar bloqueio.
 
 ### LIVO-017 — Extensões de schema para inventário (Grupo D)
+
 **Objetivo:** Cobrir gaps de produto no módulo de estoque.
 **Problema atual:** Item genérico listado no Grupo D, sem escopo técnico detalhado ainda.
 **Impacto no negócio:** Afeta precisão de controle de estoque para barbearias com produtos físicos.
@@ -287,6 +343,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Levantamento de requisito específico com Edu.
 **Critérios de aceite:** A definir após levantamento.
 **Passos técnicos:**
+
 1. Levantar com Edu quais gaps específicos de inventário (ex: estoque mínimo, alertas, múltiplos depósitos).
 2. Desenhar schema aditivo.
 3. Implementar seguindo padrão de movimentação atômica já existente.
@@ -296,6 +353,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 7. BACKEND
 
 ### LIVO-018 — Memória da Lívia AI (Grupo D)
+
 **Objetivo:** Permitir que a Lívia mantenha contexto entre interações, alinhado ao "Sistema de IA" do Operating System ("toda funcionalidade deve produzir contexto para a Lívia").
 **Problema atual:** Lívia hoje não possui camada de memória persistente.
 **Impacto no negócio:** Limita o valor percebido da IA como diferencial competitivo.
@@ -304,12 +362,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-013 (eventos/dados estruturados ajudam a alimentar memória)
 **Critérios de aceite:** Lívia referencia contexto de interações anteriores do mesmo `barbershopId` em respostas subsequentes, sem vazar contexto entre tenants.
 **Passos técnicos:**
+
 1. Definir estratégia de memória (ex: resumo periódico por tenant armazenado no Postgres, não apenas em runtime).
 2. Modelar schema de armazenamento de contexto, escopado por `barbershopId`.
 3. Integrar recuperação de contexto nas chamadas ao Anthropic API (Lívia).
 4. Testar isolamento multi-tenant rigorosamente.
 
 ### LIVO-019 — Implementação de cálculo de comissão (líquido vs. bruto) — pendente decisão de negócio
+
 **Objetivo:** Resolver ambiguidade de cálculo de comissão sobre valor líquido (pós-desconto) ou bruto (pré-desconto).
 **Problema atual:** Decisão de negócio explicitamente adiada; implementação atual provavelmente assume um dos dois sem flag.
 **Impacto no negócio:** Impacta diretamente o repasse financeiro aos profissionais — erro aqui gera disputa financeira real.
@@ -318,12 +378,14 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Decisão de Edu/sócio sobre a regra de negócio.
 **Critérios de aceite:** Comportamento configurável ou definido explicitamente, documentado em ADR, com teste cobrindo ambos os cenários caso vire configuração por barbearia.
 **Passos técnicos:**
+
 1. Aguardar decisão de negócio (bloqueador).
 2. Documentar decisão como ADR seguindo o padrão já usado para multi-vertical.
 3. Implementar/ajustar cálculo de rateio conforme decisão.
 4. Cobrir com teste automatizado (Vitest) validando `sum(totalInCents) == priceInCents` em ambos os cenários.
 
 ### LIVO-020 — Backend de exportação de relatórios (CSV)
+
 **Objetivo:** Suportar LIVO-010 (UX de exportação).
 **Problema atual:** Não existe endpoint de geração de arquivo de relatório.
 **Impacto no negócio:** Ver LIVO-010.
@@ -332,6 +394,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Endpoint gera CSV válido, escopado por `barbershopId`, para relatório financeiro e de comissão.
 **Passos técnicos:**
+
 1. Definir formato/colunas do CSV com Edu.
 2. Implementar Server Action retornando arquivo (seguindo padrão `return { error }` em caso de falha, nunca `throw`).
 3. Validar com conta Vortex em produção.
@@ -341,6 +404,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 ## 8. FRONTEND
 
 ### LIVO-021 — Resolução de marca via atributo `data-brand`
+
 **Objetivo:** Suportar troca visual entre Barber/Beauty no mesmo código.
 **Problema atual:** Decisão arquitetural tomada, implementação de frontend não iniciada.
 **Impacto no negócio:** Bloqueador para lançamento visual da vertical Beauty.
@@ -349,15 +413,18 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Dependências:** LIVO-014 (roteamento de domínio)
 **Critérios de aceite:** Componentes de tema/cor respondem ao atributo `data-brand` sem duplicar componentes.
 **Passos técnicos:**
+
 1. Definir tokens de tema por marca (cores, tipografia) seguindo Design System.
 2. Implementar CSS variables condicionadas a `[data-brand="beauty"]`.
 3. Testar visualmente em preview com ambas as marcas.
 
 ### LIVO-022 — Interface de exportação de relatórios
+
 Ver critérios técnicos em LIVO-010 (mesmo ticket, componente de frontend).
 **Prioridade:** Média | **Complexidade:** Pequena | **Dependências:** LIVO-020
 
 ### LIVO-023 — Polimento de fluxo de onboarding self-service (frontend)
+
 Componente de frontend do LIVO-009.
 **Prioridade:** Alta | **Complexidade:** Média | **Dependências:** LIVO-009
 
@@ -366,6 +433,7 @@ Componente de frontend do LIVO-009.
 ## 9. FUNCIONALIDADES NOVAS
 
 ### LIVO-024 — Lançamento da vertical LIVO BEAUTY
+
 **Objetivo:** Validar reutilização da plataforma para uma segunda vertical (Fase 2 do roadmap estratégico).
 **Problema atual:** Arquitetura decidida, nada implementado ainda.
 **Impacto no negócio:** Marco estratégico — primeira prova de que o LIVO é multi-vertical de fato, não só em teoria.
@@ -374,30 +442,34 @@ Componente de frontend do LIVO-009.
 **Dependências:** LIVO-015, LIVO-014, LIVO-021
 **Critérios de aceite:** Uma barbearia de teste consegue operar como salão de beleza (nomenclatura, marca, fluxo) sem afetar nenhum tenant existente de Barber.
 **Passos técnicos:**
+
 1. Consolidar LIVO-015 (schema), LIVO-014 (domínio), LIVO-021 (frontend).
 2. Ajustar nomenclatura de produto/serviço para o contexto Beauty onde necessário.
 3. Rodar teste piloto com uma conta real ou simulada.
 4. Validar em produção (Vercel) antes de anunciar publicamente.
 
 ### LIVO-031 — Vitrine pública do Programa Embaixadores no site principal (foto Taxinha/TX Barbearia + CTA WhatsApp)
+
 **Objetivo:** Dar visibilidade pública ao Programa Embaixadores (já implementado no backend com códigos de referral e `freeMonthCredits`), usando a TX Barbearia/Taxinha como prova social.
 **Problema atual:** O programa existe tecnicamente, mas não há vitrine no site institucional (`livobarber.com.br`) para conversão de novos embaixadores.
-**Impacto no negócio:** Growth — canal de aquisição por indicação, de baixo custo, com prova social real.
-**Prioridade:** Alta
-**Complexidade:** Pequena
-**Dependências:** Nenhuma (feature de backend já pronta). **Atenção:** TX Barbearia é conta `lifetime` protegida — esta ação é apenas de marketing/imagem, não deve alterar nada no cadastro/billing da conta.
-**Critérios de aceite:** Seção no site principal exibe foto do Taxinha/TX Barbearia, texto do programa, e botão que abre WhatsApp com mensagem pré-definida (link `wa.me` ou WhatsApp Business API).
-**Passos técnicos:**
-1. Confirmar com Edu: foto a ser usada, texto da seção, e mensagem pré-preenchida do botão WhatsApp.
-2. Implementar seção na landing page principal reutilizando componentes existentes (sem criar padrão visual novo).
-3. Testar o link do WhatsApp em mobile e desktop.
-4. Validar em produção (Vercel).
+**Status:** ✅ **Concluído e publicado em produção** (09/07/2026), como parte do mesmo esforço do LIVO-032-A.
+**O que foi feito:**
+
+- Componente `embaixadores.tsx` criado substituindo a antiga seção `partnership.tsx` (Programa de Parceiros, removida — obsoleta com a chegada dos Embaixadores).
+- Título: "TX Barbearia — Embaixador Oficial LIVO Barber."
+- Parágrafo: enfatiza o _título_ de Embaixador Oficial como algo que outras barbearias também podem conquistar (não "TX foi o primeiro", que soaria como marco fechado), citando acesso a conteúdos, mentorias e benefícios exclusivos.
+- Imagem real (`embaixadores-tx.png`) via `next/image`, substituindo o placeholder inicial.
+- CTA "Quero ser Embaixador" com link `wa.me` para o número real (16) 99281-3674, mensagem pré-preenchida montada via `encodeURIComponent`.
+- **Atenção mantida:** TX Barbearia continua conta `lifetime` protegida — nenhuma alteração de cadastro/billing foi feita, apenas vitrine de marketing.
+  **Validação:** `npx tsc --noEmit` limpo, link do WhatsApp testado.
 
 ### LIVO-025 — Exportação de relatórios (feature completa)
+
 Consolidação de LIVO-010 + LIVO-020 + LIVO-022 como entrega de produto.
 **Prioridade:** Média | **Complexidade:** Média
 
 ### LIVO-026 — Memória da Lívia AI (feature completa)
+
 Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia "lembra" de conversas anteriores).
 **Prioridade:** Alta | **Complexidade:** Grande
 
@@ -405,13 +477,35 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 
 ## 10. DÉBITO TÉCNICO
 
+### LIVO-035 — [CONCLUÍDO 09/07/2026] Variant "red" no Button compartilhado
+
+**Status:** ✅ Resolvido, parte do LIVO-032-A.
+**O que foi feito:** Adicionado variant `red` ao `Button` compartilhado (`src/components/ui/button.tsx`), aditivo — nenhum variant existente (`primary`, `gold`, etc.) foi alterado ou removido. Usado nos CTAs do site institucional fora da seção Embaixadores (navbar, hero, how-it-works, plans).
+**Nota:** variant `gold` permanece em uso exclusivo do botão "Quero ser Embaixador" — não é código morto, é decisão de manter essa seção com identidade visual própria.
+
+### LIVO-036 — Componente ai-section.tsx órfão (não referenciado)
+
+**Objetivo:** Decidir o destino de um componente de landing que existe no código mas não é renderizado em nenhuma página atualmente.
+**Problema atual:** `src/components/landing/ai-section.tsx` (export `AISection`) está no barrel (`index.ts`) e recebeu atualização de paleta/tipografia/ícones durante o LIVO-032-A (por estar na pasta `landing/`, tratado como dentro do escopo), mas não é importado em `page.tsx`, `produto/page.tsx` nem `planos/page.tsx` — não aparece em nenhuma rota real hoje.
+**Impacto no negócio:** Baixo — não afeta usuário final, mas é código não utilizado recebendo manutenção (potencial confusão futura sobre se é código morto ou uma seção "quase pronta" aguardando uso).
+**Prioridade:** Baixa
+**Complexidade:** Pequena
+**Dependências:** Nenhuma.
+**Critérios de aceite:** Decisão registrada — ou o componente é integrado a alguma página (provavelmente `/produto`, dado o conteúdo sobre IA), ou é removido do barrel export se de fato obsoleto.
+**Passos técnicos:**
+
+1. Confirmar com Edu se essa seção foi abandonada intencionalmente ou se ficou pendente de integração.
+2. Se for usar: adicionar `<AISection />` à página apropriada.
+3. Se for descartar: remover o arquivo e o export do `index.ts`.
+
 ### LIVO-033 — [CONCLUÍDO 08/07/2026] Gap de validação em env.ts para variáveis Asaas do Clube
+
 **Status:** ✅ Resolvido e deployado em produção (Vercel "Ready").
 **O que foi feito:** Adicionadas `ASAAS_CLUBE_WEBHOOK_TOKEN` (critical: true), `ASAAS_WEBHOOK_EMAIL` (critical: false) e `NEXT_PUBLIC_ASAAS_SANDBOX` (critical: false) em `SERVER_ENV_VARS` (`src/lib/env.ts`). Variável `ASAAS_CLUBE_WEBHOOK_TOKEN` gerada (GUID) e configurada no Vercel (Production e Preview) antes do deploy.
 **Achado adicional (não bloqueante, debt de limpeza):** Existe uma variável `ASAAS_API_KEY` configurada no Vercel que não é lida por nenhum código (órfã). `ASAAS_KEY` é a única realmente usada, compartilhada entre billing principal (`asaas.ts`) e Clube (`asaas-clube.ts`, como "chave da conta raiz"). Remover `ASAAS_API_KEY` do Vercel quando conveniente — sem urgência, não afeta nada.
 
-
 ### LIVO-027 — Guardrail automatizado contra emojis em arquivos `.ts`
+
 **Objetivo:** Prevenir corrupção de arquivo (`\uFFFD`) no Windows.
 **Problema atual:** Regra seguida manualmente, sem enforcement automático.
 **Impacto no negócio:** Baixo risco individual, mas repetido — e o Operating System define "erro repetido é falha de sistema".
@@ -420,10 +514,12 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **Dependências:** Nenhuma
 **Critérios de aceite:** CI/lint bloqueia commit com emoji em arquivo `.ts`/`.tsx`.
 **Passos técnicos:**
+
 1. Adicionar regra de lint (regex de range Unicode de emoji) em arquivos `.ts`/`.tsx`.
 2. Integrar ao pipeline de pre-commit ou CI.
 
 ### LIVO-028 — Documentação formal de decisões de negócio pendentes (ADR)
+
 **Objetivo:** Não deixar decisões de comissão (líquido/bruto e outros edge cases) apenas na memória de conversas.
 **Problema atual:** Duas decisões de negócio estão explicitamente adiadas sem ADR formal.
 **Impacto no negócio:** Risco de retrabalho e inconsistência se a decisão for tomada informalmente depois.
@@ -432,11 +528,13 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **Dependências:** Decisão de negócio com sócio (bloqueador externo, não técnico).
 **Critérios de aceite:** Existe um documento ADR rastreável assim que a decisão for tomada.
 **Passos técnicos:**
+
 1. Criar template de ADR (se ainda não existir) seguindo padrão já usado para multi-vertical.
 2. Registrar as duas decisões pendentes como "ADR em aberto".
 3. Preencher assim que Edu decidir.
 
 ### LIVO-029 — Consolidação de guardrails de arquitetura em um único documento de Engineering
+
 **Objetivo:** LIVO_INDEX referencia `LIVO_ENGINEERING.md`, mas as regras invioláveis hoje vivem espalhadas (memória + convenção).
 **Problema atual:** Regras críticas (Prisma fora do Edge, `$transaction` como callback, `@@map()` só em tabela, etc.) não estão em um documento oficial dentro da hierarquia de nível 7.
 **Impacto no negócio:** Viola diretamente o "Princípio de Governança" do Decision Framework ("nenhuma regra importante deve existir apenas no código").
@@ -445,6 +543,7 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **Dependências:** Nenhuma
 **Critérios de aceite:** Documento `LIVO_ENGINEERING.md` existe e contém todas as regras invioláveis atualmente conhecidas apenas por convenção.
 **Passos técnicos:**
+
 1. Compilar lista de regras invioláveis já praticadas.
 2. Redigir `LIVO_ENGINEERING.md` seguindo o tom dos documentos existentes.
 3. Adicionar ao projeto e à hierarquia do LIVO_INDEX.
@@ -454,7 +553,9 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 # ROADMAP DE EXECUÇÃO
 
 ## Fase 0 — Fundação de Governança e Segurança (1-2 semanas)
+
 Prioridade: proteger o que já está em produção antes de adicionar o novo.
+
 - LIVO-004 (guardrail Prisma/Edge)
 - LIVO-002 (validação webhook Asaas)
 - LIVO-016 (CI check migrate diff)
@@ -463,18 +564,25 @@ Prioridade: proteger o que já está em produção antes de adicionar o novo.
 - **LIVO-030 (diagnóstico read-only da integração Asaas — iniciar já, sem esperar aprovação)**
 
 ## Fase 1 — Visibilidade e Dados (1-2 semanas)
+
 Sem dado, não há inteligência (princípio do Operating System).
+
 - LIVO-008 (Vercel Analytics — quick win)
 - LIVO-013 (PostHog + eventos tenant-level)
 - LIVO-005 (rate limiting endpoints públicos)
 - LIVO-003 (auditoria LGPD)
 
 ## Fase 1.5 — Pendências correntes de negócio (paralelo, assim que possível)
+
 - **LIVO-030 (parte 2)** — trocar chaves Asaas no Vercel assim que a conta PJ for aprovada (bloqueador externo)
-- **LIVO-031** — Programa Embaixadores no site principal (TX Barbearia/Taxinha + CTA WhatsApp)
+- ~~**LIVO-031** — Programa Embaixadores no site principal~~ ✅ Concluído 09/07/2026
+- ~~**LIVO-032-A** — Redesign do site institucional~~ ✅ Concluído 09/07/2026, antecipado via **ADR-002** (ver seção 4)
+- **LIVO-036** — decidir destino do componente órfão `ai-section.tsx` (baixa prioridade, sem pressa)
 
 ## Fase 2 — Fechamento do Grupo D (2-4 semanas)
+
 Gaps de produto já identificados e priorizados internamente.
+
 - LIVO-009 / LIVO-023 (onboarding self-service)
 - LIVO-006 / LIVO-007 (performance de agenda/comanda)
 - LIVO-010 / LIVO-020 / LIVO-022 / LIVO-025 (exportação de relatórios)
@@ -483,22 +591,27 @@ Gaps de produto já identificados e priorizados internamente.
 - **Bugs pendentes que Edu vai reportar após fechar as correções acima**
 
 ## Fase 3 — Canal e Inteligência (2-3 semanas)
+
 - LIVO-012 (WhatsApp Z-API)
 - LIVO-018 / LIVO-026 (memória da Lívia)
 
 ## Fase 4 — Decisão de Negócio (paralelo, sem bloquear engenharia)
+
 - LIVO-019 (comissão líquido/bruto) — aguardando decisão de Edu/sócio
 - LIVO-028 (ADR das decisões pendentes)
 
 ## Fase 5 — Expansão Multi-Vertical (3-6 semanas)
+
 Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam existir antes de multiplicar verticais).
+
 - LIVO-015 (VerticalType)
 - LIVO-014 (roteamento de domínio)
 - LIVO-021 (data-brand frontend)
 - LIVO-024 (lançamento LIVO BEAUTY)
 
-## Fase 6 — Redesign Completo (somente após Fases 0-4 fechadas e sistema estável)
-- **LIVO-032** — Redesign com base nos templates de Edu (fontes, cores, layout). Explicitamente a última fase, por decisão do próprio Edu.
+## Fase 6 — Redesign das Telas Internas (somente após Fases 0-4 fechadas e sistema estável)
+
+- **LIVO-032-B** — Redesign do dashboard/telas logadas com base na identidade visual já aplicada ao site institucional (LIVO-032-A, concluído). Permanece bloqueado pelas condições originais (LIVO-030 concluído + errinhos corrigidos + sistema estável) — ver ADR-002.
 
 ---
 
@@ -508,10 +621,12 @@ Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam ex
 2. **LIVO-004** — guardrail contra Prisma no Edge (evita repetir o pior incidente já registrado)
 3. **LIVO-002** — validar assinatura do webhook Asaas (retestar quando a nova conta entrar)
 4. **LIVO-008** — ativar Vercel Analytics (esforço mínimo, ganho imediato)
-5. **LIVO-031** — Programa Embaixadores no site (baixo esforço, aquisição imediata)
+5. ~~**LIVO-031** — Programa Embaixadores no site~~ ✅ Concluído 09/07/2026
 6. **LIVO-016** — CI check no `migrate diff` (protege dado de produção)
 
-Esses itens são pequenos individualmente, mas formam a base de segurança, observabilidade e crescimento sobre a qual o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e — por último — o redesign completo devem ser construídos.
+Concluído fora da ordem original, por decisão do founder (ver ADR-002): **LIVO-032-A** (redesign do site institucional) e **LIVO-034** (footer duplicado, achado durante o LIVO-032-A) — publicados em produção em 09/07/2026, antecipando parte da Fase 6.
+
+Esses itens restantes são pequenos individualmente, mas formam a base de segurança, observabilidade e crescimento sobre a qual o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e o redesign das telas internas (LIVO-032-B) devem ser construídos.
 
 ---
 
