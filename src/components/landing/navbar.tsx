@@ -6,11 +6,11 @@ import { poppins } from "@/lib/fonts";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  // "Funcionalidades" foi absorvido em /produto. Parceria continua na Home;
-  // usa /#parceria para funcionar mesmo a partir de /produto e /planos.
+  // "Funcionalidades" foi absorvido em /produto. Embaixadores continua na
+  // Home; usa /#embaixadores para funcionar mesmo a partir de /produto e /planos.
   { label: "Produto", href: "/produto" },
   { label: "Planos", href: "/planos" },
-  { label: "Parceria", href: "/#parceria" },
+  { label: "Embaixadores", href: "/#embaixadores" },
 ] as const;
 
 export function Navbar() {

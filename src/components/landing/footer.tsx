@@ -6,7 +6,7 @@ const LINKS = {
     { label: "Funcionalidades", href: "/produto" },
     { label: "Planos", href: "/planos" },
     { label: "IA integrada", href: "/produto#ia" },
-    { label: "Parceiros", href: "/#parceria" },
+    { label: "Embaixadores", href: "/#embaixadores" },
   ],
   Acesso: [
     { label: "Criar conta", href: "/onboarding" },
@@ -90,9 +90,14 @@ export function Footer() {
           className="flex flex-col md:flex-row items-center justify-between gap-4 py-6"
           style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
         >
-          <p style={{ fontSize: "12px", color: "#27272A" }}>
-            © 2026 Livo. Todos os direitos reservados.
-          </p>
+          <div className="text-center md:text-left">
+            <p style={{ fontSize: "12px", color: "#27272A" }}>
+              SALA Tecnologia Ltda. — CNPJ 67.696.612/0001-31
+            </p>
+            <p style={{ fontSize: "12px", color: "#27272A" }}>
+              © 2026 SALA Tecnologia. Todos os direitos reservados.
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <span
               style={{
