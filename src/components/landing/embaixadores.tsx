@@ -1,35 +1,35 @@
-// LIVO-031 — Seção de Embaixadores (substitui o antigo "Programa de Parceiros").
-// Esqueleto pronto para receber conteúdo definitivo (imagem + copy + link
-// de contato). Estrutura adaptada de partnership.tsx (removido).
+// Seção de Embaixadores (substitui o antigo "Programa de Parceiros").
+// Estrutura adaptada de partnership.tsx (removido).
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
 import { poppins } from "@/lib/fonts";
+import Image from "next/image";
 
-// TODO: substituir pelo número/link de WhatsApp definitivo dos Embaixadores
-// quando o Edu passar a copy final — LIVO-031
-const EMBAIXADORES_WHATSAPP_URL = "https://wa.me/5511999999999";
+const EMBAIXADORES_WHATSAPP_NUMBER = "5516992813674";
+const EMBAIXADORES_WHATSAPP_MESSAGE =
+  "Olá! Vi o Programa de Embaixadores da LIVO e quero saber como faço parte. Pode me passar mais detalhes?";
+const EMBAIXADORES_WHATSAPP_URL = `https://wa.me/${EMBAIXADORES_WHATSAPP_NUMBER}?text=${encodeURIComponent(EMBAIXADORES_WHATSAPP_MESSAGE)}`;
 
 export function Embaixadores() {
   return (
     <Section id="embaixadores" padding="xl" className="bg-black">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Imagem — placeholder até o arquivo final chegar */}
+          {/* Imagem */}
           <div
-            className="relative rounded-3xl overflow-hidden flex items-center justify-center"
+            className="relative rounded-3xl overflow-hidden"
             style={{
               aspectRatio: "4 / 5",
               background: "rgba(138,100,37,0.06)",
               border: "1px solid rgba(138,100,37,0.25)",
             }}
           >
-            {/* TODO: substituir este placeholder por <Image src="/images/embaixadores.jpg" alt="..." fill /> — LIVO-031 */}
-            <span
-              className="text-xs font-semibold tracking-widest uppercase"
-              style={{ color: "var(--livo-gold-solid)" }}
-            >
-              Imagem em breve
-            </span>
+            <Image
+              src="/embaixadores-tx.png"
+              alt="TX Barbearia, Embaixador Oficial LIVO Barber"
+              fill
+              className="object-cover"
+            />
           </div>
 
           {/* Texto */}
@@ -56,8 +56,7 @@ export function Embaixadores() {
                 color: "var(--livo-cream)",
               }}
             >
-              {/* TODO: aguardando copy final do Edu — LIVO-031 */}
-              Título provisório — Embaixadores Livo.
+              TX Barbearia — Embaixador Oficial LIVO Barber.
             </h2>
 
             <p
@@ -69,12 +68,14 @@ export function Embaixadores() {
                 maxWidth: "480px",
               }}
             >
-              {/* TODO: aguardando copy final do Edu — LIVO-031 */}
-              Texto provisório descrevendo o programa de Embaixadores Livo.
-              Este conteúdo será substituído pela copy definitiva.
+              Embaixador Oficial é o título de quem representa a LIVO com
+              autoridade — acesso a conteúdos, mentorias e benefícios
+              exclusivos da marca. TX Barbearia carrega esse título hoje.
+              Selecionamos barbearias de referência para representar a LIVO
+              em suas regiões — se você lidera uma barbearia de peso na sua
+              cidade, essa conversa é pra você.
             </p>
 
-            {/* CTA estilo wa.me — link/texto placeholder */}
             <a
               href={EMBAIXADORES_WHATSAPP_URL}
               target="_blank"
@@ -87,7 +88,6 @@ export function Embaixadores() {
                 boxShadow: "0 8px 32px rgba(138,100,37,0.35)",
               }}
             >
-              {/* TODO: aguardando copy final do Edu — LIVO-031 */}
               Quero ser Embaixador
             </a>
           </div>
