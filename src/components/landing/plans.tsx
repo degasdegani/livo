@@ -1,5 +1,6 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { poppins } from "@/lib/fonts";
 import { PLAN_PRICING, TRIAL_DAYS } from "@/lib/pricing";
 import { Check, X } from "lucide-react";
 
@@ -101,18 +102,23 @@ export function Plans({ variant = "full" }: PlansProps) {
     : PLANS;
 
   return (
-    <Section id={isSummary ? undefined : "planos"} padding="xl">
+    <Section id={isSummary ? undefined : "planos"} padding="xl" className="bg-black">
       <Container>
         <div className="text-center mb-16">
           <p
             className="text-xs font-semibold tracking-widest uppercase mb-4"
-            style={{ color: "#FF2D55" }}
+            style={{ color: "var(--livo-gold-bright)" }}
           >
             Planos e preços
           </p>
           <h2
-            className="font-black text-white mb-4"
-            style={{ fontSize: "clamp(32px,5vw,56px)", letterSpacing: "-2px" }}
+            className={`${poppins.className} mb-4`}
+            style={{
+              fontSize: "clamp(32px,5vw,56px)",
+              fontWeight: 400,
+              letterSpacing: "0.05em",
+              color: "var(--livo-cream)",
+            }}
           >
             Sem surpresas. Sem letra miúda.
           </h2>
@@ -143,21 +149,22 @@ export function Plans({ variant = "full" }: PlansProps) {
               className="rounded-2xl p-8 flex flex-col relative"
               style={{
                 background: plan.featured
-                  ? "linear-gradient(160deg,#1A0608,#0F0308)"
-                  : "#212121",
+                  ? "linear-gradient(160deg, rgba(85,62,32,0.35), #000000)"
+                  : "#0A0A0A",
                 border: plan.featured
-                  ? "1px solid rgba(255,45,85,0.3)"
+                  ? "1px solid rgba(138,100,37,0.4)"
                   : "1px solid rgba(255,255,255,0.06)",
                 boxShadow: plan.featured
-                  ? "0 0 60px rgba(255,45,85,0.08)"
+                  ? "0 0 60px rgba(138,100,37,0.1)"
                   : "none",
               }}
             >
               {plan.featured && (
                 <span
-                  className="absolute top-6 right-6 font-black rounded-full px-3 py-1 text-white"
+                  className="absolute top-6 right-6 font-black rounded-full px-3 py-1"
                   style={{
-                    background: "#FF2D55",
+                    background: "var(--livo-gold-solid)",
+                    color: "var(--livo-cream)",
                     fontSize: "9px",
                     letterSpacing: "2px",
                   }}
@@ -169,7 +176,7 @@ export function Plans({ variant = "full" }: PlansProps) {
               <p
                 className="text-xs font-bold tracking-widest uppercase mb-3"
                 style={{
-                  color: plan.featured ? "#FF2D55" : "#52525B",
+                  color: plan.featured ? "var(--livo-gold-bright)" : "#52525B",
                   fontFamily: "var(--font-mono)",
                 }}
               >
@@ -189,7 +196,7 @@ export function Plans({ variant = "full" }: PlansProps) {
                   style={{
                     fontSize: plan.priceType === "soon" ? "32px" : "56px",
                     letterSpacing: "-2px",
-                    color: plan.featured ? "#FF2D55" : "#FFFFFF",
+                    color: plan.featured ? "var(--livo-gold-bright)" : "var(--livo-cream)",
                     lineHeight: 1,
                   }}
                 >
@@ -220,7 +227,7 @@ export function Plans({ variant = "full" }: PlansProps) {
                 style={{
                   height: "1px",
                   background: plan.featured
-                    ? "rgba(255,45,85,0.2)"
+                    ? "rgba(138,100,37,0.3)"
                     : "rgba(255,255,255,0.06)",
                 }}
               />
@@ -242,13 +249,14 @@ export function Plans({ variant = "full" }: PlansProps) {
 
               <a
                 href={plan.ctaHref}
-                className="block text-center py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90"
+                className="block text-center py-3 rounded-xl font-bold text-sm transition-all duration-200 hover:opacity-90"
                 style={{
-                  background: plan.featured ? "#FF2D55" : "rgba(255,255,255,0.04)",
+                  background: plan.featured ? "var(--livo-gold-solid)" : "rgba(255,255,255,0.04)",
                   border: plan.featured ? "none" : "1px solid rgba(255,255,255,0.1)",
+                  color: "var(--livo-cream)",
                   textDecoration: "none",
                   boxShadow: plan.featured
-                    ? "0 8px 24px rgba(255,45,85,0.3)"
+                    ? "0 8px 24px rgba(138,100,37,0.35)"
                     : "none",
                 }}
               >
@@ -266,7 +274,7 @@ export function Plans({ variant = "full" }: PlansProps) {
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.1)",
-                color: "#FFFFFF",
+                color: "var(--livo-cream)",
                 textDecoration: "none",
               }}
             >

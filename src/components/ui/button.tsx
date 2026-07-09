@@ -88,6 +88,18 @@ const buttonVariants = cva(
           "underline-offset-4 hover:underline",
           "h-auto px-0 py-0",
         ],
+
+        // Botão gold — EXCLUSIVO do site institucional (LIVO-032-A).
+        // Não usar em telas logadas (dashboard segue no variant "primary").
+        gold: [
+          "bg-[#8A6425] text-[#F5EDD9]",
+          "shadow-[0_4px_16px_rgba(85,62,32,0.35)]",
+          "hover:bg-[#D6C099] hover:text-black",
+          "hover:shadow-[0_6px_24px_rgba(85,62,32,0.5)]",
+          "hover:-translate-y-0.5",
+          "active:translate-y-0 active:shadow-none",
+          "focus-visible:ring-[#D6C099]",
+        ],
       },
 
       // ── Tamanho ──────────────────────────────────────────────

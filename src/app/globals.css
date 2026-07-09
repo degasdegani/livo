@@ -188,6 +188,25 @@
   --transition: 150ms ease;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   LIVO-032-A — Paleta do SITE INSTITUCIONAL (livobarber.com.br)
+   Extraída via análise de pixel dos arquivos de logo reais.
+   Uso EXCLUSIVO em src/components/landing/**, src/app/page.tsx,
+   src/app/produto/**, src/app/planos/**. NÃO usar no dashboard
+   (telas logadas) — essas continuam na paleta vermelho/carvão
+   definida no @theme acima.
+   Regra: preto é o peso visual dominante; dourado é acento
+   (CTAs, ícones, títulos-chave, bordas finas) — nunca preencher
+   blocos grandes de dourado sólido.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --livo-black: #000000; /* fundo dominante, preto puro */
+  --livo-gold-bright: #d6c099; /* destaque — títulos-chave, ícones em hover, brilhos */
+  --livo-gold-solid: #8a6425; /* dourado sólido — bordas, ícones default, CTAs secundários */
+  --livo-gold-shadow: #553e20; /* sombra/profundidade — usar com moderação */
+  --livo-cream: #f5edd9; /* off-white quente — texto principal sobre preto */
+}
+
 /* ── Light theme override ────────────────────────────────── */
 [data-theme="light"] {
   /* Backgrounds — --bg-card/elevated now propagate via var() chain */

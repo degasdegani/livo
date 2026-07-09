@@ -8,21 +8,23 @@
 
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { poppins } from "@/lib/fonts";
 import { motion, useInView } from "framer-motion";
+import { Calendar, Mail, Receipt, Sparkles, Users, Wallet } from "lucide-react";
 import { useRef } from "react";
 
 // Dados das funcionalidades
 const FEATURES = [
   {
-    icon: "📅",
+    icon: Calendar,
     title: "Agenda inteligente",
     description:
       "Clientes agendam sozinhos 24h por dia. Sem WhatsApp, sem ligação, sem confusão. Visão mensal e operacional em tempo real.",
-    color: "#FF2D55",
+    color: "#8A6425",
     tag: "Core",
   },
   {
-    icon: "✉️",
+    icon: Mail,
     title: "Confirmação por e-mail",
     description:
       "Confirmação imediata no agendamento e lembrete automático antes do horário. Zero no-show. Zero esquecimento. Zero trabalho manual.",
@@ -30,7 +32,7 @@ const FEATURES = [
     tag: "Automação",
   },
   {
-    icon: "💰",
+    icon: Wallet,
     title: "Financeiro completo",
     description:
       "Receita do dia, semana e mês. Extrato por método de pagamento. Ticket médio automático. Sem planilha. Nunca mais.",
@@ -38,7 +40,7 @@ const FEATURES = [
     tag: "Gestão",
   },
   {
-    icon: "👥",
+    icon: Users,
     title: "CRM de clientes",
     description:
       "Ficha completa de cada cliente: histórico, serviço favorito, total gasto, observações. Segmentação automática em VIP, novos e inativos.",
@@ -46,7 +48,7 @@ const FEATURES = [
     tag: "CRM",
   },
   {
-    icon: "✦",
+    icon: Sparkles,
     title: "Inteligência Artificial",
     description:
       "IA que analisa seu negócio, identifica oportunidades e projeta sua receita dos próximos 7 dias. Insights automáticos sem você pedir.",
@@ -54,11 +56,11 @@ const FEATURES = [
     tag: "IA",
   },
   {
-    icon: "🧾",
+    icon: Receipt,
     title: "Comandas e estoque",
     description:
       "PDV integrado para registrar serviços e produtos. Controle de estoque automático. Comissões por barbeiro calculadas na hora.",
-    color: "#FF2D55",
+    color: "#8A6425",
     tag: "PDV",
   },
 ] as const;
@@ -76,7 +78,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
   const items = limit ? FEATURES.slice(0, limit) : FEATURES;
 
   return (
-    <Section id="funcionalidades" padding="xl">
+    <Section id="funcionalidades" padding="xl" className="bg-black">
       <Container>
         {/* Header da seção */}
         <div ref={titleRef} className="text-center mb-16">
@@ -89,14 +91,14 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
           >
             <span
               className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"
-              style={{ color: "#FF2D55" }}
+              style={{ color: "var(--livo-gold-bright)" }}
             >
               <span
                 style={{
                   display: "inline-block",
                   width: 24,
                   height: 1,
-                  background: "#FF2D55",
+                  background: "var(--livo-gold-solid)",
                 }}
               />
               Funcionalidades
@@ -105,7 +107,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
                   display: "inline-block",
                   width: 24,
                   height: 1,
-                  background: "#FF2D55",
+                  background: "var(--livo-gold-solid)",
                 }}
               />
             </span>
@@ -116,10 +118,11 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
             initial={{ opacity: 0, y: 24 }}
             animate={titleInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-            className="font-black tracking-tight"
+            className={poppins.className}
             style={{
               fontSize: "clamp(32px, 5vw, 56px)",
-              letterSpacing: "-2px",
+              fontWeight: 400,
+              letterSpacing: "0.05em",
               lineHeight: 1.08,
               marginBottom: "16px",
             }}
@@ -127,7 +130,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
             <span
               style={{
                 background:
-                  "linear-gradient(180deg, #FFFFFF, rgba(255,255,255,0.7))",
+                  "linear-gradient(180deg, #F5EDD9, rgba(245,237,217,0.7))",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -137,7 +140,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
             </span>
             <span
               style={{
-                background: "linear-gradient(135deg, #FF2D55, #FF6B7A)",
+                background: "linear-gradient(135deg, #8A6425, #D6C099)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -189,7 +192,7 @@ export function Features({ limit, moreHref }: FeaturesProps = {}) {
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.1)",
-                color: "#FFFFFF",
+                color: "var(--livo-cream)",
                 textDecoration: "none",
               }}
             >
@@ -220,13 +223,13 @@ function FeatureCard({
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.7, ease: "easeOut", delay: (index % 3) * 0.1 }}
       style={{
-        background: "#212121",
+        background: "#0A0A0A",
         padding: "32px",
         position: "relative",
         overflow: "hidden",
         cursor: "default",
       }}
-      whileHover={{ background: "#262626" }}
+      whileHover={{ background: "#121212" }}
     >
       {/* Glow de fundo ao hover */}
       <div
@@ -263,14 +266,8 @@ function FeatureCard({
       </div>
 
       {/* Ícone */}
-      <div
-        style={{
-          fontSize: "28px",
-          marginBottom: "16px",
-          display: "block",
-        }}
-      >
-        {feature.icon}
+      <div style={{ marginBottom: "16px" }}>
+        <feature.icon size={28} strokeWidth={1.5} color="var(--livo-gold-solid)" />
       </div>
 
       {/* Título */}
@@ -278,7 +275,7 @@ function FeatureCard({
         style={{
           fontSize: "18px",
           fontWeight: 800,
-          color: "#FFFFFF",
+          color: "var(--livo-cream)",
           letterSpacing: "-0.3px",
           marginBottom: "10px",
         }}

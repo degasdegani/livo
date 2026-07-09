@@ -1,4 +1,5 @@
 import { Container } from "@/components/layout/container";
+import { poppins } from "@/lib/fonts";
 
 const LINKS = {
   Produto: [
@@ -23,7 +24,7 @@ export function Footer() {
     <footer
       style={{
         borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "#0D0D0D",
+        background: "var(--livo-black)",
       }}
     >
       <Container>
@@ -35,14 +36,19 @@ export function Footer() {
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
-                  background: "#FF2D55",
+                  background: "var(--livo-gold-solid)",
                   display: "inline-block",
-                  boxShadow: "0 0 10px rgba(255,45,85,0.5)",
+                  boxShadow: "0 0 10px rgba(138,100,37,0.5)",
                 }}
               />
               <span
-                className="font-black text-white"
-                style={{ fontSize: "20px", letterSpacing: "-0.5px" }}
+                className={poppins.className}
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 500,
+                  letterSpacing: "0.08em",
+                  color: "var(--livo-cream)",
+                }}
               >
                 Livo
               </span>
@@ -68,7 +74,7 @@ export function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm hover:text-white transition-colors duration-200"
+                      className="text-sm hover:text-(--livo-cream) transition-colors duration-200"
                       style={{ color: "#3F3F46", textDecoration: "none" }}
                     >
                       {link.label}

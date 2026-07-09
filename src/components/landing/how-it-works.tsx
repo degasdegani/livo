@@ -1,5 +1,6 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { poppins } from "@/lib/fonts";
 import { TRIAL_DAYS } from "@/lib/pricing";
 
 interface HowItWorksProps {
@@ -15,17 +16,19 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
     : { href: "/planos", label: "Ver planos e preços" };
 
   return (
-    <Section padding="xl">
+    <Section padding="xl" className="bg-black">
       <Container>
         <div className="text-center mb-20">
           <p className="text-xs font-semibold tracking-widest uppercase text-[#00D4FF] mb-6">
             Como funciona
           </p>
           <h2
-            className="font-black tracking-tight text-white mb-4"
+            className={`${poppins.className} mb-4`}
             style={{
               fontSize: "clamp(32px, 5vw, 56px)",
-              letterSpacing: "-2px",
+              fontWeight: 400,
+              letterSpacing: "0.05em",
+              color: "var(--livo-cream)",
             }}
           >
             Simples assim.
@@ -36,16 +39,19 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-[#212121] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+          <div
+            className="rounded-2xl p-8 relative overflow-hidden"
+            style={{ background: "#0A0A0A", border: "1px solid rgba(138,100,37,0.2)" }}
+          >
             <p
-              className="text-sm font-black text-[#FF2D55] mb-5"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-sm font-black mb-5"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-gold-bright)" }}
             >
               01
             </p>
             <h3
-              className="text-xl font-black text-white mb-3"
-              style={{ letterSpacing: "-0.3px" }}
+              className="text-xl mb-3"
+              style={{ fontWeight: 600, letterSpacing: "-0.3px", color: "var(--livo-cream)" }}
             >
               Cadastra sua barbearia
             </h3>
@@ -54,8 +60,8 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
               serviços, preços e profissionais. Sem suporte técnico.
             </p>
             <span
-              className="text-xs font-semibold text-[#FF2D55]"
-              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-xs font-semibold"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--livo-gold-bright)" }}
             >
               Configuração em 5 minutos
             </span>
@@ -69,8 +75,8 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
               02
             </p>
             <h3
-              className="text-xl font-black text-white mb-3"
-              style={{ letterSpacing: "-0.3px" }}
+              className="text-xl mb-3"
+              style={{ fontWeight: 600, letterSpacing: "-0.3px", color: "var(--livo-cream)" }}
             >
               Compartilha o link
             </h3>
@@ -94,8 +100,8 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
               03
             </p>
             <h3
-              className="text-xl font-black text-white mb-3"
-              style={{ letterSpacing: "-0.3px" }}
+              className="text-xl mb-3"
+              style={{ fontWeight: 600, letterSpacing: "-0.3px", color: "var(--livo-cream)" }}
             >
               O Livo trabalha por você
             </h3>
@@ -112,10 +118,13 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
           </div>
         </div>
 
-        <div className="text-center rounded-2xl p-10 border border-[#FF2D55]/10 bg-[#FF2D55]/5">
+        <div
+          className="text-center rounded-2xl p-10"
+          style={{ border: "1px solid rgba(138,100,37,0.2)", background: "rgba(138,100,37,0.05)" }}
+        >
           <p
-            className="text-xl font-bold text-white mb-2"
-            style={{ letterSpacing: "-0.3px" }}
+            className="text-xl font-bold mb-2"
+            style={{ letterSpacing: "-0.3px", color: "var(--livo-cream)" }}
           >
             Pronto para profissionalizar sua barbearia?
           </p>
@@ -125,7 +134,8 @@ export function HowItWorks({ variant = "detailed" }: HowItWorksProps = {}) {
           </p>
           <a
             href={cta.href}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#FF2D55] text-white font-bold text-base rounded-xl no-underline hover:-translate-y-0.5 transition-all duration-200"
+            className="inline-flex items-center gap-2 px-8 py-4 font-bold text-base rounded-xl no-underline hover:-translate-y-0.5 transition-all duration-200"
+            style={{ background: "var(--livo-gold-solid)", color: "var(--livo-cream)" }}
           >
             {cta.label}
           </a>

@@ -2,6 +2,7 @@
 
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { poppins } from "@/lib/fonts";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
@@ -41,7 +42,7 @@ export function Navbar() {
         <div
           className="absolute inset-0 transition-all duration-300"
           style={{
-            background: scrolled || mobileOpen ? "rgba(25,25,25,0.96)" : "rgba(25,25,25,0.5)",
+            background: scrolled || mobileOpen ? "rgba(0,0,0,0.96)" : "rgba(0,0,0,0.5)",
             backdropFilter: "blur(24px) saturate(180%)",
             borderBottom: scrolled || mobileOpen
               ? "1px solid rgba(255,255,255,0.08)"
@@ -57,14 +58,19 @@ export function Navbar() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: "#FF2D55",
+                background: "var(--livo-gold-solid)",
                 display: "inline-block",
-                boxShadow: "0 0 12px rgba(255,45,85,0.6)",
+                boxShadow: "0 0 12px rgba(138,100,37,0.6)",
               }}
             />
             <span
-              className="font-black text-white"
-              style={{ fontSize: "20px", letterSpacing: "-0.5px" }}
+              className={poppins.className}
+              style={{
+                fontSize: "20px",
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                color: "var(--livo-cream)",
+              }}
             >
               Livo
             </span>
@@ -76,7 +82,7 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors"
+                className="text-sm font-medium text-[#A1A1AA] hover:text-(--livo-cream) transition-colors"
               >
                 {link.label}
               </a>
@@ -85,7 +91,7 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <a href="/onboarding" className="hidden md:block">
-            <Button variant="primary" size="sm">
+            <Button variant="gold" size="sm">
               Começar agora
             </Button>
           </a>
@@ -101,7 +107,7 @@ export function Navbar() {
             <span
               className="block w-5 h-px transition-all duration-300"
               style={{
-                background: "#FFFFFF",
+                background: "var(--livo-cream)",
                 transformOrigin: "center",
                 transform: mobileOpen ? "translateY(4px) rotate(45deg)" : "none",
               }}
@@ -109,14 +115,14 @@ export function Navbar() {
             <span
               className="block w-5 h-px transition-all duration-300"
               style={{
-                background: "#FFFFFF",
+                background: "var(--livo-cream)",
                 opacity: mobileOpen ? 0 : 1,
               }}
             />
             <span
               className="block w-5 h-px transition-all duration-300"
               style={{
-                background: "#FFFFFF",
+                background: "var(--livo-cream)",
                 transformOrigin: "center",
                 transform: mobileOpen ? "translateY(-8px) rotate(-45deg)" : "none",
               }}
@@ -129,7 +135,7 @@ export function Navbar() {
           <div
             className="md:hidden border-t"
             style={{
-              background: "rgba(25,25,25,0.98)",
+              background: "rgba(0,0,0,0.98)",
               borderColor: "rgba(255,255,255,0.08)",
             }}
           >
@@ -139,7 +145,7 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-base font-medium py-3 border-b transition-colors hover:text-white"
+                  className="text-base font-medium py-3 border-b transition-colors hover:text-(--livo-cream)"
                   style={{
                     color: "#A1A1AA",
                     borderColor: "rgba(255,255,255,0.05)",
@@ -150,7 +156,7 @@ export function Navbar() {
                 </a>
               ))}
               <a href="/onboarding" className="mt-4" onClick={() => setMobileOpen(false)}>
-                <Button variant="primary" size="lg" className="w-full">
+                <Button variant="gold" size="lg" className="w-full">
                   Começar agora
                 </Button>
               </a>

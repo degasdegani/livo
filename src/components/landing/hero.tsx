@@ -8,6 +8,7 @@
 
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { poppins } from "@/lib/fonts";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { motion } from "framer-motion";
 
@@ -70,7 +71,7 @@ export function Hero() {
   return (
     <section
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-16"
-      style={{ backgroundColor: "#191919" }}
+      style={{ backgroundColor: "var(--livo-black)" }}
     >
       {/* Grade de fundo */}
       <div
@@ -94,7 +95,7 @@ export function Hero() {
           height: 800,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(255,45,85,0.07) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(138,100,37,0.10) 0%, transparent 70%)",
           filter: "blur(80px)",
           top: "-200px",
           left: "-200px",
@@ -134,9 +135,9 @@ export function Hero() {
             <div
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-widest uppercase"
               style={{
-                background: "rgba(255,45,85,0.06)",
-                border: "1px solid rgba(255,45,85,0.2)",
-                color: "#FF2D55",
+                background: "rgba(138,100,37,0.08)",
+                border: "1px solid rgba(138,100,37,0.3)",
+                color: "var(--livo-gold-bright)",
               }}
             >
               <motion.span
@@ -145,8 +146,8 @@ export function Hero() {
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  background: "#FF2D55",
-                  boxShadow: "0 0 10px #FF2D55",
+                  background: "var(--livo-gold-bright)",
+                  boxShadow: "0 0 10px var(--livo-gold-bright)",
                 }}
                 animate={{ opacity: [1, 0.3, 1] }}
                 transition={{
@@ -166,17 +167,18 @@ export function Hero() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           >
             <h1
-              className="font-black leading-none tracking-tight"
+              className={`${poppins.className} leading-none`}
               style={{
                 fontSize: "clamp(48px, 8vw, 96px)",
-                letterSpacing: "-3px",
+                fontWeight: 300,
+                letterSpacing: "0.02em",
               }}
             >
               <span
                 style={{
                   display: "block",
                   background:
-                    "linear-gradient(180deg, #FFFFFF 0%, rgba(255,255,255,0.65) 100%)",
+                    "linear-gradient(180deg, #F5EDD9 0%, rgba(245,237,217,0.65) 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -188,7 +190,7 @@ export function Hero() {
                 style={{
                   display: "block",
                   background:
-                    "linear-gradient(135deg, #FF2D55 0%, #FF6B7A 100%)",
+                    "linear-gradient(135deg, #8A6425 0%, #D6C099 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -224,7 +226,7 @@ export function Hero() {
             className="flex flex-wrap gap-4 justify-center"
           >
             <a href="/onboarding">
-              <Button variant="primary" size="xl">
+              <Button variant="gold" size="xl">
                 Começar grátis por {TRIAL_DAYS.start} dias
               </Button>
             </a>
@@ -260,7 +262,7 @@ export function Hero() {
                 borderRadius: "20px",
                 padding: "1px",
                 background:
-                  "linear-gradient(135deg, rgba(255,45,85,0.3) 0%, rgba(255,255,255,0.05) 50%, rgba(0,212,255,0.2) 100%)",
+                  "linear-gradient(135deg, rgba(138,100,37,0.35) 0%, rgba(255,255,255,0.05) 50%, rgba(0,212,255,0.2) 100%)",
               }}
             >
               <div
@@ -269,7 +271,7 @@ export function Hero() {
                   background: "#212121",
                   overflow: "hidden",
                   boxShadow:
-                    "0 40px 120px rgba(0,0,0,0.8), 0 0 60px rgba(255,45,85,0.05)",
+                    "0 40px 120px rgba(0,0,0,0.8), 0 0 60px rgba(138,100,37,0.08)",
                 }}
               >
                 {/* Barra superior do mockup (simulando browser/app) */}
@@ -642,7 +644,7 @@ export function Hero() {
                 left: 0,
                 right: 0,
                 height: "120px",
-                background: "linear-gradient(transparent, #191919)",
+                background: "linear-gradient(transparent, #000000)",
                 borderRadius: "0 0 20px 20px",
                 pointerEvents: "none",
               }}

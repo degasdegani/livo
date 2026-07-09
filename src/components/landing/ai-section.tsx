@@ -1,5 +1,7 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
+import { poppins } from "@/lib/fonts";
+import { Lightbulb, MessageCircle, Sparkles, Target, TrendingUp } from "lucide-react";
 
 const CHAT = [
   { role: "client", text: "Quero agendar um corte pra sábado de manhã" },
@@ -18,22 +20,22 @@ const CHAT = [
 
 const AI_FEATURES = [
   {
-    icon: "✦",
+    icon: Sparkles,
     title: "Insights automáticos",
     desc: "Identifica horários ociosos, clientes em risco e oportunidades de receita sem você pedir.",
   },
   {
-    icon: "🔮",
+    icon: TrendingUp,
     title: "Previsão de receita",
     desc: "Projeta o faturamento dos próximos 7 dias com base em histórico e agendamentos confirmados.",
   },
   {
-    icon: "🎯",
+    icon: Target,
     title: "Campanhas inteligentes",
     desc: "Segmenta clientes e envia mensagens personalizadas no momento certo. Totalmente automático.",
   },
   {
-    icon: "💬",
+    icon: MessageCircle,
     title: "Agendamento por chat",
     desc: "Cliente conversa no WhatsApp e a IA agenda em linguagem natural — 24h por dia.",
   },
@@ -41,7 +43,7 @@ const AI_FEATURES = [
 
 export function AISection() {
   return (
-    <Section id="ia" padding="xl">
+    <Section id="ia" padding="xl" className="bg-black">
       <Container>
         <div className="text-center mb-16">
           <p
@@ -51,8 +53,13 @@ export function AISection() {
             Inteligencia Artificial
           </p>
           <h2
-            className="font-black text-white mb-4"
-            style={{ fontSize: "clamp(32px,5vw,56px)", letterSpacing: "-2px" }}
+            className={`${poppins.className} mb-4`}
+            style={{
+              fontSize: "clamp(32px,5vw,56px)",
+              fontWeight: 400,
+              letterSpacing: "0.05em",
+              color: "var(--livo-cream)",
+            }}
           >
             A IA trabalha enquanto{" "}
             <span style={{ color: "#7C3AED" }}>você corta.</span>
@@ -83,18 +90,20 @@ export function AISection() {
                 }}
               >
                 <div
-                  className="flex items-center justify-center rounded-xl flex-shrink-0"
+                  className="flex items-center justify-center rounded-xl shrink-0"
                   style={{
                     width: 40,
                     height: 40,
                     background: "rgba(124,58,237,0.1)",
-                    fontSize: "18px",
                   }}
                 >
-                  {feat.icon}
+                  <feat.icon size={20} strokeWidth={1.5} color="var(--livo-gold-solid)" />
                 </div>
                 <div>
-                  <p className="font-bold text-white mb-1 text-sm">
+                  <p
+                    className="font-bold mb-1 text-sm"
+                    style={{ color: "var(--livo-cream)" }}
+                  >
                     {feat.title}
                   </p>
                   <p
@@ -126,17 +135,17 @@ export function AISection() {
               }}
             >
               <div
-                className="flex items-center justify-center rounded-full text-base"
+                className="flex items-center justify-center rounded-full"
                 style={{
                   width: 36,
                   height: 36,
                   background: "linear-gradient(135deg,#7C3AED,#00D4FF)",
                 }}
               >
-                ✦
+                <Sparkles size={16} strokeWidth={1.5} color="var(--livo-cream)" />
               </div>
               <div>
-                <p className="font-bold text-white text-sm">Assistente Livo</p>
+                <p className="font-bold text-sm" style={{ color: "var(--livo-cream)" }}>Assistente Livo</p>
                 <p className="text-xs" style={{ color: "#00D4A0" }}>
                   ● Online agora
                 </p>
@@ -177,14 +186,14 @@ export function AISection() {
                     style={{
                       fontSize: "13px",
                       lineHeight: 1.5,
-                      color: "#FFFFFF",
+                      color: "var(--livo-cream)",
                       background:
                         msg.role === "client"
-                          ? "rgba(255,45,85,0.08)"
+                          ? "rgba(138,100,37,0.12)"
                           : "rgba(124,58,237,0.1)",
                       border:
                         msg.role === "client"
-                          ? "1px solid rgba(255,45,85,0.15)"
+                          ? "1px solid rgba(138,100,37,0.25)"
                           : "1px solid rgba(124,58,237,0.2)",
                       borderRadius:
                         msg.role === "client"
@@ -207,9 +216,11 @@ export function AISection() {
                 color: "#A1A1AA",
               }}
             >
-              <span>💡</span>
+              <span className="flex items-center">
+                <Lightbulb size={16} strokeWidth={1.5} color="var(--livo-gold-solid)" />
+              </span>
               <span>
-                <strong style={{ color: "#FFFFFF" }}>Insight:</strong> Lucas não
+                <strong style={{ color: "var(--livo-cream)" }}>Insight:</strong> Lucas não
                 aparecia há 19 dias. A IA detectou e enviou sugestão no momento
                 certo.
               </span>
