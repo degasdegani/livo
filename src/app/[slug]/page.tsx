@@ -4,6 +4,7 @@ import { BarbershopMap } from "@/components/barbershop-map";
 import { db } from "@/lib/db";
 import { isEmailGateBlocked } from "@/lib/email-gate";
 import { formatPhoneBR } from "@/lib/masks";
+import { MapPin, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -247,7 +248,7 @@ export default async function BarbershopPage({
                 className="flex items-center gap-1.5 text-sm"
                 style={{ color: "#A1A1AA" }}
               >
-                📍{" "}
+                <MapPin size={16} className="inline" />{" "}
                 {[
                   barbershop.street,
                   barbershop.neighborhood,
@@ -263,7 +264,7 @@ export default async function BarbershopPage({
                 className="flex items-center gap-1.5 text-sm"
                 style={{ color: "#A1A1AA" }}
               >
-                📍 {barbershop.city}
+                <MapPin size={16} className="inline" /> {barbershop.city}
               </span>
             )}
             {barbershop.phone && (
@@ -271,7 +272,7 @@ export default async function BarbershopPage({
                 className="flex items-center gap-1.5 text-sm"
                 style={{ color: "#A1A1AA" }}
               >
-                📞 {formatPhoneBR(barbershop.phone)}
+                <Phone size={16} className="inline" /> {formatPhoneBR(barbershop.phone)}
               </span>
             )}
           </div>

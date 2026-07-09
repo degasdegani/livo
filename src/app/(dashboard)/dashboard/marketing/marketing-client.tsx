@@ -304,7 +304,7 @@ export function MarketingClient({
                 </div>
 
                 {sumidos.map((cliente, idx) => {
-                  const mensagem = `Olá ${cliente.name}! 👋 Tô com saudade de você aqui na ${nomeBarberaria}. Que tal agendar um horário? 💈`;
+                  const mensagem = `Olá ${cliente.name}! \u{1F44B} Tô com saudade de você aqui na ${nomeBarberaria}. Que tal agendar um horário? \u{1F488}`;
                   const link = gerarLinkWhatsApp(cliente.phone, mensagem);
                   const isUltimo = idx === sumidos.length - 1;
 
@@ -531,7 +531,7 @@ export function MarketingClient({
                     cliente.birthDate,
                   ).getUTCFullYear();
                   const idadeCompleta = hoje.getFullYear() - anoNascimento;
-                  const mensagem = `Feliz aniversário, ${cliente.name}! 🎉🎂 A equipe da ${nomeBarberaria} deseja um dia incrível pra você! Que tal comemorar com um corte especial? 💈`;
+                  const mensagem = `Feliz aniversário, ${cliente.name}! \u{1F389}\u{1F382} A equipe da ${nomeBarberaria} deseja um dia incrível pra você! Que tal comemorar com um corte especial? \u{1F488}`;
                   const link = gerarLinkWhatsApp(cliente.phone, mensagem);
 
                   return (

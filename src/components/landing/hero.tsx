@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { poppins } from "@/lib/fonts";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { motion } from "framer-motion";
+import { CalendarDays, DollarSign, Lock, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // Dados dos stats do hero
 const STATS = [
@@ -305,7 +307,7 @@ export function Hero() {
                     }}
                   >
                     <span style={{ color: "#00D4A0", fontSize: "11px" }}>
-                      🔒
+                      <Lock size={12} />
                     </span>
                     <span
                       style={{
@@ -371,13 +373,15 @@ export function Hero() {
                       </span>
                     </div>
 
-                    {[
-                      { icon: "◼", label: "Dashboard", active: true },
-                      { icon: "📅", label: "Agendamentos", active: false },
-                      { icon: "👥", label: "Clientes", active: false },
-                      { icon: "💰", label: "Financeiro", active: false },
-                      { icon: "✦", label: "IA Livo", active: false },
-                    ].map((item) => (
+                    {(
+                      [
+                        { icon: "◼", label: "Dashboard", active: true },
+                        { icon: CalendarDays, label: "Agendamentos", active: false },
+                        { icon: Users, label: "Clientes", active: false },
+                        { icon: DollarSign, label: "Financeiro", active: false },
+                        { icon: "✦", label: "IA Livo", active: false },
+                      ] as { icon: string | LucideIcon; label: string; active: boolean }[]
+                    ).map((item) => (
                       <div
                         key={item.label}
                         style={{
@@ -411,7 +415,9 @@ export function Hero() {
                             }}
                           />
                         )}
-                        <span style={{ fontSize: "13px" }}>{item.icon}</span>
+                        <span style={{ fontSize: "13px" }}>
+                          {typeof item.icon === "string" ? item.icon : <item.icon size={13} />}
+                        </span>
                         {item.label}
                       </div>
                     ))}

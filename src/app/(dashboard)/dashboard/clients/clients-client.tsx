@@ -2,7 +2,7 @@
 "use client";
 
 import type { ClientOrigem } from "@prisma/client";
-import { Cake, Check, Pencil, Users, X } from "lucide-react";
+import { Cake, Check, MessageCircle, Pencil, Search, Users, X } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { Input } from "@/components/ui/input";
@@ -870,7 +870,7 @@ export function ClientsClient({
               ) : (
                 /* Clientes existem, mas filtro não retornou nada */
                 <div className="p-12 text-center">
-                  <p className="text-4xl mb-3">🔍</p>
+                  <Search className="mx-auto mb-3" size={36} />
                   <p
                     className="font-medium mb-1"
                     style={{ color: "var(--text-primary)" }}
@@ -1273,7 +1273,7 @@ export function ClientsClient({
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-500 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
                 >
-                  💬 WhatsApp
+                  <MessageCircle size={16} /> WhatsApp
                 </a>
                 <button
                   type="button"

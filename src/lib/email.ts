@@ -75,7 +75,7 @@ export async function sendAppointmentConfirmation(
     await resend.emails.send({
       from: FROM,
       to: data.clientEmail,
-      subject: `✅ Agendamento confirmado — ${data.barbershopName}`,
+      subject: `\u{2705} Agendamento confirmado — ${data.barbershopName}`,
       html: buildConfirmationHTML(data),
     });
     log.email.info("confirmação de agendamento enviada", {
@@ -101,7 +101,7 @@ export async function sendWelcomeEmail(
     await resend.emails.send({
       from: FROM,
       to,
-      subject: "Bem-vindo ao LIVO! 🎉",
+      subject: "Bem-vindo ao LIVO! \u{1F389}",
       html: buildWelcomeHtml(name),
     });
     log.email.info("e-mail de boas-vindas enviado", { to });
@@ -183,7 +183,7 @@ function buildConfirmationHTML(data: AppointmentConfirmationData): string {
         </tr>
         <tr>
           <td style="padding:32px;">
-            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">✅ Agendamento confirmado!</h1>
+            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">\u{2705} Agendamento confirmado!</h1>
             <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
               Olá, <strong style="color:#fff;">${data.clientName}</strong>! Seu agendamento na
               <strong style="color:#fff;">${data.barbershopName}</strong> está confirmado.
@@ -254,7 +254,7 @@ function buildWelcomeHtml(name: string): string {
         </tr>
         <tr>
           <td style="padding:40px 32px;">
-            <h1 style="color:#fff;font-size:24px;margin:0 0 16px;">Bem-vindo, ${name}! 🎉</h1>
+            <h1 style="color:#fff;font-size:24px;margin:0 0 16px;">Bem-vindo, ${name}! \u{1F389}</h1>
             <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
               Falta só um passo: complete a configuração da sua barbearia para começar a receber agendamentos.
             </p>
@@ -340,7 +340,7 @@ function buildInvitationHtml(params: {
         </tr>
         <tr>
           <td style="padding:40px 32px;">
-            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">Você foi convidado! ✂️</h1>
+            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">Você foi convidado! \u{2702}\u{FE0F}</h1>
             <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 24px;">
               <strong style="color:#fff;">${inviterName}</strong> convidou você para acessar a
               <strong style="color:#fff;">${barbershopName}</strong> no LIVO

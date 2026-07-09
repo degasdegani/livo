@@ -1,7 +1,8 @@
 // src/app/(dashboard)/dashboard/relatorios/relatorios-client.tsx
 "use client";
 
-import { useState, useTransition } from "react";
+import { Award } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -421,7 +422,12 @@ export function RelatoriosClient({
           titulo="Ranking de barbeiros"
           colunas={["Barbeiro", "Comandas", "Faturamento", "Comissões"]}
           linhas={rankingBarbeiros.map((b, i) => [
-            `${i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : ""}${b.nome}`,
+            <span className="inline-flex items-center gap-1.5">
+              {i === 0 && <Award size={14} className="text-yellow-500" />}
+              {i === 1 && <Award size={14} className="text-gray-400" />}
+              {i === 2 && <Award size={14} className="text-amber-700" />}
+              {b.nome}
+            </span>,
             String(b.comandas),
             fmt(b.faturamento),
             fmt(b.comissoes),
@@ -479,7 +485,7 @@ function TabelaSimples({
 }: {
   titulo: string;
   colunas: string[];
-  linhas: string[][];
+  linhas: (string | ReactNode)[][];
   vazio: string;
 }) {
   return (

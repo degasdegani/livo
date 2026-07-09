@@ -1,6 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 
 export default function OnboardingError({
@@ -27,7 +28,7 @@ export default function OnboardingError({
           </span>
         </div>
 
-        <div className="text-4xl mb-6">⚠️</div>
+        <AlertTriangle className="mx-auto mb-6" size={36} style={{ color: "#C8102E" }} />
 
         <h1 className="text-white font-bold text-xl mb-3">
           Algo deu errado

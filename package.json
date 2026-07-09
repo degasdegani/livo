@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/guardrail-migrate-diff.js && node scripts/guardrail-prisma-edge.js && prisma generate && next build",
+    "build": "node scripts/guardrail-migrate-diff.js && node scripts/guardrail-prisma-edge.js && node scripts/guardrail-emoji.js && prisma generate && next build",
     "guardrail:prisma-edge": "node scripts/guardrail-prisma-edge.js",
     "guardrail:migrate-diff": "node scripts/guardrail-migrate-diff.js",
+    "guardrail:emoji": "node scripts/guardrail-emoji.js",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",

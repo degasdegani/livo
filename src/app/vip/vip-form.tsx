@@ -1,5 +1,6 @@
 "use client";
 
+import { PartyPopper } from "lucide-react";
 import { useState } from "react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { createLead } from "./actions";
@@ -59,7 +60,8 @@ export function VipForm() {
             margin: "0 0 10px",
           }}
         >
-          Você está na lista! 🎉
+          Você está na lista!
+          <PartyPopper size={20} className="inline ml-1" />
         </h2>
         <p
           style={{

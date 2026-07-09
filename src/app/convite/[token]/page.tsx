@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { InvitationStatus } from "@prisma/client";
+import { Mail } from "lucide-react";
 import { redirect } from "next/navigation";
 import AcceptInviteForm from "./accept-form";
 
@@ -157,7 +158,7 @@ function InvalidInvite({ reason }: { reason: string }) {
       className="min-h-screen bg-(--bg-base) flex items-center justify-center p-4"
     >
       <div className="w-full max-w-md text-center">
-        <div className="text-5xl mb-6">✉️</div>
+        <Mail className="mx-auto mb-6" size={44} style={{ color: "#9A9AA6" }} />
         <h1 className="text-xl font-bold text-white mb-2">{info.title}</h1>
         <p className="text-[#9A9AA6] text-sm mb-8">{info.description}</p>
         <a

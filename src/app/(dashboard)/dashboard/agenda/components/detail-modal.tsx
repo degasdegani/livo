@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Popover } from "@/components/ui/popover";
 import { WhatsappIcon } from "@/components/ui/whatsapp-icon";
 import {
@@ -364,7 +365,9 @@ export function DetailModal({
               className="w-full rounded-lg py-2 text-xs font-medium transition-colors disabled:opacity-50"
               style={{ border: "1px solid var(--status-red)", color: "var(--status-red)" }}
             >
-              🗑 Excluir agendamento
+              <span className="inline-flex items-center gap-1.5">
+                <Trash2 size={16} /> Excluir agendamento
+              </span>
             </button>
           )}
 

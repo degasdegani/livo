@@ -3,6 +3,7 @@
 // Global error boundary — replaces the root layout when an unrecoverable
 // error occurs. Must include <html> and <body> since layout is replaced.
 import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -49,7 +50,7 @@ export default function GlobalError({
               </span>
             </div>
 
-            <div style={{ fontSize: "48px", marginBottom: "24px" }}>⚠️</div>
+            <AlertTriangle style={{ width: 48, height: 48, marginBottom: 24, color: "#C8102E" }} />
 
             <h1
               style={{

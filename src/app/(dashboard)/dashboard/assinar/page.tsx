@@ -3,7 +3,7 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Check } from "lucide-react";
+import { Check, CheckCircle2 } from "lucide-react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { useToast } from "@/components/ui/toast";
 import { formatCentsToBRL } from "@/lib/masks";
@@ -177,7 +177,7 @@ export default function AssinarPage() {
         style={{ backgroundColor: "var(--bg-base)" }}
       >
         <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
-          <div className="text-5xl">✅</div>
+          <CheckCircle2 size={56} style={{ color: "var(--status-green, #22C55E)" }} />
           <h2
             className="font-black"
             style={{ fontSize: "24px", color: "var(--text-primary)" }}

@@ -179,7 +179,7 @@ export function LiviaBubble({
       const errorMsg: Message = {
         role: "assistant",
         content:
-          "Ops, tive um problema técnico. Tente novamente em instantes. 🔧",
+          "Ops, tive um problema técnico. Tente novamente em instantes. \u{1F527}",
         id: Math.random().toString(36).slice(2),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -292,7 +292,7 @@ export function LiviaBubble({
                 </div>
                 <div className="bg-[#1F1F27] border border-[#2A2A33] rounded-2xl rounded-bl-sm px-3 py-2 text-sm text-[#E8E8EE] leading-relaxed max-w-[78%]">
                   Olá! Sou a Lívia, sua assistente
-                  {barbershopName ? ` da ${barbershopName}` : ""}. 👋
+                  {barbershopName ? ` da ${barbershopName}` : ""}. {"\u{1F44B}"}
                   <br />
                   <span className="text-[#9A9AA6] text-xs">
                     Como posso ajudar você hoje?

@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Phone,
+  Scissors,
+  User,
+  UserCog,
+} from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -213,7 +223,7 @@ export function BookingForm({
     const total = services.reduce((sum, s) => sum + s.priceInCents, 0);
     return (
       <div className="flex flex-col items-center text-center py-8">
-        <div className="text-6xl mb-6">✅</div>
+        <CheckCircle2 className="mb-6" size={64} style={{ color: "#00D4A0" }} />
         <h2
           className="font-black text-white mb-3"
           style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
@@ -235,7 +245,7 @@ export function BookingForm({
               className="flex gap-3 py-2"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
             >
-              <span>✂️</span>
+              <Scissors size={20} />
               <div className="flex-1 flex items-center justify-between">
                 <p className="text-sm font-semibold text-white">{s.name}</p>
                 <p className="text-sm" style={{ color: "#A1A1AA" }}>{formatCents(s.priceInCents)}</p>
@@ -243,19 +253,19 @@ export function BookingForm({
             </div>
           ))}
           {[
-            { icon: "💰", label: "Total", value: formatCents(total) },
-            { icon: "📅", label: "Data", value: formatDate(selectedDate) },
-            { icon: "🕐", label: "Horário", value: selectedTime },
-            { icon: "👤", label: "Cliente", value: clientName },
-            { icon: "📞", label: "Telefone", value: formatPhoneBR(clientPhone) },
-            ...(selectedProf ? [{ icon: "💈", label: "Profissional", value: selectedProf.name }] : []),
+            { icon: DollarSign, label: "Total", value: formatCents(total) },
+            { icon: CalendarDays, label: "Data", value: formatDate(selectedDate) },
+            { icon: Clock, label: "Horário", value: selectedTime },
+            { icon: User, label: "Cliente", value: clientName },
+            { icon: Phone, label: "Telefone", value: formatPhoneBR(clientPhone) },
+            ...(selectedProf ? [{ icon: UserCog, label: "Profissional", value: selectedProf.name }] : []),
           ].map((item) => (
             <div
               key={item.label}
               className="flex gap-3 py-3"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
             >
-              <span>{item.icon}</span>
+              <item.icon size={16} />
               <div>
                 <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>{item.label}</p>
                 <p className="text-sm font-semibold text-white">{item.value}</p>
