@@ -10,10 +10,12 @@ import { usePathname } from "next/navigation";
 export function PublicFooter() {
   const pathname = usePathname();
 
-  // Denylist: dashboard e TV são telas operacionais; "/" (home) já tem o
-  // footer de marketing próprio.
+  // Denylist: dashboard e TV são telas operacionais; "/", "/produto" e
+  // "/planos" já têm footer de marketing próprio (LIVO-034).
   const hidden =
     pathname === "/" ||
+    pathname === "/produto" ||
+    pathname === "/planos" ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/tv");
 
