@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { requireMembership, requireRole } from "@/lib/permissions";
+import { captureEvent } from "@/lib/posthog";
 import { getClientPackagesForClient } from "../pacotes/actions";
 
 export type ComandaWithItems = Prisma.ComandaGetPayload<{
@@ -641,6 +642,18 @@ export async function fecharComanda(
     totalInCents: totalFinal,
   });
 
+  try {
+    captureEvent(membership.barbershopId, "comanda_fechada", membership.barbershopId, {
+      comandaId,
+      totalInCents: totalFinal,
+    });
+  } catch (err) {
+    log.comanda.error("falha ao registrar evento de analytics (comanda_fechada)", {
+      barbershopId: membership.barbershopId,
+      comandaId,
+    }, err);
+  }
+
   revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);
   revalidatePath(`/dashboard/comandas/${comandaId}`);
@@ -754,6 +767,20 @@ export async function cancelarComanda(comandaId: string) {
     comandaId,
     status: comanda.status,
   });
+
+  if (comanda.appointmentId) {
+    try {
+      captureEvent(membership.barbershopId, "agendamento_cancelado", membership.barbershopId, {
+        appointmentId: comanda.appointmentId,
+        source: "cancelamento_via_comanda",
+      });
+    } catch (err) {
+      log.comanda.error("falha ao registrar evento de analytics (agendamento_cancelado)", {
+        barbershopId: membership.barbershopId,
+        comandaId,
+      }, err);
+    }
+  }
 
   revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);

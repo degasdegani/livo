@@ -5,8 +5,10 @@ import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { uploadImageToBlob } from "@/lib/blob-upload";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import { requireModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
+import { captureEvent } from "@/lib/posthog";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,16 @@ export async function createProfessional(data: {
       isActive: true,
     },
   });
+
+  try {
+    captureEvent(membership.barbershopId, "profissional_adicionado", membership.barbershopId, {
+      source: "perfil_sem_login",
+    });
+  } catch (err) {
+    log.error("falha ao registrar evento de analytics (profissional_adicionado)", {
+      barbershopId: membership.barbershopId,
+    }, err);
+  }
 
   revalidatePath("/dashboard/profissionais");
   revalidatePath("/dashboard/settings/acessos");

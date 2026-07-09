@@ -9,12 +9,14 @@ import {
   updateAppointmentCore,
 } from "@/lib/appointment-core";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import {
   appointmentScope,
   clientScope,
   requireMembership,
   requireRole,
 } from "@/lib/permissions";
+import { captureEvent } from "@/lib/posthog";
 
 // ─── Tipos exportados ────────────────────────────────────────────────────────
 
@@ -943,6 +945,20 @@ export async function markWhatsappSent(
         });
       }
     });
+
+    if (type === "noshow") {
+      try {
+        captureEvent(membership.barbershopId, "agendamento_cancelado", membership.barbershopId, {
+          appointmentId,
+          source: "marcado_como_noshow",
+        });
+      } catch (err) {
+        log.agenda.error("falha ao registrar evento de analytics (agendamento_cancelado)", {
+          barbershopId: membership.barbershopId,
+          appointmentId,
+        }, err);
+      }
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/agenda");

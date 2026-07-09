@@ -39,6 +39,10 @@ const SERVER_ENV_VARS: EnvVar[] = [
   // Observability (non-critical — app works without them)
   { key: "SENTRY_DSN", description: "Sentry server-side DSN (error tracking)", critical: false },
   { key: "NEXT_PUBLIC_SENTRY_DSN", description: "Sentry client-side DSN (error tracking)", critical: false },
+
+  // Product analytics (non-critical — app works without them)
+  { key: "POSTHOG_API_KEY", description: "PostHog project API key (product analytics)", critical: false },
+  { key: "POSTHOG_HOST", description: "PostHog ingestion host (e.g. https://app.posthog.com)", critical: false },
 ];
 
 export type EnvValidationResult = {

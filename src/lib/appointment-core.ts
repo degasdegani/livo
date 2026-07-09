@@ -6,6 +6,7 @@
 import { type AppointmentStatus, ComandaStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { captureEvent } from "@/lib/posthog";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -155,6 +156,7 @@ export async function createAppointmentCore(
 
   const normalizedPhone = input.clientPhone.replace(/\D/g, "");
 
+  let clientCreated = false;
   let appointment: Awaited<ReturnType<typeof db.appointment.create>> | null =
     null;
   try {
@@ -209,6 +211,7 @@ export async function createAppointmentCore(
             },
           });
           clientId = created.id;
+          clientCreated = true;
         }
       }
 
@@ -267,6 +270,31 @@ export async function createAppointmentCore(
     appointmentId: appointment.id,
     status: input.status ?? "pending",
   });
+
+  try {
+    captureEvent(input.barbershopId, "agendamento_criado", input.barbershopId, {
+      appointmentId: appointment.id,
+      professionalId: input.professionalId,
+      status: input.status ?? "pending",
+    });
+  } catch (err) {
+    log.agenda.error("falha ao registrar evento de analytics (agendamento_criado)", {
+      barbershopId: input.barbershopId,
+      appointmentId: appointment.id,
+    }, err);
+  }
+
+  if (clientCreated) {
+    try {
+      captureEvent(input.barbershopId, "cliente_criado", input.barbershopId, {
+        source: "agendamento_automatico",
+      });
+    } catch (err) {
+      log.agenda.error("falha ao registrar evento de analytics (cliente_criado)", {
+        barbershopId: input.barbershopId,
+      }, err);
+    }
+  }
 
   return { success: true, appointmentId: appointment.id };
 }
@@ -338,6 +366,7 @@ export async function updateAppointmentCore(
   const existingNormalizedPhone = existing.clientPhone?.replace(/\D/g, "") ?? "";
   const phoneChanged = normalizedPhone !== existingNormalizedPhone;
 
+  let clientCreated = false;
   try {
     await db.$transaction(async (tx) => {
     // Serializa edições concorrentes do mesmo profissional e revalida o conflito
@@ -380,6 +409,7 @@ export async function updateAppointmentCore(
             },
           });
           newClientId = created.id;
+          clientCreated = true;
         }
       }
     }
@@ -426,6 +456,18 @@ export async function updateAppointmentCore(
       };
     }
     throw err;
+  }
+
+  if (clientCreated) {
+    try {
+      captureEvent(auth.barbershopId, "cliente_criado", auth.barbershopId, {
+        source: "agendamento_automatico",
+      });
+    } catch (err) {
+      log.agenda.error("falha ao registrar evento de analytics (cliente_criado)", {
+        barbershopId: auth.barbershopId,
+      }, err);
+    }
   }
 
   return { success: true };
@@ -492,6 +534,21 @@ export async function updateAppointmentStatusCore(
       }
     }
   });
+
+  if (status === "cancelled" || status === "no_show") {
+    try {
+      captureEvent(auth.barbershopId, "agendamento_cancelado", auth.barbershopId, {
+        appointmentId,
+        status,
+        source: "cancelamento_manual",
+      });
+    } catch (err) {
+      log.agenda.error("falha ao registrar evento de analytics (agendamento_cancelado)", {
+        barbershopId: auth.barbershopId,
+        appointmentId,
+      }, err);
+    }
+  }
 
   return { success: true };
 }

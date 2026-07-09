@@ -7,6 +7,7 @@ import { PlanStatus } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { captureEvent } from "@/lib/posthog";
 
 export async function POST(req: NextRequest) {
   const correlationId = req.headers.get("x-correlation-id") ?? undefined;
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
     // ── Cobrança removida (pagamento deletado) → cancela ───────
     if (event === "PAYMENT_DELETED") {
       if (payment?.subscription) {
-        await db.barbershop.updateMany({
+        const cancelled = await db.barbershop.updateMany({
           where: {
             asaasSubscriptionId: payment.subscription,
             planStatus: { not: PlanStatus.lifetime },
@@ -147,6 +148,29 @@ export async function POST(req: NextRequest) {
           subscriptionId: payment.subscription,
           paymentId: payment.id,
         });
+
+        if (cancelled.count > 0) {
+          try {
+            const shop = await db.barbershop.findFirst({
+              where: {
+                asaasSubscriptionId: payment.subscription,
+                planStatus: { not: PlanStatus.lifetime },
+              },
+              select: { id: true },
+            });
+            if (shop) {
+              captureEvent(shop.id, "assinatura_cancelada", shop.id, {
+                subscriptionId: payment.subscription,
+                reason: "payment_deleted",
+              });
+            }
+          } catch (err) {
+            log.billing.error("falha ao registrar evento de analytics (assinatura_cancelada)", {
+              correlationId,
+              subscriptionId: payment.subscription,
+            }, err);
+          }
+        }
       }
     }
 
@@ -154,7 +178,7 @@ export async function POST(req: NextRequest) {
     if (event === "SUBSCRIPTION_DELETED") {
       const subscriptionId = subscription?.id;
       if (subscriptionId) {
-        await db.barbershop.updateMany({
+        const cancelled = await db.barbershop.updateMany({
           where: {
             asaasSubscriptionId: subscriptionId,
             planStatus: { not: PlanStatus.lifetime },
@@ -169,6 +193,29 @@ export async function POST(req: NextRequest) {
           correlationId,
           subscriptionId,
         });
+
+        if (cancelled.count > 0) {
+          try {
+            const shop = await db.barbershop.findFirst({
+              where: {
+                asaasSubscriptionId: subscriptionId,
+                planStatus: { not: PlanStatus.lifetime },
+              },
+              select: { id: true },
+            });
+            if (shop) {
+              captureEvent(shop.id, "assinatura_cancelada", shop.id, {
+                subscriptionId,
+                reason: "subscription_deleted",
+              });
+            }
+          } catch (err) {
+            log.billing.error("falha ao registrar evento de analytics (assinatura_cancelada)", {
+              correlationId,
+              subscriptionId,
+            }, err);
+          }
+        }
       }
     }
 

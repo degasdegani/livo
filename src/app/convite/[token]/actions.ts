@@ -3,6 +3,7 @@
 import { auth, signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { captureEvent } from "@/lib/posthog";
 import { InvitationStatus, MemberRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
@@ -101,6 +102,16 @@ export async function acceptInvitationAction(
       role: invitation.role,
       mode: input.mode,
     });
+
+    try {
+      captureEvent(invitation.barbershopId, "profissional_adicionado", invitation.barbershopId, {
+        source: "convite_aceito",
+      });
+    } catch (err) {
+      log.convite.error("falha ao registrar evento de analytics (profissional_adicionado)", {
+        barbershopId: invitation.barbershopId,
+      }, err);
+    }
   } else {
     // "create" mode: check email first, then do all writes atomically to prevent orphan accounts
     const existingUser = await db.user.findUnique({
@@ -156,6 +167,16 @@ export async function acceptInvitationAction(
       role: invitation.role,
       mode: input.mode,
     });
+
+    try {
+      captureEvent(invitation.barbershopId, "profissional_adicionado", invitation.barbershopId, {
+        source: "convite_aceito",
+      });
+    } catch (err) {
+      log.convite.error("falha ao registrar evento de analytics (profissional_adicionado)", {
+        barbershopId: invitation.barbershopId,
+      }, err);
+    }
 
     try {
       await signIn("credentials", {

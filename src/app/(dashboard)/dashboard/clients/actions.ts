@@ -5,7 +5,9 @@ import type { ClientOrigem } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { dateOnlyToUTC } from "@/lib/date-only";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import { clientScope, requireMembership } from "@/lib/permissions";
+import { captureEvent } from "@/lib/posthog";
 
 type ClientRow = {
   id: string;
@@ -170,6 +172,16 @@ export async function createClient(data: {
       totalVisits: 0,
     },
   });
+
+  try {
+    captureEvent(membership.barbershopId, "cliente_criado", membership.barbershopId, {
+      source: "crm_manual",
+    });
+  } catch (err) {
+    log.error("falha ao registrar evento de analytics (cliente_criado)", {
+      barbershopId: membership.barbershopId,
+    }, err);
+  }
 
   revalidatePath("/dashboard/clients");
 }

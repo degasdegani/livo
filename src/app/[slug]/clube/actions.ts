@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 import {
   checkOtpRateLimit,
   generateOtpCode,
@@ -8,6 +9,7 @@ import {
   verifyOtpCode,
   sendOtpSms,
 } from "@/lib/otp-clube";
+import { captureEvent } from "@/lib/posthog";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import {
@@ -177,6 +179,16 @@ export async function verifyClientCode(
       },
       select: { id: true },
     });
+
+    try {
+      captureEvent(barbershopId, "cliente_criado", barbershopId, {
+        source: "clube_publico",
+      });
+    } catch (err) {
+      log.error("falha ao registrar evento de analytics (cliente_criado)", {
+        barbershopId,
+      }, err);
+    }
   }
 
   // Emitir JWT de sessão (cookie httpOnly, 60 dias)
