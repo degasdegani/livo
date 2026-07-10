@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { CPFInput } from "@/components/ui/cpf-input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { fetchCEP, maskCEP } from "@/lib/cep";
 import { isValidCPF } from "@/lib/masks";
 import { PLAN_PRICING } from "@/lib/pricing";
 import { readReferralCookie, readReferralFromUrl } from "@/lib/referral";
@@ -13,10 +14,6 @@ const brl = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Funções de máscara
-function maskCEP(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 8);
-  return d.replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
-}
 function maskDate(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 8);
   return d.replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2");
@@ -30,19 +27,6 @@ function slugify(text: string) {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
-}
-
-async function fetchCEP(cep: string) {
-  const clean = cep.replace(/\D/g, "");
-  if (clean.length !== 8) return null;
-  try {
-    const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
-    const data = await res.json();
-    if (data.erro) return null;
-    return data;
-  } catch {
-    return null;
-  }
 }
 
 export default function OnboardingPage() {

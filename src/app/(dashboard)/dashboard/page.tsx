@@ -183,7 +183,36 @@ export default async function DashboardPage() {
   const hasProfessionals = barbershop.professionals.length > 0;
   const hasServices = barbershop.services.length > 0;
   const hasAnyAppointment = barbershop._count.appointments > 0;
-  const setupComplete = hasProfessionals && hasServices && hasAnyAppointment;
+
+  // Passo "Completar cadastro": dados pessoais do owner (cpf/nascimento) +
+  // endereço da barbearia. Só consultados para owner (único que vê o
+  // checklist) — evita query extra para barber/recepção.
+  const ownerPersonalData =
+    membership.role === MemberRole.owner
+      ? await db.user.findUnique({
+          where: { id: session.user.id },
+          select: { cpf: true, birthDate: true },
+        })
+      : null;
+  const hasCompletedRegistration = !!(
+    ownerPersonalData?.cpf &&
+    ownerPersonalData?.birthDate &&
+    barbershop.cep &&
+    barbershop.street &&
+    barbershop.neighborhood
+  );
+
+  // Passo "Confirmar plano": sem telemetria de interação com a tela de planos
+  // hoje — tratado como concluído assim que o cadastro (passo anterior) é
+  // completado, em vez de criar um campo de banco só para isso.
+  const hasConfirmedPlan = hasCompletedRegistration;
+
+  const setupComplete =
+    hasCompletedRegistration &&
+    hasConfirmedPlan &&
+    hasProfessionals &&
+    hasServices &&
+    hasAnyAppointment;
 
   // Analytics aparecem apenas quando há dados reais de faturamento
   const hasRevenueHistory =
@@ -287,6 +316,20 @@ export default async function DashboardPage() {
         {membership.role === MemberRole.owner && !setupComplete && (
           <OnboardingChecklist
             steps={[
+              {
+                label: "Completar cadastro",
+                description: "Adicione seu CPF, data de nascimento e o endereço da barbearia.",
+                done: hasCompletedRegistration,
+                href: "/dashboard/settings",
+                cta: "Completar →",
+              },
+              {
+                label: "Confirmar plano",
+                description: "Revise o plano da sua barbearia.",
+                done: hasConfirmedPlan,
+                href: "/dashboard/assinar",
+                cta: "Ver planos →",
+              },
               {
                 label: "Adicionar profissional",
                 description: "Cadastre os barbeiros que atendem na sua barbearia.",
