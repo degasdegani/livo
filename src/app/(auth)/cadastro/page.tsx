@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   persistReferralCookie,
@@ -10,12 +10,12 @@ import {
 } from "@/lib/referral";
 import { registerAndCreateBarbershop } from "./actions";
 
-function SubmitButton() {
+function SubmitButton({ termsAccepted }: { termsAccepted: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || !termsAccepted}
       className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
       style={{
         background: "#FF2D55",
@@ -29,6 +29,7 @@ function SubmitButton() {
 
 export default function CadastroPage() {
   const [state, action] = useActionState(registerAndCreateBarbershop, null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Programa Embaixadores (A4): esta tela é o ponto de entrada real do fluxo
   // (substitui /register + /onboarding). Captura ?ref= aqui e também relê o
@@ -240,6 +241,8 @@ export default function CadastroPage() {
           <input
             name="acceptTerms"
             type="checkbox"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
             className="mt-0.5 shrink-0"
             style={{ accentColor: "#FF2D55" }}
           />
@@ -275,7 +278,7 @@ export default function CadastroPage() {
           </p>
         )}
 
-        <SubmitButton />
+        <SubmitButton termsAccepted={termsAccepted} />
       </form>
 
       <p className="text-center text-xs mt-6" style={{ color: "#52525B" }}>
