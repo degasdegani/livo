@@ -30,6 +30,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LiviaBubble } from "@/components/livia-bubble";
+import { ProductSuggestionButton } from "@/components/product-suggestion-button";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
 import type { AppointmentAlert } from "@/hooks/use-appointment-alerts";
@@ -634,6 +635,7 @@ export function DashboardLayoutClient({
         {allowedModules.includes("livia") && (
           <LiviaBubble barbershopId={barbershopId} barbershopName={barbershopName} />
         )}
+        <ProductSuggestionButton />
       </div>
     </div>
     </ToastProvider>
