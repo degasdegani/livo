@@ -110,6 +110,61 @@ export async function sendWelcomeEmail(
   }
 }
 
+// ─── Sugestão de produto (LIVO-045) ────────────────────────────────────────────
+
+interface ProductSuggestionEmailData {
+  barbershopId: string;
+  barbershopName: string;
+  role: string;
+  message: string;
+}
+
+export async function sendProductSuggestionEmail(
+  data: ProductSuggestionEmailData,
+): Promise<void> {
+  const to = process.env.FOUNDER_NOTIFICATION_EMAIL;
+  if (!to) return;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Nova sugestao — ${data.barbershopName}`,
+      html: buildProductSuggestionHtml(data),
+    });
+    log.email.info("e-mail de sugestao de produto enviado", {
+      to,
+      barbershopId: data.barbershopId,
+    });
+  } catch (err) {
+    log.email.error(
+      "falha ao enviar e-mail de sugestao de produto",
+      { to, barbershopId: data.barbershopId },
+      err,
+    );
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildProductSuggestionHtml(data: ProductSuggestionEmailData): string {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2>Nova sugestao de produto</h2>
+      <p><strong>Barbearia:</strong> ${escapeHtml(data.barbershopName)} (${data.barbershopId})</p>
+      <p><strong>Papel:</strong> ${escapeHtml(data.role)}</p>
+      <p><strong>Mensagem:</strong></p>
+      <p style="white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px;">${escapeHtml(data.message)}</p>
+    </div>
+  `;
+}
+
 // ─── Confirmação de e-mail ──────────────────────────────────────────────────────
 
 export async function sendEmailVerification(

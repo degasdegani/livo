@@ -30,6 +30,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LiviaBubble } from "@/components/livia-bubble";
+import { ProductSuggestionButton } from "@/components/product-suggestion-button";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { ToastProvider } from "@/components/ui/toast";
 import type { AppointmentAlert } from "@/hooks/use-appointment-alerts";
@@ -600,6 +601,7 @@ export function DashboardLayoutClient({
             priority
           />
           <div className="flex items-center gap-1">
+            <ProductSuggestionButton />
             <NotificationBell
               appointments={alerts}
               barbershopName={barbershopName}
@@ -617,12 +619,13 @@ export function DashboardLayoutClient({
         </header>
 
         <header
-          className="hidden lg:flex items-center justify-end px-6 py-3 sticky top-0 z-30"
+          className="hidden lg:flex items-center justify-end gap-1 px-6 py-3 sticky top-0 z-30"
           style={{
             borderBottom: "1px solid var(--border)",
             backgroundColor: "var(--bg-base)",
           }}
         >
+          <ProductSuggestionButton />
           <NotificationBell
             appointments={alerts}
             barbershopName={barbershopName}

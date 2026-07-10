@@ -25,6 +25,7 @@ const SERVER_ENV_VARS: EnvVar[] = [
 
   // Email
   { key: "RESEND_API_KEY", description: "Resend transactional email API key", critical: true },
+  { key: "FOUNDER_NOTIFICATION_EMAIL", description: "E-mail do founder para notificacoes internas (sugestoes de produto, etc)", critical: false },
 
   // Payments
   { key: "ASAAS_KEY", description: "Asaas payment gateway API key", critical: true },

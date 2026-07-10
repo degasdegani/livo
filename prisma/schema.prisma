@@ -117,6 +117,7 @@ model Barbershop {
   timeBlocks                TimeBlock[]
   packages                  Package[]
   clientPackages            ClientPackage[]
+  productSuggestions        ProductSuggestion[]
   referredBy                Barbershop?       @relation("Referrals", fields: [referredByBarbershopId], references: [id])
   referrals                 Barbershop[]      @relation("Referrals")
 
@@ -296,6 +297,7 @@ model Membership {
   barbershop     Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   professional   Professional? @relation(fields: [professionalId], references: [id])
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productSuggestions ProductSuggestion[]
 
   @@unique([userId, barbershopId])
   @@unique([userId, barbershopId], map: "Membership_userId_barbershopId_key")
@@ -883,4 +885,18 @@ model HintDismissal {
   @@unique([userId, hintKey])
   @@index([userId])
   @@map("hint_dismissals")
+}
+
+model ProductSuggestion {
+  id           String      @id @default(cuid())
+  barbershopId String
+  barbershop   Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  membershipId String?
+  membership   Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  role         MemberRole
+  message      String
+  createdAt    DateTime    @default(now())
+
+  @@index([barbershopId, createdAt])
+  @@map("product_suggestions")
 }
