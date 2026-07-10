@@ -37,16 +37,12 @@ export function ProductSuggestionButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "2px solid var(--color-primary)",
-          color: "var(--color-primary)",
-        }}
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
+        style={{ color: "var(--text-secondary)" }}
         aria-label="Sugerir melhoria"
         title="Sugerir melhoria"
       >
-        <MessageSquarePlus size={24} />
+        <MessageSquarePlus size={20} />
       </button>
 
       <Modal

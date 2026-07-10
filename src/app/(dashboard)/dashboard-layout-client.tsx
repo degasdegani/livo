@@ -601,6 +601,7 @@ export function DashboardLayoutClient({
             priority
           />
           <div className="flex items-center gap-1">
+            <ProductSuggestionButton />
             <NotificationBell
               appointments={alerts}
               barbershopName={barbershopName}
@@ -618,12 +619,13 @@ export function DashboardLayoutClient({
         </header>
 
         <header
-          className="hidden lg:flex items-center justify-end px-6 py-3 sticky top-0 z-30"
+          className="hidden lg:flex items-center justify-end gap-1 px-6 py-3 sticky top-0 z-30"
           style={{
             borderBottom: "1px solid var(--border)",
             backgroundColor: "var(--bg-base)",
           }}
         >
+          <ProductSuggestionButton />
           <NotificationBell
             appointments={alerts}
             barbershopName={barbershopName}
@@ -635,7 +637,6 @@ export function DashboardLayoutClient({
         {allowedModules.includes("livia") && (
           <LiviaBubble barbershopId={barbershopId} barbershopName={barbershopName} />
         )}
-        <ProductSuggestionButton />
       </div>
     </div>
     </ToastProvider>
