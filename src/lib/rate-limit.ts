@@ -28,7 +28,13 @@ function getRedis(): Redis | null {
     return client;
   }
 
-  client = new Redis({ url, token });
+  try {
+    client = new Redis({ url, token });
+  } catch (error) {
+    log.warn("falha ao construir client Redis — fail-open", { error });
+    client = null;
+  }
+
   return client;
 }
 
