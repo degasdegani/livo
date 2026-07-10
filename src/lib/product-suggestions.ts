@@ -5,7 +5,6 @@ import { log } from "@/lib/logger";
 import { requireMembership } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendProductSuggestionEmail } from "@/lib/email";
-import { buildWhatsappUrl, sanitizePhone } from "@/lib/whatsapp";
 
 const MIN_LENGTH = 10;
 const MAX_LENGTH = 2000;
@@ -13,7 +12,7 @@ const RATE_LIMIT = 5;
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hora
 
 export type SubmitSuggestionResult =
-  | { success: true; whatsappUrl: string | null }
+  | { success: true }
   | { success: false; error: string };
 
 export async function submitProductSuggestion(
@@ -77,12 +76,5 @@ export async function submitProductSuggestion(
     log.warn("falha ao notificar founder por e-mail sobre sugestao (nao bloqueante)", { barbershopId: membership.barbershopId, error });
   }
 
-  let whatsappUrl: string | null = null;
-  const founderPhone = sanitizePhone(process.env.FOUNDER_WHATSAPP_NUMBER);
-  if (founderPhone) {
-    const text = `Nova sugestao — ${barbershopName} (${membership.role}):\n\n${trimmed}`;
-    whatsappUrl = buildWhatsappUrl(founderPhone, text);
-  }
-
-  return { success: true, whatsappUrl };
+  return { success: true };
 }

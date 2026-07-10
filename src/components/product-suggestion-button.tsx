@@ -27,9 +27,6 @@ export function ProductSuggestionButton() {
       toast("Sugestão enviada, obrigado!", "success");
       setOpen(false);
       setMessage("");
-      if (result.whatsappUrl) {
-        window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
-      }
     } else {
       toast(result.error, "error");
     }
