@@ -12,12 +12,6 @@ export const CURRENT_TERMS_VERSION = "2026-07-01";
 // (uma comparação de versão) e evita estados de aceite parcial.
 export const TERMS_DOCUMENT_TYPE = "bundle";
 
-// Mensagem de erro exibida quando o Prisma detecta P2003 (userId da sessão
-// não existe mais em "users") ao gravar o aceite. Compartilhada entre a
-// Server Action (retorno de erro) e o client component (decide se mostra o
-// link para /login), para as duas pontas nunca divergirem.
-export const SESSION_EXPIRED_ERROR = "Sua sessão expirou. Faça login novamente.";
-
 // Helper puro de decisão (espelho de isEmailGateBlocked, B1.3): sem registro
 // (null) ou versão diferente da vigente => aceite pendente. Comparação de
 // string direta, sem lógica semver. Sem Prisma/headers — seguro em qualquer
