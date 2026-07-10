@@ -6,8 +6,10 @@ import { revalidatePath } from "next/cache";
 import { dateOnlyToUTC } from "@/lib/date-only";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
-import { clientScope, requireMembership } from "@/lib/permissions";
+import { clientScope, requireMembership, requireRole } from "@/lib/permissions";
 import { captureEvent } from "@/lib/posthog";
+
+const ANONYMIZED_NAME = "Cliente Removido";
 
 type ClientRow = {
   id: string;
@@ -243,4 +245,121 @@ export async function updateClient(
 
   revalidatePath("/dashboard/clients");
   return { success: true };
+}
+
+// ─── LGPD — DIREITOS DO TITULAR (LIVO-003) ────────────────────────────────────
+// anonymizeClient/exportClientData operam EXCLUSIVAMENTE sobre o titular
+// (Client) e os snapshots de nome/telefone/e-mail que ele deixou em
+// Appointment/Comanda. Nunca tocam WaitlistLead (regra inviolável — leads da
+// waitlist nunca são deletados/alterados por aqui) nem o registro Barbershop.
+// A isenção de planStatus=lifetime (TX Barbearia) é sobre a BARBEARIA nunca
+// ser bloqueada/cobrada — não tem relação com o direito de um cliente pedir a
+// remoção dos próprios dados, então não há (e não deve haver) guard de
+// lifetime aqui.
+
+export async function anonymizeClient(
+  clientId: string,
+  barbershopId: string,
+): Promise<{ success: true } | { error: string }> {
+  const membership = await requireRole("owner");
+
+  // Nunca confiar no barbershopId informado isoladamente: precisa bater com a
+  // barbearia da sessão autenticada, senão um owner de outra conta poderia
+  // anonimizar cliente de terceiros.
+  if (membership.barbershopId !== barbershopId) {
+    return { error: "Cliente não encontrado." };
+  }
+
+  const client = await db.client.findFirst({
+    where: { id: clientId, barbershopId },
+    select: { id: true },
+  });
+  if (!client) return { error: "Cliente não encontrado." };
+
+  await db.$transaction(async (tx) => {
+    await tx.client.update({
+      where: { id: clientId },
+      data: {
+        // phone é obrigatório e único junto com barbershopId no schema — não
+        // pode virar null. Usamos um placeholder determinístico por clientId
+        // para nunca colidir com o unique constraint entre anonimizações.
+        name: ANONYMIZED_NAME,
+        phone: `anonimizado-${clientId}`,
+        email: null,
+        cpf: null,
+        birthDate: null,
+        cep: null,
+        neighborhood: null,
+        street: null,
+        notes: null,
+        anonymizedAt: new Date(),
+      },
+    });
+
+    await tx.appointment.updateMany({
+      where: { clientId, barbershopId },
+      data: {
+        clientName: ANONYMIZED_NAME,
+        clientPhone: null,
+        clientEmail: null,
+      },
+    });
+
+    await tx.comanda.updateMany({
+      where: { clientId, barbershopId },
+      data: { clientName: ANONYMIZED_NAME },
+    });
+  });
+
+  revalidatePath("/dashboard/clients");
+  return { success: true };
+}
+
+export async function exportClientData(
+  clientId: string,
+  barbershopId: string,
+): Promise<
+  | {
+      client: unknown;
+      appointments: unknown[];
+      comandas: unknown[];
+      subscriptions: unknown[];
+      packages: unknown[];
+    }
+  | { error: string }
+> {
+  const membership = await requireRole("owner");
+
+  if (membership.barbershopId !== barbershopId) {
+    return { error: "Cliente não encontrado." };
+  }
+
+  const client = await db.client.findFirst({
+    where: { id: clientId, barbershopId },
+  });
+  if (!client) return { error: "Cliente não encontrado." };
+
+  const [appointments, comandas, subscriptions, packages] = await Promise.all([
+    db.appointment.findMany({
+      where: { clientId, barbershopId },
+      orderBy: { date: "desc" },
+    }),
+    db.comanda.findMany({
+      where: { clientId, barbershopId },
+      include: { items: true, payments: true },
+      orderBy: { openedAt: "desc" },
+    }),
+    db.clientSubscription.findMany({
+      where: { clientId, barbershopId },
+      include: { plan: true, usages: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.clientPackage.findMany({
+      where: { clientId, barbershopId },
+      include: { items: true, package: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return { client, appointments, comandas, subscriptions, packages };
 }

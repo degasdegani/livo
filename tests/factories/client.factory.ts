@@ -20,6 +20,7 @@ export function makeClient(overrides: Partial<Client> = {}): Client {
     neighborhood: null,
     origem: null,
     street: null,
+    anonymizedAt: null,
     ...overrides,
   };
 }
