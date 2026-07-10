@@ -179,7 +179,7 @@ export function NotificationBell({
         type="button"
         onClick={() => (open ? setOpen(false) : handleOpen())}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg nav-link transition-colors"
-        style={{ color: "var(--text-secondary)" }}
+        style={{ color: "var(--text-primary)" }}
         aria-label="Notificações"
         aria-haspopup="true"
         aria-expanded={open}
