@@ -1,6 +1,9 @@
 // src/app/aceitar-termos/page.tsx
 // Interstitial de aceite de Termos + Privacidade. Server Component (Node).
-// Nesta etapa (B2.2) é acessível sem gate; a B2.3 encaminhará pendentes para cá.
+// Destino do redirect de requireTermsAccepted() (src/lib/terms-gate.ts),
+// chamado em src/app/(dashboard)/layout.tsx. O gate já está ativo (B2.3,
+// commit 7210947): qualquer usuário logado com aceite pendente é encaminhado
+// para cá antes de acessar o dashboard.
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
