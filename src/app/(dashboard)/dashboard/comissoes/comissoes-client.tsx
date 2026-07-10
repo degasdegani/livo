@@ -1,10 +1,11 @@
-// src/app/(dashboard)/dashboard/comissoes/comissoes-client.tsx
+﻿// src/app/(dashboard)/dashboard/comissoes/comissoes-client.tsx
 "use client";
 
 import { MemberRole } from "@prisma/client";
 import { AlertTriangle, Settings } from "lucide-react";
 import { useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ContextualHint } from "@/components/ui/contextual-hint";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Modal } from "@/components/ui/modal";
@@ -248,6 +249,11 @@ export function ComissoesClient({
               ? "Suas comissões por período"
               : "Comissões por profissional"}
           </p>
+          <ContextualHint
+            hintKey="comissoes-rateio"
+            title="Como funciona o rateio de comissão"
+            text="Aqui você vê quanto cada profissional recebeu de comissão no período selecionado. É automático: o sistema já calcula a partir da comissão configurada para cada um."
+          />
         </div>
         {role === MemberRole.owner && profissionaisComissionaveis.length > 0 && (
           <button

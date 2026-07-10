@@ -24,6 +24,7 @@ model User {
   memberships      Membership[]
   sessions         Session[]
   termsAcceptances TermsAcceptance[]
+  hintDismissals   HintDismissal[]
 
   @@map("users")
 }
@@ -869,4 +870,17 @@ model ClientPackageItem {
 
   @@index([clientPackageId])
   @@map("client_package_items")
+}
+
+model HintDismissal {
+  id          String   @id @default(cuid())
+  userId      String
+  hintKey     String
+  dismissedAt DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hintKey])
+  @@index([userId])
+  @@map("hint_dismissals")
 }

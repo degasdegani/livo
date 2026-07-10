@@ -3,7 +3,7 @@
 Documento gerado pelo CTO/PM Assistente do ecossistema LIVO.
 Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado atual conhecido do projeto (SALA Tecnologia / LIVO BARBER).
 
-> Observação de origem: os tickets abaixo foram derivados do estado conhecido do projeto (features em produção, itens do "Grupo D", decisões de negócio pendentes, riscos técnicos documentados como aprendizados). Nenhum bug específico foi reportado nesta sessão — para tickets de bug mais cirúrgicos, anexe logs, stack traces ou passos de reprodução.
+> Observação de origem: os tickets abaixo foram derivados do estado conhecido do projeto (features em produção, itens do "Grupo D", decisões de negócio pendentes, riscos técnicos documentados como aprendizados). Nesta atualização (10/07/2026), o LIVO-040 e o LIVO-041 foram concluídos e validados em produção, e um novo ticket de débito técnico (LIVO-048) foi identificado durante o diagnóstico do LIVO-041.
 
 ---
 
@@ -16,16 +16,58 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **O que foi feito:** Adicionado `/produto` e `/planos` à denylist de `PublicFooter`, mesma lógica já usada para `/`. Verificado que `/oferta-30-dias`, `/oferta-60-dias` e `/vip` não tinham o mesmo problema.
 **Validação:** `npx tsc --noEmit` limpo, confirmado visualmente em preview do Vercel.
 
-### LIVO-001 — Nenhum bug ativo reportado
+### LIVO-040 — [CONCLUÍDO 10/07/2026] CTA "Começar agora" direcionava para /onboarding sem sessão ativa
+
+**Status:** ✅ Resolvido e validado em produção.
+**Problema que era:** Os CTAs "Começar agora"/"Criar conta" do site institucional apontavam diretamente para `/onboarding` (rota antiga, que exige CPF/data de nascimento logo na primeira tela), não para `/cadastro` (fluxo unificado do LIVO-009). Como `/onboarding` assume `session.user.id` já existente e redireciona para `/login` quando não há sessão, um visitante sem conta que clicasse em qualquer CTA caía nesse redirect intermediário em vez de ir direto para o cadastro.
+**Diagnóstico:** mapeamento completo via `Get-ChildItem -Recurse | Select-String -Pattern "/onboarding"` revelou **6 pontos de entrada de marketing** apontando para a rota errada (2 a mais do que o suspeitado inicialmente):
+
+1. `src/components/landing/navbar.tsx:84` (CTA desktop)
+2. `src/components/landing/navbar.tsx:149` (CTA mobile)
+3. `src/components/landing/footer.tsx:12` (link "Criar conta")
+4. `src/components/landing/hero.tsx:226` (botão do banner principal)
+5. `src/components/landing/plans.tsx:33` (card do plano Start)
+6. `src/components/landing/plans.tsx:56` (card do plano Pro)
+
+Identificados também **4 ocorrências de categoria diferente**, deliberadamente não alteradas neste ticket: `settings/page.tsx:49`, `dashboard/page.tsx:104,114` e `permissions.ts:55` — todos tratam do gate interno "usuário já logado, mas sem `Membership`/`Barbershop`", um cenário distinto de visitante novo, que merece decisão própria no futuro (não é dead code, e trocar cegamente para `/cadastro` poderia gerar comportamento inesperado para quem já está autenticado).
+
+**O que foi feito:** Trocado `href`/`ctaHref` de `/onboarding` para `/cadastro` nos 6 pontos de marketing listados acima. Nenhuma outra lógica alterada.
+**Branch:** `feature/livo-040-cta-cadastro`, commit `377b32e`.
+**Validação:** `npx tsc --noEmit` limpo a cada arquivo alterado (0 erros). Testado manualmente em preview e depois em produção (`livobarber.com.br`) — os 6 pontos confirmados levando à tela nova de `/cadastro` (sem CPF, sem trava), pelo próprio founder.
+**Merge:** `--no-ff` em `main`.
+**Nota:** o gate interno (4 ocorrências acima) fica registrado como possível ticket futuro, sem urgência — não bloqueia nada hoje.
+
+### LIVO-041 — [CONCLUÍDO 10/07/2026] Bug de produção em /aceitar-termos (loop de sessão órfã) + checkbox obrigatório de termos
+
+**Status:** ✅ Resolvido, reproduzido ao vivo pelo founder em produção, corrigido e revalidado.
+
+**Contexto original:** reportado em 10/07/2026 com print de erro genérico ("Algo deu errado", código `1733371965`) e log do Vercel confirmando `PrismaClientKnownRequestError` código `P2003` (foreign key violation) em `prisma.termsAcceptance.create()`. Hipótese inicial era de que o bug fosse exclusivo do fluxo Google OAuth — **diagnóstico real mostrou causa diferente e mais ampla** (ver abaixo).
+
+**Causa raiz real:** o erro `P2003` acontece sempre que a Server Action `recordTermsAcceptance` tenta gravar um aceite de termos referenciando um `userId` que não existe mais na tabela `users` — uma "sessão órfã/zumbi". Isso ocorre porque a sessão usa estratégia JWT (Auth.js v5): o cookie de sessão permanece criptograficamente válido mesmo que o usuário correspondente tenha sido removido do banco por qualquer motivo (neste caso, uma conta de teste órfã removida manualmente durante o diagnóstico — ver "Achado colateral" abaixo). Não é exclusivo do fluxo Google; acontece com qualquer sessão que sobreviva à remoção do usuário.
+
+**Achado importante durante o diagnóstico:** o gate de termos (`requireTermsAccepted()`, em `src/lib/terms-gate.ts`, chamado em `src/app/(dashboard)/layout.tsx`) **já existia e já estava ativo** desde o commit `7210947` ("B2.3"). O comentário em `src/app/aceitar-termos/page.tsx` dizendo "sem gate, B2.3 é trabalho futuro" estava simplesmente desatualizado (confirmado via `git merge-base --is-ancestor`) — o gate funciona normalmente para o caso comum (termos pendentes → redireciona para `/aceitar-termos`). O problema real era só o tratamento do erro de sessão órfã dentro dessa tela.
+
+**O que foi feito, em 4 etapas:**
+
+1. **Checkbox obrigatório de termos** (commit `2318dd5`, branch `feature/livo-041-termos-checkbox-gate`): em `src/app/(auth)/cadastro/page.tsx` e `src/app/aceitar-termos/accept-form.tsx`, o botão de submit passou a ficar desabilitado (visualmente acinzentado) até o checkbox de aceite ser marcado — via `useState` client-side controlando a prop `disabled` do `SubmitButton`, mantendo a validação server-side já existente (`formData.get("acceptTerms"/"accept") !== "on"`) intacta como defesa em profundidade.
+
+2. **Primeira tentativa de tratamento do erro P2003** (commit `f0421eb`, mesma branch): capturou o erro específico e retornava `{ error: "Sua sessão expirou. Faça login novamente." }` com um link `<Link href="/login">`. **Insuficiente na prática** — o clique no link não encerrava a sessão de verdade, causando um **loop reproduzido ao vivo em produção pelo founder**: `/aceitar-termos` → clique em "Ir para o login" → URL passa rapidamente por `/dashboard` → volta para `/aceitar-termos` (o middleware/lógica de auth via cookie ainda "válido" redirecionava de volta para dentro do sistema, que por sua vez detectava termos pendentes de novo).
+
+3. **Limpeza de comentário desatualizado** (commit `4e210be`, mesma branch): atualizado o comentário em `src/app/aceitar-termos/page.tsx` para refletir que o gate B2.3 está ativo, removendo a menção a "trabalho futuro".
+
+4. **Correção definitiva** (commit `e5d7535`, branch `fix/livo-041-signout-sessao-orfa`): substituída a abordagem do passo 2 — em vez de retornar um erro com link, o catch de `P2003` em `src/app/aceitar-termos/actions.ts` agora chama `await signOut({ redirectTo: "/login" })` (mesmo padrão server-side já usado em `src/app/(onboarding)/onboarding/actions.ts`), encerrando a sessão de fato no servidor antes do redirect. Como consequência, removidos por não terem mais uso: o link condicional "Ir para o login" em `accept-form.tsx` e a constante `SESSION_EXPIRED_ERROR` em `src/lib/terms.ts` (criada e removida na mesma sessão, após uma correção de duplicação identificada em revisão — a constante chegou a ser declarada localmente em dois arquivos por engano do Claude Code antes de ser centralizada corretamente em `src/lib/terms.ts`, e depois removida por completo quando a abordagem mudou para `signOut`).
+
+**Achado colateral tratado à parte:** durante o diagnóstico, identificada uma conta de teste órfã (`eduardodegani97@gmail.com`, id `cmr2fmzxg000043uk5pospiv1`, sem `Membership`/`Barbershop`/`Accounts`/`Sessions`, só 1 `terms_acceptances`) cujo CPF pertencia à conta principal do founder (`contatodegani@gmail.com`, id `cmq52jmvv0000qu3dp7e4zh3y`), causando bloqueio de unicidade de CPF ao tentar completar o cadastro antigo. Removida via transação `BEGIN`/`DELETE`/`SELECT`/`COMMIT` no Neon SQL Editor, confirmando zero dependências antes do delete. TX Barbearia e WaitlistLeads não tocados. Essa remoção foi o que expôs a sessão zumbi que revelou o bug real do LIVO-041 (o navegador do founder mantinha um cookie de sessão referenciando o `userId` recém-apagado).
+
+**Branches:** `feature/livo-041-termos-checkbox-gate` (commits `2318dd5`, `f0421eb`, `4e210be`) + `fix/livo-041-signout-sessao-orfa` (commit `e5d7535`), ambos mesclados `--no-ff` em `main`.
+**Validação final em produção:** o founder reproduziu o cenário exato (mesma conta com sessão órfã, mesmo navegador) após o deploy da correção definitiva — confirmado que o `signOut` real interrompe o loop por completo: o clique em "Li e aceito, continuar" (com sessão órfã) agora leva direto e limpo a `/login`, sem passar por `/dashboard` nem retornar a `/aceitar-termos`. Testado também: fechar e reabrir o navegador, "Entrar" vai para `/login`, "Começar agora" vai para `/cadastro` — ambos os fluxos corretos.
+**`npx tsc --noEmit`:** limpo (0 erros) em cada etapa/commit.
+
+### LIVO-001 — Nenhum bug ativo adicional reportado
 
 **Objetivo:** Manter rastreabilidade de defeitos.
-**Problema atual:** Nenhum bug foi reportado com logs/reprodução nesta sessão.
-**Impacto no negócio:** N/A até que haja reporte.
 **Prioridade:** N/A
-**Complexidade:** N/A
-**Dependências:** Envio de stack trace, print, ou passos de reprodução por Edu.
-**Critérios de aceite:** Ticket será substituído por bug real assim que houver reporte.
-**Passos técnicos:** Aguardando input.
+**Passos técnicos:** Aguardando input adicional.
 
 ---
 
@@ -48,21 +90,36 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 3. Adicionar teste (Vitest) simulando payload sem assinatura.
 4. Validar em produção (Vercel) com evento de teste.
 
-### LIVO-003 — Auditoria LGPD: exportação e exclusão de dados do titular
+### LIVO-003 — [CONCLUÍDO 09/07/2026] Auditoria LGPD: exportação e exclusão de dados do titular
 
-**Objetivo:** Garantir conformidade com LGPD para clientes finais (CRM) e assinantes do Clube.
-**Problema atual:** Não há fluxo documentado de exportação/exclusão de dados pessoais a pedido do titular.
-**Impacto no negócio:** Risco regulatório e reputacional; bloqueador para contratos B2B maiores.
-**Prioridade:** Alta
-**Complexidade:** Média
-**Dependências:** Definição jurídica de escopo de dados pessoais (CRM, comandas, OTP).
-**Critérios de aceite:** Existe endpoint/processo interno para exportar e para anonimizar/excluir dados de um cliente final mediante solicitação, respeitando os registros protegidos (TX Barbearia, WaitlistLeads).
-**Passos técnicos:**
+**Status:** ✅ Resolvido, testado e validado em produção. Primeiro ticket executado via branch de feature isolada + preview deployment antes do merge.
+**Diagnóstico prévio (read-only):** confirmou que não existia nenhuma função de exportação, anonimização ou exclusão de titular no código — apesar da página `/privacidade` prometer explicitamente esses direitos (LGPD art. 18). Mapeamento de `onDelete` real no banco (via Neon, não só schema): `appointments.clientId` e `comandas.clientId` = `SET NULL`; `client_packages.clientId` e `client_subscriptions.clientId` = `RESTRICT` — confirmando que hard-delete de `Client` é tecnicamente inviável (quebra com FK violation se houver pacote/assinatura vinculado). Estratégia definida: **anonimização in-place, nunca delete**.
+**O que foi feito:**
 
-1. Mapear todas as tabelas com dado pessoal de cliente final.
-2. Desenhar fluxo de exportação (JSON) e anonimização (sem quebrar histórico financeiro/comissão).
-3. Implementar com escopo por `barbershopId`.
-4. Documentar processo em doc oficial (governança).
+1. Migration aditiva: campo `anonymizedAt DateTime?` no model `Client`. `migrate diff` confirmou apenas `ADD COLUMN`, sem DROP.
+2. `anonymizeClient(clientId, barbershopId)` em `src/app/(dashboard)/dashboard/clients/actions.ts`:
+   - `requireRole("owner")` + checagem `membership.barbershopId === barbershopId` antes de qualquer mutação (protege contra owner de outra conta anonimizar cliente alheio).
+   - `$transaction(async (tx) => {...})`: `Client.update` (name → "Cliente Removido"; phone/email/cpf/birthDate/cep/neighborhood/street/notes → null ou placeholder; `anonymizedAt` preenchido) + `Appointment.updateMany` (limpa snapshot `clientName`/`clientPhone`/`clientEmail`) + `Comanda.updateMany` (limpa snapshot `clientName`).
+   - **Desvio necessário do plano original:** `phone` é `String` obrigatório e único junto com `barbershopId` no schema — não aceita `null`. Resolvido com placeholder determinístico `anonimizado-${clientId}`, que satisfaz `NOT NULL` e nunca colide com o unique constraint entre anonimizações sucessivas.
+   - Nunca toca `ComandaItem`, `ComandaPayment`, `ClientSubscription`, `ClientPackage`, `WaitlistLead`, `Barbershop`.
+   - Comentário explícito no código sobre por que não há guard de `planStatus=lifetime` aqui: a isenção da TX Barbearia é sobre a barbearia nunca ser bloqueada/cobrada, não sobre o direito de um cliente individual pedir remoção — não confundir com os guards de billing já existentes.
+3. `exportClientData(clientId, barbershopId)`: read-only, mesmo guard de owner + tenant, agrega `Client` + `Appointment[]` + `Comanda[]` (com items/payments) + `ClientSubscription[]` (com plan/usages) + `ClientPackage[]` (com items/package), tudo escopado por `clientId` e `barbershopId`.
+4. Corrigido `tests/factories/client.factory.ts` para incluir o novo campo `anonymizedAt`.
+
+**Mudança de processo (primeira vez aplicada):** branch de feature `feature/livo-003-lgpd-anonimizacao` criada, commit isolado (sem `LIVO_BACKLOG.md` nem alterações não relacionadas), push, preview deployment gerado automaticamente pela integração Git↔Vercel, validado antes do merge em `main`. Quebra a sequência de 3 ciclos anteriores (LIVO-008, LIVO-013, LIVO-005) com push direto em produção.
+
+**Validação:**
+
+- `npx tsc --noEmit` → 0 erros (antes e depois do merge em `main`).
+- Suítes de teste existentes (mt-clients, clientes-performance, infrastructure) → 49 testes passando, nenhuma regressão.
+- Teste real contra a conta Vortex no Neon (script temporário, removido ao final, sem resíduo no repositório nem no banco): Client de teste com Appointment + Comanda/ComandaItem + ClientSubscription + ClientPackage vinculados.
+  - Cross-tenant (barbershopId errado) → `{ error: "Cliente não encontrado." }`, nenhum dado alterado.
+  - Anonimização correta → todos os campos pessoais limpos/mascarados, `anonymizedAt` preenchido, snapshots em Appointment/Comanda escrubados.
+  - `ComandaItem`, `ClientSubscription`, `ClientPackage` permaneceram 100% intactos — financeiro/comissão preservados.
+  - `exportClientData` testada contra cliente real da Vortex, retornou os 4 conjuntos de dados corretamente.
+- Deploy de produção confirmado "Ready"; login e tela de Clientes testados manualmente em `livobarber.com.br` (conta Vortex) pós-merge, sem regressão.
+
+**Não incluído neste escopo (débito futuro, não bloqueante):** nenhuma UI foi criada — as duas Server Actions existem, mas hoje só são acionáveis via processo manual (suporte via `privacidade@livobarber.com.br`). Expor um botão para o dono da barbearia ou um painel de solicitações de titular fica para um ticket futuro, se priorizado.
 
 ### LIVO-004 — [CONCLUÍDO 09/07/2026] Guardrail contra Prisma em Edge Runtime (regressão do JWTSessionError)
 
@@ -74,20 +131,34 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 **Commit:** `da62f0a` — comitado junto com LIVO-008 (Vercel Analytics), pois ambos os tickets modificavam `package.json` de forma entrelaçada; decisão pragmática de commit único, mensagem citando os dois tickets.
 **Débito relacionado:** A ausência de ESLint no projeto também afetou LIVO-016 e LIVO-027 (ambos previstos originalmente como "regra de lint") — a mesma decisão de abordagem (script standalone vs. instalar ESLint do zero) foi confirmada e aplicada em ambos.
 
-### LIVO-005 — Auditoria de rate limiting em endpoints públicos (OTP, booking público, referral)
+### LIVO-005 — [CONCLUÍDO 09/07/2026, complementado 10/07/2026] Rate limiting em endpoints públicos (OTP, booking público, referral)
 
-**Objetivo:** Garantir que endpoints públicos não fiquem expostos a abuso/enumeração.
-**Problema atual:** OTP já é rate-limited; não há confirmação sobre página pública de booking e geração de códigos de referral.
-**Impacto no negócio:** Risco de abuso (spam de SMS/WhatsApp, geração massiva de códigos, scraping de agenda).
-**Prioridade:** Alta
-**Complexidade:** Pequena
-**Dependências:** Nenhuma
-**Critérios de aceite:** Todos os endpoints públicos sensíveis têm rate limit documentado e testado.
-**Passos técnicos:**
+**Status:** ✅ Resolvido, migrado para store distribuído e validado em produção. **Complemento aplicado em 10/07/2026** (ver detalhe abaixo) — fechando débito deixado em aberto na sessão original.
+**Decisão arquitetural:** ADR-003 (redigido, ver débito de processo registrado em LIVO-037 — ainda não commitado como arquivo físico no repositório).
 
-1. Listar todos os endpoints públicos (sem auth).
-2. Verificar rate limit existente em cada um.
-3. Implementar onde faltar (mesma abordagem usada no OTP).
+**Diagnóstico inicial:** rate limiting já existia em 6 pontos do código, mas implementado via `Map<string, {count, resetAt}>` em memória de módulo — mecanismo que não sobrevive a múltiplas instâncias serverless da Vercel nem a cold starts, ou seja, aparentava funcionar mas não cumpria a função de segurança sob carga real de produção. Diagnóstico também revelou 3 endpoints públicos sem nenhum rate limit: `reset-password` (consumo de token, superfície de força bruta), `register` (criação de conta) e `vip` (lead capture → tabela protegida `WaitlistLead`).
+
+**O que foi feito:**
+
+1. Migração completa para **Upstash Redis** (`@upstash/ratelimit` + `@upstash/redis`, plano Free, região `sa-east-1`), via abstração central `src/lib/rate-limit.ts` — client lazy (mesmo padrão de `src/lib/posthog.ts`), `Ratelimit.slidingWindow`, fail-open com log via `@/lib/logger` em qualquer falha (tanto na construção do client quanto na chamada de rede).
+2. Fechados os 3 gaps reais: `reset-password` (5/10min, por IP — confirmado antes que o token é uso único via `consumePasswordResetToken`, invalidado atomicamente em `$transaction`), `register` (5/60min, por IP), `vip` (3/60min, por IP).
+3. Migrados os 6 pontos já existentes para a mesma abstração, preservando limites/janelas originais: `auth.ts` (login, per-email), `forgot-password` (per-email), `[slug]/book` (2 buckets: booking 10/1h + slots 120/1h, per-IP), `otp-clube.ts`/`clube/actions.ts` (per-barbershopId+phone), `api/livia` (per-user), `tv/api/pair` (per-IP).
+4. Cuidado especial em `auth.ts`: confirmado antes da migração que o rate limit de login roda só dentro de `authorize()` (Node Runtime), nunca nos callbacks `jwt`/`session` (Edge) — validado também via `npm run guardrail:prisma-edge` pós-migração.
+
+**Incidente durante o rollout (resolvido):** após o deploy, login e `forgot-password` pararam de funcionar (`forgot-password` com erro 500, login mascarado como "credenciais incorretas"). Causa raiz: `UPSTASH_REDIS_REST_URL`/`TOKEN` foram coladas manualmente no Vercel **com aspas literais incluídas no valor** (ex: `""https://...""`), tornando a URL inválida e quebrando a construção do cliente Redis com exceção síncrona não capturada — em `forgot-password` isso escapava do `try/catch` da função (a criação do client acontecia antes dele); em `auth.ts`, a mesma exceção se propagava de dentro de `authorize()` e o NextAuth a absorvia como falha de credencial genérica, mascarando o erro real. Corrigido em duas frentes: (1) valor da env var corrigido no Vercel, sem aspas; (2) blindagem em `getRedis()` — construção do client também envolvida em `try/catch` com fail-open, para que qualquer erro futuro de configuração de env var nunca mais derrube uma rota inteira, apenas desative o rate limit silenciosamente (logado).
+
+**Validação em produção:** login normal confirmado (conta Vortex), `forgot-password` sem erro 500, painel Upstash confirmando 14 comandos registrados (6 writes / 8 reads) — Redis sendo alcançado de verdade, não em fail-open silencioso.
+
+**Custo:** Upstash Free Tier, $0,00 (500k comandos/mês incluídos, uso atual é uma fração mínima).
+
+**Complemento (10/07/2026):** a blindagem `try/catch` fail-open em `getRedis()` descrita acima havia sido escrita durante a sessão original do LIVO-005, mas **ficou pendente no working tree, nunca commitada** — descoberta como débito solto no início desta sessão (10/07/2026). Diagnosticada (`git diff`), confirmada como fiel ao que já estava documentado neste ticket, e formalmente commitada: branch `fix/livo-005-redis-failopen-guard`, commit `fdf9d85`, merge `--no-ff` em `main` (`35fd08a`), `npx tsc --noEmit` limpo, validado em preview e em produção (deploy "Ready", login Vortex confirmado). Ou seja: a proteção só passou a existir de fato em produção a partir de 10/07/2026 — antes disso, apesar de documentada, não estava deployada.
+
+**Débito de processo registrado:**
+
+- Push direto em `main`, sem branch de feature/preview isolado — terceira ocorrência do mesmo padrão já visto em LIVO-008 e LIVO-013. Desta vez o impacto atingiu login em produção (ver incidente acima). **Resolvido a partir do LIVO-003**, que já adotou branch de feature.
+- Ver LIVO-037 para o débito de ADRs não commitados (002 e 003).
+- **Aprendizado geral de processo:** ao colar valores de variáveis de ambiente manualmente na interface do Vercel, sempre colar sem aspas ao redor do valor — aspas em `.env.local` são delimitador de sintaxe (interpretadas pelo Next.js), mas no campo do Vercel viram parte literal do valor armazenado.
+- **Débito pendente identificado durante o LIVO-003, agora fechado (10/07/2026):** ~~`src/lib/rate-limit.ts` tem alterações no working tree que não foram commitadas~~ — resolvido, ver "Complemento" acima.
 
 ---
 
@@ -136,83 +207,98 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 ## 4. UX/UI
 
-### LIVO-009 — Melhorias de onboarding self-service (Grupo D)
+### LIVO-009 — Redesenho do onboarding self-service (cadastro em etapa única + trial automático)
 
-**Objetivo:** Reduzir fricção/abandono no cadastro de novas barbearias sem intervenção manual.
-**Problema atual:** Onboarding atual (CPF check, ToS, criação de conta) tem pontos de melhoria identificados mas não implementados.
-**Impacto no negócio:** Afeta diretamente ativação (Growth) e CAC efetivo.
+**Status:** 🔄 **Parcialmente concluído e validado em produção (10/07/2026).** Duas fatias já entregues, mais um conjunto de itens derivados já resolvidos nesta sessão:
+
+- ✅ **Fatia 1 — Cadastro em tela única:** commit `27206cb` (branch `feature/livo-009-onboarding-tela-unica`), merge `175641f`. Validado em produção: nova rota `/cadastro` com 6 campos (nome, e-mail, senha, confirmação, nome da barbearia, termos), trial PRO automático, redirect para `/dashboard`. Confirmado via Neon que `cpf`/`birthDate`/`cep`/`street`/`neighborhood` ficam `null` na criação, como projetado.
+- ✅ **Fatia 2 — Checklist de ativação (5 passos):** commit `777054b` (branch `feature/livo-009-checklist-ativacao`), merge `9168ec5`. `onboarding-checklist.tsx` estendido de 3 para 5 passos (completar cadastro, confirmar plano, adicionar profissional, criar serviços, primeiro agendamento). Campos de endereço (CEP com autopreenchimento ViaCEP, rua, bairro, cidade) adicionados a "Informações da Barbearia" (`basic-info-form.tsx`). Confirmado durante a implementação que CPF/data de nascimento já existiam em "Dados Pessoais" (`personal-info-form.tsx`/`updatePersonalInfo`, com checagem de unicidade e escopo por sessão via `getCurrentMembership`) — não foram duplicados. Validado em produção com conta de teste real: checklist progride corretamente de 2/5 para 3/5 conforme itens são concluídos.
+- ✅ **LIVO-040 resolvido (10/07/2026):** os 6 CTAs institucionais que ainda apontavam para `/onboarding` agora apontam para `/cadastro` (ver ticket próprio acima).
+- ✅ **LIVO-041 resolvido (10/07/2026):** checkbox de termos obrigatório implementado em `/cadastro` (e em `/aceitar-termos`), mais correção do bug de loop de sessão órfã (ver ticket próprio acima).
+
+**Ainda pendente dentro deste ticket (próximas fatias):**
+
+- Decidir o destino das rotas antigas `/register` e `/onboarding` (manter como estão, redirecionar para `/cadastro`, ou remover) — inclui decidir o que fazer com o gate interno de "logado sem barbearia" identificado durante o LIVO-040 (hoje ainda aponta para `/onboarding`).
+- Aplicar identidade visual nova em `/login` e `/cadastro` (LIVO-042).
+- Instrumentação de funil via PostHog (eventos de início/conclusão do cadastro) — ainda não implementada.
+- LIVO-046 (try/catch em envio de e-mail no registro) — ainda não resolvido.
+
+**Diagnóstico já concluído (read-only, 10/07/2026):** o fluxo real hoje é dividido em duas rotas: `(auth)/register` (nome/email/senha/termos, cria `User`, auto-login, redireciona para `/onboarding`) e `(onboarding)/onboarding` (wizard de 2 passos: dados pessoais + CPF, depois endereço + escolha de plano Start/Pro, cria `Barbershop`/`Membership`/`Professional` em `$transaction`). Achados relevantes do diagnóstico:
+
+- Campo "telefone fixo" (`_landline`) é capturado no formulário do Step 1 e **descartado silenciosamente** — não existe coluna correspondente no model `Barbershop`. Decisão: remover o campo do formulário (nunca foi usado).
+- CTAs "Começar agora" do site institucional apontavam direto para `/onboarding`, não para `/register` — gerava redirect indevido para `/login` quando o visitante não tinha sessão. **Resolvido via LIVO-040.**
+- Envio de e-mail de boas-vindas/verificação em `registerUser` não está envolvido em `try/catch` — falha do provedor de e-mail pode derrubar o cadastro depois que o `User` já foi criado no banco (risco identificado, não corrigido neste ticket — ver LIVO-046).
+
+**Decisão de produto (fechada com o founder em 10/07/2026):**
+
+1. **Cadastro inicial vira uma única tela**, substituindo as duas rotas atuais: nome, e-mail, senha, nome da barbearia (+ opção "Entrar com Google"). CPF, data de nascimento, celular e endereço completo **saem do fluxo inicial**.
+2. Ao submeter, cria-se `User` + `Barbershop` + `Membership` (owner) + `Professional` em uma única ação transacional — igual ao padrão já usado em `createBarbershop`, mas com bem menos campos obrigatórios de entrada.
+3. **Plano padrão: trial automático no plano PRO**, contando desde a criação da conta (reaproveita o mecanismo de trial já existente — mesmo tratamento dado hoje a leads de waitlist com 60 dias, sem criar um terceiro estado "sem plano definido" no sistema).
+4. Usuário é redirecionado **direto para o dashboard** após o cadastro — não passa mais por uma segunda tela de onboarding antes de ver o produto.
+5. Dentro do dashboard, o que antes seria um banner simples de "Complete seu cadastro" evolui para um **checklist de ativação** — decisão tomada em 10/07/2026 ao discutir separadamente o tema de tutorial/tour guiado (ver LIVO-047 para o mecanismo complementar de dicas contextuais). Padrão de mercado adotado (Notion, Linear, Stripe Dashboard): checklist de progresso visível (ex: "3 de 5 concluídos"), nunca um tour clássico de passo-a-passo cobrindo a tela inteira — alinhado ao próprio Princípio da Clareza do Decision Framework ("interfaces devem ensinar através do uso"). Itens do checklist:
+   - Completar cadastro (CPF, data de nascimento, celular, endereço)
+   - Confirmar ou trocar o plano (trial PRO padrão)
+   - Cadastrar o primeiro profissional
+   - Cadastrar o primeiro serviço
+   - Criar o primeiro agendamento
+     O checklist não bloqueia o uso do sistema em nenhum momento — é só um guia de progresso visível, dispensável a qualquer momento.
+6. Campo de telefone fixo removido do formulário (nunca foi persistido — ver achado acima).
+7. Instrumentação de funil via PostHog (mesmo padrão do LIVO-013): eventos `onboarding_iniciado`, `onboarding_concluido`, e idealmente um evento de abandono ou ao menos rastreamento de tempo entre os dois, para gerar dado real de conversão — hoje inexistente. Estender a mesma instrumentação para cada item do checklist de ativação (ex: `ativacao_item_concluido` com o nome do item), permitindo medir no futuro em qual passo os donos mais travam.
+
+**Pendência a resolver durante a implementação:** confirmar se a escolha de plano feita a partir da página `/planos` (clique em "Assinar Start" ou "Assinar Pro") deve ser respeitada no cadastro em vez do trial PRO padrão — diagnóstico desta sessão não concluiu se há propagação de plano hoje (ver LIVO-043).
+
+**Impacto no negócio:** Afeta diretamente ativação (Growth) e CAC efetivo — reduz o número de campos/telas entre "quero começar" e "estou usando o produto".
 **Prioridade:** Alta
-**Complexidade:** Média
-**Dependências:** Nenhuma
-**Critérios de aceite:** Taxa de conclusão do onboarding aumenta (medir antes/depois via PostHog quando disponível, ou log manual).
+**Complexidade:** Média/Grande (mexe em criação de conta, criação de barbearia, e introduz um componente novo — banner de checklist — no dashboard)
+**Dependências:** Nenhuma bloqueante. Relacionado a LIVO-040 (✅ resolvido), LIVO-041 (✅ resolvido), LIVO-042 (visual de login/register), LIVO-043 (propagação de plano).
+**Processo:** Por tocar em criação de conta e billing implícito (definição de plano/trial), segue obrigatoriamente o padrão de branch de feature + preview isolado antes do merge em `main` (mesmo padrão do LIVO-003).
+**Critérios de aceite:**
+
+- Cadastro completo em uma única tela, com no máximo 4 campos obrigatórios (nome, e-mail, senha, nome da barbearia). ✅
+- Barbearia criada entra automaticamente em trial PRO. ✅
+- Usuário cai direto no dashboard após o cadastro, sem tela intermediária de onboarding. ✅
+- Checklist de ativação visível e funcional, cobrindo os 5 itens definidos (cadastro completo, plano confirmado, primeiro profissional, primeiro serviço, primeiro agendamento), nunca bloqueando o uso do sistema. ✅
+- Todos os CTAs institucionais apontando para o fluxo novo. ✅ (LIVO-040)
+- Checkbox de termos obrigatório, sem loop de sessão órfã. ✅ (LIVO-041)
+- Eventos de funil e de ativação aparecem no PostHog. ⏳ Pendente.
+- `npx tsc --noEmit` limpo; validado em preview antes do merge. ✅ (em todos os commits realizados até aqui)
+
 **Passos técnicos:**
 
-1. Mapear etapas atuais do onboarding e pontos de abandono prováveis.
-2. Redesenhar etapas seguindo Princípio da Clareza/Simplicidade (Decision Framework).
-3. Implementar incrementalmente, validando cada etapa em produção.
+1. Diagnóstico complementar: confirmar propagação (ou ausência) de plano vindo de `/planos` (LIVO-043) antes de fechar a lógica de plano padrão. ✅ Concluído.
+2. Unificar `/register` e `/onboarding` em uma única rota/Server Action, reaproveitando validações já existentes (rate limit, duplicidade de e-mail, hash bcrypt, aceite de termos). ✅ Concluído (fatia 1).
+3. Ajustar `createBarbershop` (ou equivalente novo) para não exigir CPF/nascimento/endereço na criação inicial. ✅ Concluído.
+4. Implementar componente de checklist de ativação no dashboard. ✅ Concluído (fatia 2).
+5. Remover campo de telefone fixo do formulário. ✅ Concluído.
+6. Instrumentar eventos de funil via `captureEvent`. ⏳ Pendente.
+7. Atualizar CTAs "Começar agora" para apontar para a nova rota unificada. ✅ Concluído (LIVO-040).
+8. Validar em branch de feature + preview antes do merge. ✅ Padrão seguido em todos os commits.
 
-### LIVO-010 — UX de exportação de relatórios (Grupo D)
+### LIVO-023 — Polimento de fluxo de onboarding self-service (frontend)
 
-**Objetivo:** Permitir que o dono da barbearia leve dados para fora da plataforma (contador, planilhas).
-**Problema atual:** Módulo de Relatórios não possui exportação (CSV/PDF).
-**Impacto no negócio:** Retenção — donos de barbearia frequentemente pedem isso ao contador; ausência gera atrito.
-**Prioridade:** Média
-**Complexidade:** Média
-**Dependências:** LIVO-013 (backend de exportação)
-**Critérios de aceite:** Usuário consegue exportar relatório financeiro/comissão em CSV a partir da tela de Relatórios.
-**Passos técnicos:**
+**Status:** Consolidado dentro do escopo do LIVO-009 nesta atualização — não é mais um ticket de frontend separado, já que a decisão de unificar o fluxo em uma tela torna a divisão backend/frontend menos relevante para este ciclo específico. Mantido como referência histórica.
+**Prioridade:** Alta | **Complexidade:** Média | **Dependências:** LIVO-009
 
-1. Definir quais relatórios exportar primeiro (financeiro, comissão, "a receber" de pacotes).
-2. Design do botão/fluxo de exportação seguindo Design System.
-3. Integrar com backend de geração de arquivo.
+### LIVO-042 — Débito visual: /login e /register fora do redesign institucional + baixa proeminência do CTA "Criar conta"
 
-### LIVO-011 — Refinamentos de UX em agendamento multi-serviço
-
-**Objetivo:** Reduzir confusão visual quando um agendamento tem múltiplos serviços/profissionais.
-**Problema atual:** Item listado no Grupo D como refinamento pendente, sem detalhamento de qual fricção específica.
-**Impacto no negócio:** Experiência na tela mais usada do produto (Agenda).
-**Prioridade:** Média
+**Status:** 🆕 Identificado em 10/07/2026, a partir de print enviado pelo founder mostrando a tela de `/login` em produção. Ainda não executado.
+**Problema atual:** O LIVO-032-A (redesign do site institucional) teve escopo explicitamente limitado a `/`, `/produto` e `/planos` — as rotas `/login` e `/register` nunca passaram pelo redesenho completo (Poppins nos headlines, wordmark oficial "L I V O" com espaçamento correto, paleta e componentes atualizados). O vermelho visível nessas telas hoje vem apenas do variant `red` do `Button` compartilhado (LIVO-035), não de um desenho intencional da tela inteira. Adicionalmente, o link "Criar conta" na tela de login está abaixo do botão principal "Entrar", em texto pequeno — baixa hierarquia visual para uma ação tão importante (é o caminho de entrada de todo cliente novo).
+**Impacto no negócio:** Inconsistência de marca logo na porta de entrada mais crítica do produto (login/cadastro); possível perda de conversão por quem não percebe a opção de criar conta.
+**Prioridade:** Média/Alta (sobe de prioridade por afetar diretamente a entrada de novos clientes, tema central desta rodada)
 **Complexidade:** Pequena/Média
-**Dependências:** Levantamento específico de feedback com Edu (quais telas exatas).
-**Critérios de aceite:** A definir após levantamento.
+**Dependências:** Deve ser executado em conjunto com o LIVO-009, já que o formulário de cadastro em si já foi redesenhado (nova tela `/cadastro`) — faz sentido aplicar a identidade visual nova diretamente na tela nova, em vez de estilizar a tela antiga e depois trocá-la.
+**Critérios de aceite:** `/login` e `/cadastro` seguem a mesma identidade visual do site institucional (tipografia, wordmark, paleta, componentes). Botão "Criar conta" tem proeminência visual equivalente (ou próxima) ao botão "Entrar com Google"/"Entrar", facilmente identificável sem precisar procurar.
 **Passos técnicos:**
 
-1. Levantar com Edu exemplos concretos de confusão relatada por usuários.
-2. Priorizar 1-2 ajustes de maior impacto.
-3. Implementar seguindo padrões de componentização (Design System).
+1. Aplicar Poppins/wordmark/paleta oficial em `/login` (fonte, espaçamento, cores, ícones lucide onde aplicável).
+2. Elevar "Criar conta" a botão (não link de texto), posicionado logo abaixo de "Entrar com Google", antes do formulário de e-mail/senha.
+3. Aplicar a mesma identidade visual em `/cadastro` (parcialmente já no padrão visual do produto, mas vale conferir consistência total com `/`, `/produto`, `/planos`).
+4. Validar responsividade mobile/tablet, mesmo critério já usado no LIVO-032-A.
 
-### LIVO-032 — Redesign completo do sistema baseado em templates de referência
+### LIVO-043 — [RESOLVIDO POR DECISÃO ARQUITETURAL 10/07/2026] Confirmar propagação da escolha de plano em /planos → cadastro
 
-**Status:** Desmembrado em dois sub-tickets via **ADR-002** (09/07/2026), antecipando o site institucional em relação às condições de bloqueio originais. Ver `ADR-002-redesign-antecipado.md`.
-
-#### LIVO-032-A — Redesign do site institucional (livobarber.com.br)
-
-**Status:** ✅ **Concluído e publicado em produção** (09/07/2026).
-**Escopo:** Header, Hero, Como Funciona, Funcionalidades, Planos, Embaixadores (LIVO-031), Footer — apenas rotas do site institucional (`/`, `/produto`, `/planos`).
-**O que foi feito:**
-
-- Nova identidade visual: fundo preto puro, branco/cream como acento principal em texto/badges/labels/ícones, vermelho (`#E43B49` → `#C62E3C`) nos botões de CTA (exceto o botão da seção Embaixadores, que mantém tratamento dourado próprio).
-- Fonte Poppins (via `next/font/google`) nos headlines e wordmark, substituindo a sans genérica anterior — mantendo Satoshi intacta no restante do produto.
-- Wordmark "L I V O" fiel à identidade oficial (letras espaçadas, sem marcador/bolinha, branco).
-- Ícones emoji substituídos por `lucide-react` (line-art) em `features.tsx` e `ai-section.tsx`.
-- Variant `red` adicionado ao `Button` compartilhado (aditivo — variant `gold` preservado para uso exclusivo da seção Embaixadores).
-- Grade de Funcionalidades expandida de 4 para 6 cards (todas as features já existentes no array, sem espaço vazio).
-- Navegação do header expandida para 5 itens (Produto, Planos, Embaixadores, Entrar, Começar agora), reduzindo dependência do rodapé para ações comuns.
-- Bug de empilhamento CSS no menu mobile corrigido (backdrop de blur cobria os links do menu por falta de `z-index` explícito).
-- Contraste do copyright/CNPJ no rodapé corrigido (`#27272A` → `#A1A1AA`).
-  **Não incluído neste escopo:** novo mockup de dashboard no Hero (mantido com paleta antiga, por representar uma tela real ainda não redesenhada).
-  **Validação:** `npx tsc --noEmit` limpo em todas as etapas; responsividade confirmada em mobile e na faixa crítica de tablet (768–900px).
-
-#### LIVO-032-B — Redesign das telas internas (dashboard, agenda, comandas, etc.)
-
-**Status:** Bloqueado — mantém as condições originais do ADR anterior a este desmembramento.
-**Dependências (BLOQUEADO até):**
-
-1. LIVO-030 (migração Asaas) concluída
-2. "Errinhos" pendentes reportados e corrigidos
-3. Sistema estável em produção
-   **Racional de manter bloqueado:** alterar UI logada tem risco direto sobre a operação diária de barbearias pagantes — diferente do site institucional, que é superfície separada do produto (não toca em billing, autenticação ou dados de cliente).
-   **Passos técnicos (somente quando desbloqueado):** os mesmos já previstos originalmente — identificar fontes/paleta exatas, consolidar Design System formal, aplicar por módulo de forma incremental, validar cada tela isoladamente em produção.
+**Status:** ✅ Diagnóstico concluído em 10/07/2026 — confirmado que `/onboarding` não lê `searchParams` nem qualquer `plan=` da URL; o wizard atual inicia sempre com `useState<"start"|"pro">("start")`, ignorando qual card foi clicado em `/planos`. **Não será corrigido no fluxo antigo.** A lacuna se torna irrelevante com a arquitetura decidida para o LIVO-009: a escolha de plano deixa de acontecer no momento do cadastro (trial PRO automático para todos, plano confirmado depois via checklist de ativação) — logo, propagar `plan=` para um wizard que está sendo substituído seria esforço descartável.
+**Nota:** se no futuro o cadastro voltar a oferecer escolha de plano no primeiro passo (ex: por decisão de negócio revertida), esta lacuna deve ser reavaliada nesse momento.
 
 ---
 
@@ -233,6 +319,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 2. Criar camada de abstração de "provedor de mensagem" para permitir troca futura de provedor.
 3. Integrar Z-API respeitando idempotência (evitar reenvio duplicado).
 4. Testar em conta Vortex antes de produção.
+   **Nota (10/07/2026):** avaliado como possível diferencial do plano Prime durante discussão de reposicionamento (ver LIVO-044) — decisão de posicionamento adiada até a integração existir de fato; não travar como "exclusiva de plano" antes de estar construída.
 
 ### LIVO-013 — [CONCLUÍDO 09/07/2026] Setup de PostHog com eventos tenant-level
 
@@ -249,7 +336,8 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 **Commit:** `fcbb6fa` — 12 arquivos (296 inserções, 2 remoções), incluindo `posthog-node` como nova dependência (`package.json`/`package-lock.json`); sem incluir `LIVO_BACKLOG.md`.
 **Validação:** `npx tsc --noEmit` limpo em todas as etapas (0 erros, 0 diagnostics). Confirmado em produção: evento `agendamento_criado` recebido no dashboard PostHog (conta Vortex), library `posthog-node`, `distinct_id` = `barbershopId` correto.
-**Nota de processo (débito registrado):** Push feito diretamente em `main`, sem branch de feature/preview isolado — repete o mesmo padrão do LIVO-008. Sinalizado como débito de processo: configurar branch de feature (com preview deployment próprio) nas próximas sessões, em vez de validar direto em produção.
+**Nota de processo (débito registrado):** Push feito diretamente em `main`, sem branch de feature/preview isolado — repete o mesmo padrão do LIVO-008. **Resolvido a partir do LIVO-003.**
+**Nota (10/07/2026):** o LIVO-009 vai adicionar novos eventos de funil de onboarding a esta mesma infraestrutura — nenhuma mudança na abstração central é necessária, apenas novos pontos de chamada.
 
 ### LIVO-030 — Migração de conta Asaas para CNPJ da empresa (subconta Clube de Assinatura)
 
@@ -289,6 +377,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 1. Configurar domínio adicional no Vercel apontando para o mesmo projeto.
 2. Implementar middleware de detecção de host → `data-brand`.
 3. Testar isoladamente em preview deployment antes de produção.
+   **Nota (10/07/2026):** ver LIVO-048 — antes de implementar lógica nova de detecção de host no middleware, resolver primeiro a duplicidade de arquivos `middleware.ts` (raiz vs. `src/`), para não adicionar lógica nova no arquivo errado (o que hoje é código morto).
 
 ---
 
@@ -391,6 +480,7 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 1. Definir formato/colunas do CSV com Edu.
 2. Implementar Server Action retornando arquivo (seguindo padrão `return { error }` em caso de falha, nunca `throw`).
 3. Validar com conta Vortex em produção.
+   **Nota (10/07/2026):** discutido durante reposicionamento do plano Prime — decisão do founder foi que exportação para Excel deve ser **universal, sem trava de plano** (não uma exclusividade do Prime). Manter esse critério ao implementar.
 
 ---
 
@@ -413,13 +503,12 @@ Base: LIVO_INDEX → LIVO_OPERATING_SYSTEM → LIVO_DECISION_FRAMEWORK + estado 
 
 ### LIVO-022 — Interface de exportação de relatórios
 
-Ver critérios técnicos em LIVO-010 (mesmo ticket, componente de frontend).
+Ver critérios técnicos em LIVO-010 (mesmo ticket, componente de frontend). Inclui a regra de universalidade (sem trava de plano) registrada no LIVO-020.
 **Prioridade:** Média | **Complexidade:** Pequena | **Dependências:** LIVO-020
 
 ### LIVO-023 — Polimento de fluxo de onboarding self-service (frontend)
 
-Componente de frontend do LIVO-009.
-**Prioridade:** Alta | **Complexidade:** Média | **Dependências:** LIVO-009
+Ver nota em LIVO-009 — consolidado dentro daquele ticket nesta atualização.
 
 ---
 
@@ -458,13 +547,66 @@ Componente de frontend do LIVO-009.
 
 ### LIVO-025 — Exportação de relatórios (feature completa)
 
-Consolidação de LIVO-010 + LIVO-020 + LIVO-022 como entrega de produto.
+Consolidação de LIVO-010 + LIVO-020 + LIVO-022 como entrega de produto. Regra fixada em 10/07/2026: **universal, sem trava de plano.**
 **Prioridade:** Média | **Complexidade:** Média
 
 ### LIVO-026 — Memória da Lívia AI (feature completa)
 
 Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia "lembra" de conversas anteriores).
 **Prioridade:** Alta | **Complexidade:** Grande
+
+### LIVO-044 — Reposicionamento estratégico do plano Prime (multiusuário com papéis) + ADR pendente
+
+**Status:** 🆕 Decisão estratégica tomada em 10/07/2026, implementação ainda não iniciada.
+**Objetivo:** Resolver a perda de diferenciação entre os planos Pro e Prime — o Prime (R$369,90, hoje vendido como versão "extremamente completa") foi perdendo identidade própria conforme funcionalidades pedidas para o Pro (via feedback do Taxinha/TX Barbearia) foram se aproximando do que o Prime deveria oferecer.
+**Problema atual:** Não existe hoje um eixo claro de diferenciação do Prime além de "mais funcionalidades" — o que não escala bem, porque toda vez que o Pro cresce, o Prime precisa ganhar itens novos para continuar parecendo superior, disputa que não tem fim natural.
+**Decisão tomada (10/07/2026):**
+
+1. **Rejeitada:** cobrança por funcionalidade individual (à la carte/add-ons unitários). Motivo: aumentaria significativamente a complexidade de billing (feature flags por barbearia, lógica de cobrança por módulo) num momento em que a integração de billing (Asaas) sequer está com conta PJ aprovada (LIVO-030, pausado) — não é o momento de tornar o billing mais complexo, e sim mais estável.
+2. **Excel (exportação de relatórios) e PWA/disponibilidade nas lojas (App Store/Play Store) saem do escopo exclusivo do Prime e passam a ser universais**, disponíveis independentemente do plano (inclusive Start). Racional: não custam mais caro por cliente rodando, e ajudam retenção da base inteira — travá-los no topo da régua contraria o princípio de retenção do Operating System sem ganho real de upsell.
+3. **Z-API (WhatsApp) fica de fora da definição do Prime por enquanto** — a integração ainda não existe (LIVO-012 não iniciado). Posicionamento de plano só deve ser decidido quando a feature estiver construída, não antes.
+4. **Prime passa a ser definido por um único eixo: multiusuário com papéis/permissões separadas** (incluindo um papel específico de "contador", com acesso restrito a dados financeiros, sem acesso a agenda/comanda operacional). Esse é o único item da lista original que muda o _tipo_ de cliente atendido (operação com equipe/sócios/contador externo), não apenas a quantidade de recursos disponíveis — e é o tipo de cliente que tolera pagar mais, porque o ganho é organizacional.
+5. Preço (R$369,90) pode ser mantido se já tem ancoragem de mercado — o que muda é o discurso de venda: de "tudo incluído" para "para operações com equipe".
+
+**Impacto no negócio:** Resolve um problema estrutural de posicionamento de produto que estava gerando indecisão recorrente sobre o que incluir em cada plano; cria uma feature nova de produto (multiusuário com papéis) como pilar real do plano mais caro.
+**Prioridade:** Alta (estratégica) — mas depende de definição de escopo técnico do multiusuário com papéis antes de qualquer implementação.
+**Complexidade:** Grande (feature de permissões granulares é trabalho arquitetural real, não cosmético)
+**Dependências:** Nenhuma bloqueante técnica; decisão de negócio já tomada, falta desenho técnico do sistema de papéis/permissões.
+**Critérios de aceite:** ADR formal documentando a decisão de reposicionamento (nos moldes do LIVO-019/ADR-002/ADR-003); página `/planos` atualizada refletindo o novo discurso do Prime; especificação técnica do sistema de papéis (ex: papel "contador") definida antes de codar.
+**Passos técnicos:**
+
+1. Redigir ADR formal da decisão de reposicionamento do Prime (sai Excel/PWA do exclusivo, entra multiusuário com papéis como eixo central) — seguir o mesmo padrão de commit físico já corrigido no LIVO-037 (não deixar só em texto de chat).
+2. Especificar o sistema de papéis/permissões: quais papéis existem (owner, profissional, recepção, e o novo "contador"), o que cada um pode ver/fazer, e como isso se relaciona com o model `Membership` já existente.
+3. Atualizar copy e estrutura de `/planos` e `plans.tsx` para refletir o novo discurso do Prime.
+4. Implementar Excel/PWA como universais (ver LIVO-025), sem trava de plano.
+5. Implementar o sistema de papéis como feature própria (provavelmente grande o suficiente para ser seu próprio ciclo de execução, não uma tarefa dentro deste ticket).
+
+### LIVO-045 — Canal obrigatório de sugestão de melhorias (todos os perfis, todos os planos)
+
+**Status:** 🆕 Definido em 10/07/2026 como requisito obrigatório do produto, independente de plano.
+**Objetivo:** Criar um canal direto para que usuários reais (owner, profissional, recepção) enviem sugestões de melhoria, reclamações ou pontos de dor — transformando feedback de uso real em sinal de priorização de roadmap (alinhado ao princípio "toda funcionalidade deve produzir contexto para a Lívia"/"todo dado deve gerar inteligência" do Operating System).
+**Problema atual:** Não existe hoje nenhum canal estruturado dentro do produto para captar esse tipo de feedback — depende de contato informal (WhatsApp, conversa direta) sem nenhum registro agregável.
+**Decisão de design (10/07/2026):**
+
+- **Botão flutuante** (não item de menu lateral) — reaproveita o padrão visual já estabelecido pelo balão da Lívia (`livia-bubble.tsx`), evitando duplicar lógica de item de menu que precisaria ser replicada em toda configuração de permissão por cargo. Ícone distinto do balão da Lívia (ex: megafone ou balão de sugestão), para não gerar confusão entre os dois.
+- **Obrigatório em todos os perfis** (owner, profissional, recepção) — não deve depender de nenhuma checagem de role/permissão para aparecer.
+- **Sem tela de administração por agora** — as sugestões são gravadas no banco (consulta futura via Neon SQL Editor, mesmo padrão já usado em outras verificações de estado) e disparam e-mail para o founder em tempo real. Uma tela de listagem dedicada fica para um ciclo futuro, se o volume justificar.
+  **Impacto no negócio:** Cria uma fonte estruturada e agregável de feedback real de uso, ajudando a priorizar o backlog com base em repetição de pedidos reais (ex: "10 pessoas pedindo a mesma coisa vira ponto de atenção").
+  **Prioridade:** Alta (requisito considerado obrigatório pelo founder, não opcional)
+  **Complexidade:** Média
+  **Dependências:** Nenhuma bloqueante.
+  **Critérios de aceite:**
+- Botão flutuante visível em todas as telas do sistema logado, para todos os perfis, independentemente do plano da barbearia.
+- Ao enviar, gera um registro no banco (escopado por `barbershopId` + `membershipId`/autor + papel de quem enviou + conteúdo da mensagem + timestamp) e dispara e-mail para o founder.
+- Falha no envio do e-mail não deve travar a experiência do usuário nem perder a sugestão (mesma lógica de `try/catch` silencioso já usada no PostHog/LIVO-013 — grava no banco primeiro, e-mail é best-effort).
+- Nenhum dado sensível de cliente final (dados de `Client`) é exposto nesse canal — é sobre a experiência do usuário do sistema (dono/profissional/recepção) com o próprio LIVO.
+  **Passos técnicos:**
+
+1. Modelagem de schema aditivo: nova tabela (ex: `ProductSuggestion`), campos: `id`, `barbershopId`, `membershipId` (ou `userId` + `role` capturado no momento do envio), `message`, `createdAt`. `migrate diff` sem DROP.
+2. Componente de botão flutuante + modal/formulário simples (campo de texto livre), seguindo Design System (paleta e componentes já existentes).
+3. Server Action: grava no banco dentro de `$transaction` se necessário, dispara e-mail via Resend (padrão já usado em outros e-mails do sistema) envolvido em `try/catch` — falha de e-mail apenas loga, nunca bloqueia nem perde o registro já gravado.
+4. Garantir que o botão aparece independente de role — testar com os três perfis (owner, profissional, recepção).
+5. Validar em preview, depois produção, com envio de teste real (conta Vortex).
 
 ---
 
@@ -520,7 +662,7 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 ### LIVO-028 — Documentação formal de decisões de negócio pendentes (ADR)
 
 **Objetivo:** Não deixar decisões de comissão (líquido/bruto e outros edge cases) apenas na memória de conversas.
-**Problema atual:** Duas decisões de negócio estão explicitamente adiadas sem ADR formal.
+**Problema atual:** Duas decisões de negócio estão explicitamente adiadas sem ADR formal. Nesta atualização, uma terceira decisão (reposicionamento do Prime, LIVO-044) também precisa de ADR formal.
 **Impacto no negócio:** Risco de retrabalho e inconsistência se a decisão for tomada informalmente depois.
 **Prioridade:** Média
 **Complexidade:** Pequena
@@ -529,8 +671,8 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **Passos técnicos:**
 
 1. Criar template de ADR (se ainda não existir) seguindo padrão já usado para multi-vertical.
-2. Registrar as duas decisões pendentes como "ADR em aberto".
-3. Preencher assim que Edu decidir.
+2. Registrar as decisões pendentes como "ADR em aberto" (comissão líquido/bruto e reposicionamento do Prime).
+3. Preencher assim que Edu decidir/formalizar.
 
 ### LIVO-029 — [CONCLUÍDO 09/07/2026] Consolidação de guardrails de arquitetura em um único documento de Engineering
 
@@ -541,6 +683,93 @@ Consolidação de LIVO-018 como entrega de produto visível ao usuário (Lívia 
 **Detalhe de execução:** `Set-Content -Encoding UTF8` do PowerShell 5.1 gravou o arquivo com BOM (`EF BB BF`), inconsistente com o restante do repositório (UTF-8 sem BOM) — corrigido antes do commit via `[System.IO.File]::WriteAllText` com `UTF8Encoding($false)`.
 **Validação:** `npx tsc --noEmit` limpo (0 erros) após a remoção do BOM.
 **Commit:** `b2aef98` — escopo isolado (`LIVO_ENGINEERING.md`, 76 inserções / 920 remoções), sem incluir `LIVO_BACKLOG.md`.
+
+**Nota de atualização (10/07/2026):** `LIVO_ENGINEERING.md` ainda não reflete o padrão de anonimização estabelecido no LIVO-003 (`Client.phone` obrigatório/único exige placeholder em vez de `null`), o novo padrão de branch de feature, o fechamento do fail-open do `getRedis()` (LIVO-005, complementado 10/07/2026), nem a correção do LIVO-041 (`signOut` server-side ao detectar sessão órfã via P2003). Recomenda-se uma atualização pontual do documento na próxima sessão de consolidação — não é urgente, mas evita retrabalho de redescoberta.
+
+### LIVO-037 — ADRs referenciados no backlog nunca commitados como arquivos físicos no repositório
+
+**Objetivo:** Corrigir uma lacuna de processo descoberta durante o LIVO-005: ADRs são criados em sessões de chat (via ferramenta de arquivo do assistente), mas nunca chegam a ser commitados no repositório real.
+**Problema atual:** O **ADR-002** (redesign antecipado, LIVO-032) foi escrito integralmente em uma sessão anterior (08/07/2026) e referenciado no backlog como `ADR-002-redesign-antecipado.md`, mas o arquivo foi gerado apenas no ambiente de saída daquela sessão de chat — nunca foi baixado/commitado no repositório real (`C:\Projetos\livo`). Confirmado via `Get-ChildItem -Recurse -Filter "ADR-*.md"`, que não retornou nenhum resultado. O mesmo padrão se repetiu com o **ADR-003** (rate limiting distribuído, LIVO-005), redigido em sessão anterior mas ainda não commitado. Nesta atualização, um possível **ADR-004** (reposicionamento do Prime, LIVO-044) se soma à mesma pendência assim que for redigido.
+**Impacto no negócio:** Baixo/médio — as decisões foram tomadas e executadas corretamente, mas não são rastreáveis via Git/code review, contrariando o Princípio de Governança do Decision Framework ("nenhuma regra importante deve existir apenas no código [ou apenas em texto de conversa]").
+**Prioridade:** Baixa (não bloqueia nada tecnicamente, mas fácil de resolver)
+**Complexidade:** Pequena
+**Dependências:** Nenhuma
+**Critérios de aceite:** `ADR-002-redesign-antecipado.md`, `ADR-003-rate-limiting-distribuido.md` e, quando redigido, `ADR-004-reposicionamento-plano-prime.md` existem como arquivos versionados no repositório, em local consistente (ex: pasta `docs/` ou raiz, a definir), com o conteúdo já produzido nas sessões correspondentes.
+**Passos técnicos:**
+
+1. Definir pasta oficial para ADRs (ex: `docs/adr/` ou raiz do repo) — decisão pequena, mas deve ser consistente daqui pra frente.
+2. Recriar os arquivos com o conteúdo já produzido (disponível no histórico de conversas).
+3. Commit isolado, mensagem citando os ADRs retroativos.
+4. **Processo daqui pra frente:** sempre que um ADR for redigido nesta camada de arquitetura (chat), o commit do arquivo físico deve ser o primeiro passo do brief de execução passado ao Claude Code — não um passo "opcional depois".
+
+### LIVO-038 — Estratégia de uso/revenda de dados agregados de clientes finais para remarketing/parcerias
+
+**Objetivo:** Formalizar (ou descartar) uma linha de negócio futura em que a LIVO usaria ou disponibilizaria — de forma agregada e/ou mediante consentimento — dados de clientes finais coletados via CRM/Clube de múltiplas barbearias, para fins de remarketing próprio da LIVO ou parcerias comerciais.
+**Problema atual:** Ideia levantada informalmente durante a execução do LIVO-003 (auditoria LGPD), ainda sem qualquer desenho de produto, arquitetura ou — principalmente — validação jurídica. É uma questão categoricamente diferente de LIVO-003: o LIVO-003 trata do direito do titular de ser esquecido (uso normal, dentro do propósito original do cadastro); o LIVO-038 trataria de usar o dado para uma finalidade **fora** do propósito original de coleta.
+**Impacto no negócio:** Potencialmente alto (nova fonte de receita/valor via dados agregados), mas com risco regulatório proporcional — LGPD normalmente exige base legal específica (tipicamente consentimento explícito e finalístico) para qualquer uso de dado pessoal fora do propósito original coletado pelo barbeiro. Uso do barbeiro sobre seus próprios clientes (remarketing local) não está em questão aqui — já é uso legítimo hoje.
+**Prioridade:** Baixa/estratégica — não bloqueia nenhum ticket técnico em andamento.
+**Complexidade:** Grande (envolve jurídico, produto, arquitetura de consentimento granular, possivelmente novo termo de uso/política de privacidade).
+**Dependências:** **Bloqueador externo, não técnico** — aval jurídico formal antes de qualquer exploração de produto ou arquitetura. Nenhuma implementação deve começar sem isso.
+**Critérios de aceite:** Existe uma decisão formal (ADR) definindo se a LIVO seguirá ou não essa linha e, se sim, sob qual base legal (ex: consentimento explícito por titular, anonimização/agregação estatística sem dado identificável, ou descartada por ora).
+**Passos técnicos:**
+
+1. Consultar jurídico especializado em LGPD sobre a viabilidade e a base legal necessária para qualquer uso agregado/de revenda de dados de titulares coletados por terceiros (barbearias) na plataforma.
+2. Só após parecer jurídico: desenhar, se aprovado, um mecanismo de consentimento explícito e granular por titular (distinto do consentimento original dado ao barbeiro).
+3. Documentar a decisão (seguir ou não) como ADR, independentemente do resultado.
+4. Não implementar nenhum código antes das etapas 1-3.
+
+### LIVO-046 — Envio de e-mail em `registerUser` sem `try/catch` (risco identificado, não corrigido)
+
+**Status:** 🆕 Identificado em 10/07/2026 durante diagnóstico do LIVO-009, registrado como débito técnico à parte — ainda não corrigido.
+**Problema atual:** Em `src/app/(auth)/register/actions.ts`, as chamadas `sendWelcomeEmail` e `sendEmailVerification` não estão envolvidas em `try/catch`. Se o provedor de e-mail (Resend) falhar, a exceção sobe depois que o `User` já foi criado no banco — o cadastro pode aparentar ter falhado para o usuário, mesmo com o registro já persistido.
+**Impacto no negócio:** Potencial confusão para novos usuários (erro genérico após cadastro aparentemente bem-sucedido no banco) — mesma classe de risco já mitigada em outros pontos do sistema (PostHog, rate limit) com `try/catch` silencioso.
+**Prioridade:** Média (deve ser corrigido logo, já que a rota `/cadastro` — sucessora de `/register` — pode ter o mesmo problema em `cadastro/actions.ts`, ainda não auditado especificamente para isso)
+**Complexidade:** Pequena
+**Dependências:** Relacionado ao LIVO-009 — pode ser resolvido como parte da unificação do fluxo de cadastro, evitando um ticket totalmente isolado.
+**Critérios de aceite:** Falha no envio de e-mail de boas-vindas/verificação não impede a conclusão do cadastro nem gera erro visível incorreto para o usuário; falha é logada, nunca relançada.
+**Passos técnicos:**
+
+1. Auditar também `src/app/(auth)/cadastro/actions.ts` (não só o `register/actions.ts` antigo) para o mesmo padrão de risco, já que é a rota ativa hoje.
+2. Envolver `sendWelcomeEmail`/`sendEmailVerification` em `try/catch`, logando falha via `@/lib/logger`, sem relançar.
+3. Confirmar que o fluxo de auto-login/redirect prossegue normalmente mesmo se o e-mail falhar.
+4. Validar em preview.
+
+### LIVO-047 — Dicas contextuais por tela (complemento ao checklist de ativação)
+
+**Status:** 🆕 Definido em 10/07/2026, como consequência da decisão de não usar tour guiado clássico (ver LIVO-009).
+**Objetivo:** Ensinar o uso do produto "através do uso" (Princípio da Clareza do Decision Framework), em vez de um tour guiado cobrindo várias telas de uma vez no primeiro login — padrão que produtos consolidados (Notion, Linear, Stripe Dashboard) vêm abandonando por gerar abandono/desatenção.
+**Problema atual:** Não existe hoje nenhum mecanismo de explicação contextual dentro das telas do sistema — o usuário aprende por tentativa e erro ou suporte manual.
+**Decisão de design:** Dica pontual (ex: balão/tooltip pequeno) exibida apenas na **primeira vez** que o usuário chega em uma tela mais complexa (ex: fechamento de comanda com rateio de comissão, configuração de horários), nunca todas de uma vez. Complementa — não substitui — o checklist de ativação do LIVO-009.
+**Impacto no negócio:** Reduz dependência de suporte manual para dúvidas básicas de uso; melhora percepção de facilidade do produto sem o custo de manutenção de um tour completo (que precisa ser redesenhado toda vez que uma tela muda).
+**Prioridade:** Média (complementar ao LIVO-009, não bloqueante)
+**Complexidade:** Pequena/Média
+**Dependências:** Nenhuma bloqueante — pode ser implementado depois do LIVO-009, telas por tela, incrementalmente.
+**Critérios de aceite:** Dica contextual aparece uma única vez por usuário/tela (não repete a cada visita), é dispensável a qualquer momento, e não bloqueia nenhuma ação.
+**Passos técnicos:**
+
+1. Definir mecanismo de "já visto" (ex: campo simples no `Membership` ou tabela própria registrando quais dicas já foram dispensadas por usuário).
+2. Priorizar com o founder quais 2-3 telas merecem dica contextual primeiro (provavelmente fechamento de comanda, dado o histórico de complexidade já mencionado no LIVO-007).
+3. Implementar componente de dica reutilizável, seguindo Design System.
+4. Validar em preview antes de expandir para mais telas.
+
+### LIVO-048 — Dois arquivos middleware.ts conflitantes no repositório (um deles é código morto)
+
+**Status:** 🆕 Descoberto em 10/07/2026, durante diagnóstico do LIVO-041. Não executado ainda.
+**Problema atual:** Existem dois arquivos `middleware.ts` — um na raiz do projeto (fora de `src/`) e outro em `src/middleware.ts`. Pela convenção do Next.js (o projeto usa `src/app/`), apenas `src/middleware.ts` é carregado; o da raiz é código morto, silenciosamente ignorado desde o commit `db0c994` (15/06/2026, "RC-1 — billing gate loop via middleware x-pathname"), que criou o arquivo novo dentro de `src/` sem remover nem migrar a lógica do antigo.
+**Detalhe crítico:** o arquivo da raiz (o que **não** roda) contém toda a lógica histórica de gate de autenticação: bloquear rotas protegidas sem sessão, e redirecionar `/login`/`/register` → `/dashboard` quando o usuário já está logado. O arquivo ativo (`src/middleware.ts`) só propaga `x-pathname` nos headers, sem nenhuma lógica de auth.
+**Por que não é urgente (confirmado por diagnóstico específico):** a proteção real de acesso ao dashboard **não depende do middleware**. `src/app/(dashboard)/layout.tsx` já centraliza, em Server Component/Node Runtime, `requireTermsAccepted()` (gate de termos, ativo desde o commit `7210947`) seguido de `requireMembership()` — que inclui checagem de sessão via `auth()` e `redirect("/login")` caso não exista. Confirmado que nenhum usuário sem sessão consegue ver conteúdo de nenhuma rota do grupo `(dashboard)` hoje, independente do middleware estar quebrado.
+**Impacto real (menor que pareceu inicialmente):** perda de conveniência de UX — um usuário já logado que acessa `/login` ou `/register` diretamente pela URL não é redirecionado automaticamente para o dashboard (fica vendo a tela de login à toa, sem risco de segurança, só uma navegação menos fluida).
+**Prioridade:** Baixa/Média (débito de clareza arquitetural — dois arquivos com o mesmo nome e propósitos conflitantes é uma fonte real de confusão para qualquer sessão futura, inclusive esta — não risco de segurança).
+**Complexidade:** Pequena
+**Dependências:** Nenhuma bloqueante. Relevante para o LIVO-014 (roteamento multi-marca) — antes de adicionar lógica de detecção de host no middleware, resolver esta duplicidade primeiro, para não implementar em cima do arquivo errado (que hoje não roda).
+**Critérios de aceite:** Decisão tomada e executada — ou (a) portar a lógica útil de conveniência (redirect de `/login`→`/dashboard` se já logado) do middleware da raiz para dentro de `src/middleware.ts`, e apagar o arquivo da raiz; ou (b) apagar o arquivo da raiz sem migrar nada, se essa conveniência de UX não for considerada necessária.
+**Passos técnicos:**
+
+1. Decidir com o founder se vale recuperar o redirect de conveniência dentro do middleware ativo.
+2. Se sim: portar a lógica para `src/middleware.ts`, usando `auth()` do Auth.js (Edge-safe, sem Prisma direto) — o middleware antigo já fazia isso corretamente, então a portabilidade é segura em relação à regra de "nunca Prisma no Edge".
+3. Apagar o `middleware.ts` da raiz em qualquer cenário (é código morto de qualquer forma, ambíguo e arriscado de manter).
+4. Validar em preview antes de produção.
+5. Atualizar `LIVO_ENGINEERING.md` para documentar a existência de um único middleware ativo e onde vive a lógica real de proteção de rota (no layout do dashboard, não no middleware).
 
 ---
 
@@ -563,47 +792,59 @@ Prioridade: proteger o que já está em produção antes de adicionar o novo.
 
 Sem dado, não há inteligência (princípio do Operating System).
 
-**Status: em andamento.**
+**Status: ✅ concluída (09/07/2026) — 4 de 4 itens finalizados. Complemento de débito fechado em 10/07/2026 (LIVO-005, fail-open do getRedis).**
 
 - ~~LIVO-008 (Vercel Analytics)~~ ✅ Concluído 09/07/2026
 - ~~LIVO-013 (PostHog + eventos tenant-level)~~ ✅ Concluído 09/07/2026, commit `fcbb6fa`, validado em produção
-- **LIVO-005 (rate limiting endpoints públicos)** ← próximo item ativo da fila
-- LIVO-003 (auditoria LGPD)
+- ~~LIVO-005 (rate limiting endpoints públicos)~~ ✅ Concluído 09/07/2026, migrado para Upstash Redis, incidente de rollout resolvido, validado em produção. **Complemento fechado 10/07/2026** (commit `fdf9d85`, merge `35fd08a`).
+- ~~LIVO-003 (auditoria LGPD)~~ ✅ Concluído 09/07/2026, branch de feature + preview isolado, validado em produção
 
 ## Fase 1.5 — Pendências correntes de negócio (paralelo, assim que possível)
 
 - ⏸️ **Bloco Asaas (LIVO-030 + LIVO-002)** — pausado por decisão do founder (09/07/2026). Executar em uma única etapa, somente quando a conta PJ estiver com documentos 100% aprovados.
 - ~~**LIVO-031** — Programa Embaixadores no site principal~~ ✅ Concluído 09/07/2026
-- ~~**LIVO-032-A** — Redesign do site institucional~~ ✅ Concluído 09/07/2026, antecipado via **ADR-002** (ver seção 4)
+- ~~**LIVO-032-A** — Redesign do site institucional~~ ✅ Concluído 09/07/2026, antecipado via **ADR-002** (ver LIVO-037 — débito de commit físico)
 - **LIVO-036** — decidir destino do componente órfão `ai-section.tsx` (baixa prioridade, sem pressa)
+- **LIVO-037** — commitar ADR-002, ADR-003 e (quando redigido) ADR-004 como arquivos físicos no repositório (baixa prioridade, sem pressa, mas simples de resolver)
+- **LIVO-038** — estratégia de uso/revenda de dados agregados de clientes (bloqueada por aval jurídico, sem pressa)
+- **LIVO-048** — dois arquivos middleware.ts conflitantes (baixa/média prioridade, descoberto 10/07/2026, sem risco de segurança confirmado)
 
-## Fase 2 — Fechamento do Grupo D (2-4 semanas)
+## Fase 2 — Fechamento do Grupo D + Onboarding (2-4 semanas)
 
-Gaps de produto já identificados e priorizados internamente.
+**Status: 🔄 em andamento.** LIVO-040 e LIVO-041 concluídos em 10/07/2026, ambos validados ao vivo em produção.
 
-- LIVO-009 / LIVO-023 (onboarding self-service)
+- ~~**LIVO-040** (bug: CTA "Começar agora" pula /register)~~ ✅ Concluído 10/07/2026, commit `377b32e`.
+- ~~**LIVO-041** (bug de produção em /aceitar-termos + checkbox obrigatório de termos)~~ ✅ Concluído 10/07/2026, commits `2318dd5`, `f0421eb`, `4e210be`, `e5d7535`. Reproduzido e revalidado ao vivo pelo founder.
+- 🔄 **LIVO-009** (onboarding self-service) — segue parcialmente concluído; itens derivados LIVO-040/041 resolvidos, restam LIVO-042, LIVO-043 (já resolvido por decisão arquitetural), LIVO-046 e instrumentação PostHog.
+- **LIVO-042** (débito visual de /login e /cadastro) — ainda não executado.
+- **LIVO-046** (try/catch em envio de e-mail no registro/cadastro) — ainda não executado; auditoria deve cobrir também `cadastro/actions.ts`, não só o `register/actions.ts` antigo.
 - LIVO-006 / LIVO-007 (performance de agenda/comanda)
-- LIVO-010 / LIVO-020 / LIVO-022 / LIVO-025 (exportação de relatórios)
-- LIVO-011 (refinamentos multi-serviço)
+- LIVO-010 / LIVO-020 / LIVO-022 / LIVO-025 (exportação de relatórios — agora com regra de universalidade, sem trava de plano)
+- LIVO-011 (refinamentos multi-serviço — aguardando levantamento de exemplos concretos com o founder)
 - LIVO-017 (inventário — após levantamento)
+- **LIVO-045** (canal obrigatório de sugestão de melhorias) — pode ser executado em paralelo, feature isolada e de baixo acoplamento.
+- **LIVO-047** (dicas contextuais por tela) — complementar ao checklist de ativação do LIVO-009, pode ser priorizado logo depois, tela por tela.
+- **LIVO-048** (middleware duplicado) — pode ser resolvido em paralelo, baixo risco e baixo esforço.
 - **Bugs pendentes que Edu vai reportar após fechar as correções acima**
 
 ## Fase 3 — Canal e Inteligência (2-3 semanas)
 
-- LIVO-012 (WhatsApp Z-API)
+- LIVO-012 (WhatsApp Z-API) — posicionamento como feature de plano ainda em aberto (ver LIVO-044)
 - LIVO-018 / LIVO-026 (memória da Lívia)
 
 ## Fase 4 — Decisão de Negócio (paralelo, sem bloquear engenharia)
 
 - LIVO-019 (comissão líquido/bruto) — aguardando decisão de Edu/sócio
-- LIVO-028 (ADR das decisões pendentes)
+- LIVO-028 (ADR das decisões pendentes, incluindo agora o reposicionamento do Prime)
+- **LIVO-044** (reposicionamento do plano Prime — multiusuário com papéis) — decisão de negócio já tomada; falta especificação técnica do sistema de papéis antes de codar.
+- LIVO-038 (estratégia de dados agregados) — aguardando aval jurídico
 
 ## Fase 5 — Expansão Multi-Vertical (3-6 semanas)
 
 Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam existir antes de multiplicar verticais).
 
 - LIVO-015 (VerticalType)
-- LIVO-014 (roteamento de domínio)
+- LIVO-014 (roteamento de domínio) — nota: resolver LIVO-048 antes de implementar lógica nova no middleware.
 - LIVO-021 (data-brand frontend)
 - LIVO-024 (lançamento LIVO BEAUTY)
 
@@ -624,19 +865,30 @@ Só inicia após Fases 0 e 1 estarem sólidas (dados/observabilidade precisam ex
 7. ~~**LIVO-027** — guardrail contra emoji em `.ts`/`.tsx`~~ ✅ Concluído 09/07/2026
 8. ~~**LIVO-029** — consolidar `LIVO_ENGINEERING.md`~~ ✅ Concluído 09/07/2026, commit `b2aef98`
 9. ~~**LIVO-013** — setup de PostHog com eventos tenant-level~~ ✅ Concluído 09/07/2026, commit `fcbb6fa`, validado em produção
-10. **LIVO-005** — rate limiting em endpoints públicos ← próximo item ativo (Fase 1)
+10. ~~**LIVO-005** — rate limiting em endpoints públicos~~ ✅ Concluído 09/07/2026, migrado para Upstash Redis, validado em produção. Complemento (fail-open getRedis) fechado 10/07/2026.
+11. ~~**LIVO-003** — auditoria LGPD (exportação e exclusão de dados do titular)~~ ✅ Concluído 09/07/2026, primeiro ciclo com branch de feature, validado em produção
+12. ~~**LIVO-009 (fatias 1 e 2)** — onboarding self-service (cadastro em tela única + checklist de ativação)~~ ✅ Concluído, validado em produção
+13. ~~**LIVO-040** — CTAs institucionais apontando para /cadastro~~ ✅ Concluído 10/07/2026, commit `377b32e`
+14. ~~**LIVO-041** — bug de produção em /aceitar-termos (loop de sessão órfã) + checkbox obrigatório~~ ✅ Concluído 10/07/2026, commits `2318dd5`, `f0421eb`, `4e210be`, `e5d7535`, reproduzido e revalidado ao vivo pelo founder
+15. 🔄 **Próximo item ativo:** a definir entre LIVO-046 (try/catch de e-mail, débito pequeno e rápido), LIVO-042 (identidade visual de /login e /cadastro), ou LIVO-048 (limpeza do middleware duplicado) — todos pequenos, sem dependências bloqueantes entre si.
 
-**Fase 0 está encerrada** (exceto o bloco Asaas, pausado por decisão de negócio, não técnica). A base de governança e segurança (guardrails de Prisma/Edge, migrate-diff, emoji, e agora o registro formal dessas regras em `LIVO_ENGINEERING.md`) está protegendo produção automaticamente a cada build.
+**Fase 0 e Fase 1 seguem encerradas** (exceto o bloco Asaas, pausado por decisão de negócio, não técnica). A base de governança e segurança (guardrails de Prisma/Edge, migrate-diff, emoji, e o registro formal dessas regras em `LIVO_ENGINEERING.md`) está protegendo produção automaticamente a cada build, e a base de dados/observabilidade (Analytics, PostHog, rate limiting distribuído, LGPD) está completa.
 
-Concluído fora da ordem original, por decisão do founder (ver ADR-002): **LIVO-032-A** (redesign do site institucional) e **LIVO-034** (footer duplicado, achado durante o LIVO-032-A) — publicados em produção em 09/07/2026, antecipando parte da Fase 6.
+**Fase 2 (Grupo D) avançou significativamente em 10/07/2026**: além do onboarding self-service (LIVO-009, fatias 1 e 2 já entregues), os dois bugs de produção mais urgentes descobertos ao vivo durante o diagnóstico (LIVO-040 e LIVO-041) foram diagnosticados, corrigidos e **validados em produção pelo próprio founder reproduzindo os cenários reais**, incluindo uma correção em duas tentativas para o LIVO-041 (a primeira insuficiente, a segunda — usando `signOut()` real no servidor — definitiva). Durante esse diagnóstico, surgiu também um novo item de débito técnico (LIVO-048, dois arquivos `middleware.ts` conflitantes), investigado a fundo e confirmado como não sendo risco de segurança.
 
-Concluído dentro da Fase 0: **LIVO-004** (guardrail Prisma/Edge Runtime) — 09/07/2026. **LIVO-016** (guardrail migrate diff / DROP) — 09/07/2026, commit `f35fbb8`. **LIVO-027** (guardrail emoji + limpeza de 34 ocorrências legadas) — 09/07/2026, commit `db0b13e`. **LIVO-029** (consolidação de `LIVO_ENGINEERING.md`, substituindo template genérico sem conteúdo real) — 09/07/2026, commit `b2aef98`.
+Débito de processo acumulado a observar: (1) **branch de feature adotada a partir do LIVO-003** — mantida com sucesso em todos os ciclos desta sessão (LIVO-040, LIVO-041 em duas branches); manter esse padrão em todos os ciclos futuros, especialmente qualquer um que toque em dado de cliente, billing ou autenticação; (2) LIVO-037, débito de commitar ADR-002, ADR-003 e futuramente ADR-004 (Prime) como arquivos físicos; (3) `LIVO_ENGINEERING.md` precisa de atualização pontual para registrar o desvio do `phone` obrigatório/único, o padrão de branch de feature, o fechamento do fail-open do `getRedis()`, a correção de sessão órfã do LIVO-041, e a existência de um middleware duplicado (LIVO-048).
 
-Concluído dentro da Fase 1: **LIVO-008** (Vercel Analytics) — 09/07/2026, validado em produção com coleta de dados confirmada. **LIVO-013** (PostHog + eventos tenant-level) — 09/07/2026, commit `fcbb6fa`, validado em produção (evento `agendamento_criado` confirmado no dashboard PostHog, conta Vortex).
+### LIVO-046 — try/catch em sendWelcomeEmail/sendEmailVerification
 
-Pausado por decisão de negócio (09/07/2026): bloco Asaas completo (**LIVO-030** + **LIVO-002**), agrupado para execução em etapa única quando a conta PJ for aprovada.
+**Status: CONCLUÍDO (falso positivo de backlog — já implementado desde a origem)**
 
-A partir daqui, o próximo item ativo da Fase 1 é **LIVO-005** (rate limiting em endpoints públicos), seguido de LIVO-003 (auditoria LGPD) — visibilidade e dados já com LIVO-008/LIVO-013 concluídos, base para o Grupo D, o WhatsApp Z-API, o lançamento de LIVO BEAUTY e o redesign das telas internas (LIVO-032-B).
+Verificado em 10/07/2026: o try/catch já existe em cadastro/actions.ts (linhas 222-232),
+implementado no commit original 27206cb (LIVO-009, tela única de cadastro). Falha de
+e-mail (Resend) é logada via log.onboarding.error e nunca bloqueia o cadastro; o
+signIn() + redirect para /dashboard roda incondicionalmente logo em seguida.
+git log confirma commit único no arquivo — nunca houve necessidade de correção
+posterior. Item mantido no backlog por precaução na época, mas já estava resolvido
+desde a criação do fluxo. Nenhuma ação de código necessária.
 
 ---
 
