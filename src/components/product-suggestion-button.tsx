@@ -37,7 +37,7 @@ export function ProductSuggestionButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg nav-link transition-colors"
         style={{ color: "var(--text-secondary)" }}
         aria-label="Sugerir melhoria"
         title="Sugerir melhoria"
