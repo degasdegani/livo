@@ -30,7 +30,7 @@ const PLANS: PlanCard[] = [
     desc: "Para o barbeiro solo que está digitalizando o negócio.",
     featured: false,
     cta: `Começar grátis — ${TRIAL_DAYS.start} dias`,
-    ctaHref: "/onboarding",
+    ctaHref: "/cadastro",
     features: [
       { text: "1 profissional", ok: true },
       { text: "Agendamentos ilimitados", ok: true },
@@ -53,7 +53,7 @@ const PLANS: PlanCard[] = [
     desc: "Para barbearias estabelecidas que querem crescer.",
     featured: true,
     cta: `Começar grátis — ${TRIAL_DAYS.pro} dias`,
-    ctaHref: "/onboarding",
+    ctaHref: "/cadastro",
     features: [
       { text: "Até 3 profissionais", ok: true },
       { text: "Agendamentos ilimitados", ok: true },

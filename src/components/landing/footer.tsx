@@ -9,7 +9,7 @@ const LINKS = {
     { label: "Embaixadores", href: "/#embaixadores" },
   ],
   Acesso: [
-    { label: "Criar conta", href: "/onboarding" },
+    { label: "Criar conta", href: "/cadastro" },
     { label: "Entrar", href: "/login" },
     { label: "Lista de espera", href: "/vip" },
   ],

@@ -81,7 +81,7 @@ export function Navbar() {
           </nav>
 
           {/* Desktop CTA */}
-          <a href="/onboarding" className="hidden md:block">
+          <a href="/cadastro" className="hidden md:block">
             <Button variant="red" size="sm">
               Começar agora
             </Button>
@@ -146,7 +146,7 @@ export function Navbar() {
                   {link.label}
                 </a>
               ))}
-              <a href="/onboarding" className="mt-4" onClick={() => setMobileOpen(false)}>
+              <a href="/cadastro" className="mt-4" onClick={() => setMobileOpen(false)}>
                 <Button variant="red" size="lg" className="w-full">
                   Começar agora
                 </Button>

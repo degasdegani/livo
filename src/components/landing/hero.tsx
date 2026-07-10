@@ -223,7 +223,7 @@ export function Hero() {
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.5 }}
             className="flex flex-wrap gap-4 justify-center"
           >
-            <a href="/onboarding">
+            <a href="/cadastro">
               <Button variant="red" size="xl">
                 Começar grátis por {TRIAL_DAYS.start} dias
               </Button>
