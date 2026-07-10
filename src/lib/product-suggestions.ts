@@ -5,6 +5,7 @@ import { log } from "@/lib/logger";
 import { requireMembership } from "@/lib/permissions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendProductSuggestionEmail } from "@/lib/email";
+import { buildWhatsappUrl, sanitizePhone } from "@/lib/whatsapp";
 
 const MIN_LENGTH = 10;
 const MAX_LENGTH = 2000;
@@ -12,7 +13,7 @@ const RATE_LIMIT = 5;
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hora
 
 export type SubmitSuggestionResult =
-  | { success: true }
+  | { success: true; whatsappUrl: string | null }
   | { success: false; error: string };
 
 export async function submitProductSuggestion(
@@ -54,20 +55,34 @@ export async function submitProductSuggestion(
     return { success: false, error: "Não foi possível enviar sua sugestão agora. Tente novamente." };
   }
 
+  let barbershopName = "Barbearia desconhecida";
   try {
     const barbershop = await db.barbershop.findUnique({
       where: { id: membership.barbershopId },
       select: { name: true },
     });
+    barbershopName = barbershop?.name ?? barbershopName;
+  } catch (error) {
+    log.warn("falha ao buscar nome da barbearia para notificacao (nao bloqueante)", { barbershopId: membership.barbershopId, error });
+  }
+
+  try {
     await sendProductSuggestionEmail({
       barbershopId: membership.barbershopId,
-      barbershopName: barbershop?.name ?? "Barbearia desconhecida",
+      barbershopName,
       role: membership.role,
       message: trimmed,
     });
   } catch (error) {
-    log.warn("falha ao notificar founder sobre sugestao (nao bloqueante)", { barbershopId: membership.barbershopId, error });
+    log.warn("falha ao notificar founder por e-mail sobre sugestao (nao bloqueante)", { barbershopId: membership.barbershopId, error });
   }
 
-  return { success: true };
+  let whatsappUrl: string | null = null;
+  const founderPhone = sanitizePhone(process.env.FOUNDER_WHATSAPP_NUMBER);
+  if (founderPhone) {
+    const text = `Nova sugestao — ${barbershopName} (${membership.role}):\n\n${trimmed}`;
+    whatsappUrl = buildWhatsappUrl(founderPhone, text);
+  }
+
+  return { success: true, whatsappUrl };
 }
