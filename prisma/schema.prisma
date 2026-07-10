@@ -190,6 +190,7 @@ model Client {
   neighborhood   String?
   origem         ClientOrigem?
   street         String?
+  anonymizedAt   DateTime?
   appointments   Appointment[]
   barbershop     Barbershop           @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   comandas       Comanda[]
