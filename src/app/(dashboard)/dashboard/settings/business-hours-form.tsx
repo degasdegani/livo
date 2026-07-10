@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { updateBusinessHours } from "./actions";
+import { ContextualHint } from "@/components/ui/contextual-hint";
 
 const DAYS = [
   "Domingo",
@@ -98,6 +99,11 @@ export function BusinessHoursForm({
         <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
           Define quando os clientes podem agendar
         </p>
+        <ContextualHint
+          hintKey="config-horarios"
+          title="Como funciona"
+          text="Dias marcados como fechados bloqueiam agendamento automaticamente nesse dia da semana. As alterações valem a partir de agora — agendamentos já feitos não são cancelados."
+        />
       </div>
 
       <form
