@@ -25,6 +25,9 @@ interface AccordionProps {
     name: string;
     phone: string | null;
     city: string | null;
+    cep: string | null;
+    street: string | null;
+    neighborhood: string | null;
     coverPhotoUrl: string | null;
     logoUrl: string | null;
     services: Service[];
@@ -123,6 +126,9 @@ export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionP
                       name={barbershop.name}
                       phone={barbershop.phone || ""}
                       city={barbershop.city || ""}
+                      cep={barbershop.cep || ""}
+                      street={barbershop.street || ""}
+                      neighborhood={barbershop.neighborhood || ""}
                     />
                   </div>
                 )}

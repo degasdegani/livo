@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { fetchCEP, maskCEP } from "@/lib/cep";
 import { updateBasicInfo } from "./actions";
 
 function SaveButton() {
@@ -26,11 +27,39 @@ interface Props {
   name: string;
   phone: string;
   city: string;
+  cep: string;
+  street: string;
+  neighborhood: string;
 }
 
-export function BasicInfoForm({ name, phone, city }: Props) {
+export function BasicInfoForm({
+  name,
+  phone,
+  city,
+  cep,
+  street,
+  neighborhood,
+}: Props) {
   const [state, action] = useActionState(updateBasicInfo, null);
   const [phoneValue, setPhoneValue] = useState(phone ?? "");
+  const [cepValue, setCepValue] = useState(maskCEP(cep ?? ""));
+  const [streetValue, setStreetValue] = useState(street ?? "");
+  const [neighborhoodValue, setNeighborhoodValue] = useState(neighborhood ?? "");
+  const [cityValue, setCityValue] = useState(city ?? "");
+  const [cepLoading, setCepLoading] = useState(false);
+
+  async function handleCEPBlur() {
+    const clean = cepValue.replace(/\D/g, "");
+    if (clean.length !== 8) return;
+    setCepLoading(true);
+    const data = await fetchCEP(clean);
+    if (data) {
+      setStreetValue(data.logradouro || streetValue);
+      setNeighborhoodValue(data.bairro || neighborhoodValue);
+      setCityValue(data.localidade || cityValue);
+    }
+    setCepLoading(false);
+  }
 
   return (
     <section
@@ -78,13 +107,53 @@ export function BasicInfoForm({ name, phone, city }: Props) {
               onChange={setPhoneValue}
               placeholder="(16) 99999-9999"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Input
+                id="basic-cep"
+                name="cep"
+                type="text"
+                inputMode="numeric"
+                label="CEP"
+                value={cepValue}
+                onChange={(e) => setCepValue(maskCEP(e.target.value))}
+                onBlur={handleCEPBlur}
+                placeholder="00000-000"
+              />
+              {cepLoading && (
+                <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                  Buscando endereço...
+                </p>
+              )}
+            </div>
             <Input
               id="basic-city"
               name="city"
               type="text"
               label="Cidade"
-              defaultValue={city}
+              value={cityValue}
+              onChange={(e) => setCityValue(e.target.value)}
               placeholder="Ribeirao Preto"
+            />
+            <Input
+              id="basic-street"
+              name="street"
+              type="text"
+              label="Rua"
+              value={streetValue}
+              onChange={(e) => setStreetValue(e.target.value)}
+              placeholder="Rua das Flores, 123"
+            />
+            <Input
+              id="basic-neighborhood"
+              name="neighborhood"
+              type="text"
+              label="Bairro"
+              value={neighborhoodValue}
+              onChange={(e) => setNeighborhoodValue(e.target.value)}
+              placeholder="Centro"
             />
           </div>
 

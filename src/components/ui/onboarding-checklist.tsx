@@ -56,9 +56,9 @@ export function OnboardingChecklist({ steps }: OnboardingChecklistProps) {
             >
               {doneCount === 0
                 ? "Comece por aqui — leva menos de 2 minutos."
-                : doneCount === 1
-                  ? "Ótimo começo! Faltam mais 2 passos."
-                  : "Quase lá! Só mais um passo."}
+                : total - doneCount === 1
+                  ? "Quase lá! Só mais um passo."
+                  : `Ótimo começo! Faltam mais ${total - doneCount} passos.`}
             </p>
           </div>
           <div className="text-right shrink-0 ml-4">

@@ -182,12 +182,22 @@ export async function updateBasicInfo(_: unknown, formData: FormData) {
     // Telefone persistido como dígitos (o PhoneInput já envia dígitos).
     const phone = String(formData.get("phone") || "").replace(/\D/g, "");
     const city = String(formData.get("city") || "").trim();
+    const street = String(formData.get("street") || "").trim();
+    const neighborhood = String(formData.get("neighborhood") || "").trim();
+    const cep = String(formData.get("cep") || "").replace(/\D/g, "");
 
     if (!name) return { error: "Nome da barbearia é obrigatório." };
 
     await db.barbershop.update({
       where: { id: membership.barbershopId },
-      data: { name, phone: phone || null, city: city || null },
+      data: {
+        name,
+        phone: phone || null,
+        city: city || null,
+        street: street || null,
+        neighborhood: neighborhood || null,
+        cep: cep || null,
+      },
     });
 
     revalidatePath("/dashboard/settings");
