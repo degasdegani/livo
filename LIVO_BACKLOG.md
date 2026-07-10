@@ -893,3 +893,18 @@ desde a criação do fluxo. Nenhuma ação de código necessária.
 ---
 
 FIM DO DOCUMENTO
+
+### LIVO-049 — Botão "Configurar percentuais" no cabeçalho parece redundante
+**Status: Achado em 10/07/2026, durante validação do preview do LIVO-047.**
+**Problema:** o botão "Configurar percentuais" no canto superior direito da tela de Comissões
+abre um modal já fixado num único profissional (ex: "Comissão — Diego Silva"), sem opção de
+escolher qual profissional configurar. Logo abaixo na mesma tela já existe a seção
+"Configuração de Comissões por Barbeiro", com um botão "Editar" individual para cada
+profissional — que já cobre esse mesmo objetivo de forma completa e clara.
+**Hipótese a investigar:** o botão do cabeçalho pode ser código antigo/duplicado, esquecido
+de uma versão anterior da tela, antes da seção de configuração por barbeiro existir.
+**Prioridade:** a definir com o founder (provavelmente baixa — não é bug funcional, é
+possível redundância de UI).
+**Complexidade:** a diagnosticar (entender se o botão do cabeçalho tem alguma diferença de
+comportamento real, ou se pode ser removido com segurança).
+**Dependências:** Nenhuma. Investigar em branch própria, isolado do LIVO-047.
