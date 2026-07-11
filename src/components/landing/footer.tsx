@@ -11,7 +11,6 @@ const LINKS = {
   Acesso: [
     { label: "Criar conta", href: "/cadastro" },
     { label: "Entrar", href: "/login" },
-    { label: "Lista de espera", href: "/vip" },
   ],
   Legal: [
     { label: "Termos de Uso", href: "/termos" },
