@@ -7,6 +7,8 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { poppins } from "@/lib/fonts";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,22 +46,17 @@ export default function LoginPage() {
       }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="mb-8">
         <span
+          className={poppins.className}
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "#FF2D55",
-            display: "inline-block",
-            boxShadow: "0 0 12px rgba(255,45,85,0.6)",
+            fontSize: "20px",
+            fontWeight: 300,
+            letterSpacing: "0.35em",
+            color: "#FFFFFF",
           }}
-        />
-        <span
-          className="font-black text-white"
-          style={{ fontSize: "20px", letterSpacing: "-0.5px" }}
         >
-          Livo
+          L I V O
         </span>
       </div>
 
@@ -74,14 +71,12 @@ export default function LoginPage() {
       </p>
 
       {/* Botão Google */}
-      <button
+      <Button
+        variant="secondary"
+        size="lg"
+        className="w-full mb-6"
         type="button"
         onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-        className="w-full flex items-center justify-center gap-3 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-80 mb-6"
-        style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24">
           <path
@@ -102,7 +97,7 @@ export default function LoginPage() {
           />
         </svg>
         Entrar com Google
-      </button>
+      </Button>
 
       {/* Divisor */}
       <div className="flex items-center gap-3 mb-6">
@@ -139,7 +134,7 @@ export default function LoginPage() {
               border: "1px solid rgba(255,255,255,0.08)",
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
+              e.target.style.borderColor = "var(--livo-cream)";
             }}
             onBlur={(e) => {
               e.target.style.borderColor = "rgba(255,255,255,0.08)";
@@ -165,7 +160,7 @@ export default function LoginPage() {
               border: "1px solid rgba(255,255,255,0.08)",
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = "#FF2D55";
+              e.target.style.borderColor = "var(--livo-cream)";
             }}
             onBlur={(e) => {
               e.target.style.borderColor = "rgba(255,255,255,0.08)";
@@ -201,23 +196,21 @@ export default function LoginPage() {
           </p>
         )}
 
-        <button
+        <Button
           type="submit"
+          variant="red"
+          size="lg"
+          className="w-full"
           disabled={isPending}
-          className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-          style={{
-            background: "#FF2D55",
-            boxShadow: "0 8px 24px rgba(255,45,85,0.3)",
-          }}
         >
           {isPending ? "Entrando..." : "Entrar"}
-        </button>
+        </Button>
       </form>
 
       <p className="text-center text-xs mt-6" style={{ color: "#52525B" }}>
         Não tem conta?{" "}
         <a
-          href="/register"
+          href="/cadastro"
           className="hover:text-white transition-colors"
           style={{ color: "#A1A1AA" }}
         >
