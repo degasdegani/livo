@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/relatorios/relatorios-client.tsx
 "use client";
 
-import { Award } from "lucide-react";
+import { Award, FileSpreadsheet, FileText } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   Table,
@@ -11,7 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getRelatorioData, PeriodoFiltro } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  getRelatorioData,
+  PeriodoFiltro,
+  exportRelatorio,
+  type TipoRelatorioExport,
+} from "./actions";
 
 type RelatorioData = Awaited<ReturnType<typeof getRelatorioData>>;
 
@@ -148,6 +156,206 @@ function GraficoBarras({
           strokeWidth="1"
         />
       </svg>
+    </div>
+  );
+}
+
+// ── Exportação de relatórios (Excel/CSV) — só owner ───────────────────────────
+
+type TipoOption = { value: TipoRelatorioExport; label: string; temPeriodo: boolean };
+
+const TIPOS_RELATORIO: TipoOption[] = [
+  { value: "faturamento", label: "Faturamento", temPeriodo: true },
+  { value: "comissoes", label: "Comissões", temPeriodo: true },
+  { value: "comandas", label: "Comandas", temPeriodo: true },
+  { value: "clientes", label: "Clientes", temPeriodo: false },
+  { value: "assinaturas", label: "Assinaturas", temPeriodo: false },
+  { value: "pacotes", label: "Pacotes", temPeriodo: false },
+];
+
+type PeriodoPreset = "semana" | "mes" | "ano" | "custom";
+
+function calcularPeriodoExport(
+  preset: PeriodoPreset,
+  customFrom: string,
+  customTo: string,
+): { from: string; to: string } | undefined {
+  const agora = new Date();
+
+  if (preset === "custom") {
+    if (!customFrom || !customTo) return undefined;
+    return { from: `${customFrom}T00:00:00`, to: `${customTo}T23:59:59` };
+  }
+
+  if (preset === "semana") {
+    const diaSemana = agora.getDay();
+    const inicio = new Date(agora);
+    inicio.setDate(agora.getDate() - diaSemana);
+    inicio.setHours(0, 0, 0, 0);
+    const fim = new Date(inicio);
+    fim.setDate(inicio.getDate() + 6);
+    fim.setHours(23, 59, 59, 999);
+    return { from: inicio.toISOString(), to: fim.toISOString() };
+  }
+
+  if (preset === "mes") {
+    const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const fim = new Date(
+      agora.getFullYear(),
+      agora.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+    return { from: inicio.toISOString(), to: fim.toISOString() };
+  }
+
+  // ano
+  const inicio = new Date(agora.getFullYear(), 0, 1);
+  const fim = new Date(agora.getFullYear(), 11, 31, 23, 59, 59, 999);
+  return { from: inicio.toISOString(), to: fim.toISOString() };
+}
+
+function downloadBase64File(filename: string, mimeType: string, base64: string) {
+  const byteChars = atob(base64);
+  const bytes = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function ExportSection() {
+  const [tipo, setTipo] = useState<TipoRelatorioExport>("faturamento");
+  const [preset, setPreset] = useState<PeriodoPreset>("mes");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [isExporting, startExport] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+
+  const tipoAtual = TIPOS_RELATORIO.find((t) => t.value === tipo)!;
+
+  function exportar(formato: "excel" | "csv") {
+    setErro(null);
+
+    if (tipoAtual.temPeriodo && preset === "custom" && (!customFrom || !customTo)) {
+      setErro("Selecione as datas de início e fim.");
+      return;
+    }
+
+    startExport(async () => {
+      try {
+        const periodo = tipoAtual.temPeriodo
+          ? calcularPeriodoExport(preset, customFrom, customTo)
+          : undefined;
+        const resultado = await exportRelatorio({ tipo, formato, periodo });
+        downloadBase64File(resultado.filename, resultado.mimeType, resultado.base64);
+      } catch {
+        setErro("Não foi possível gerar o arquivo. Tente novamente.");
+      }
+    });
+  }
+
+  return (
+    <div
+      style={{
+        backgroundColor: "var(--bg-card)",
+        border: "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "24px",
+      }}
+    >
+      <h3
+        className="text-sm font-semibold uppercase tracking-wider mb-4"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Exportar relatório
+      </h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <Select
+          label="Tipo de relatório"
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as TipoRelatorioExport)}
+        >
+          {TIPOS_RELATORIO.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </Select>
+
+        {tipoAtual.temPeriodo && (
+          <Select
+            label="Período"
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as PeriodoPreset)}
+          >
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mês</option>
+            <option value="ano">Este ano</option>
+            <option value="custom">Personalizado</option>
+          </Select>
+        )}
+      </div>
+
+      {tipoAtual.temPeriodo && preset === "custom" && (
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <p
+              className="text-xs uppercase tracking-wide mb-1.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              De
+            </p>
+            <DatePicker value={customFrom} onChange={setCustomFrom} />
+          </div>
+          <div>
+            <p
+              className="text-xs uppercase tracking-wide mb-1.5"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Até
+            </p>
+            <DatePicker value={customTo} onChange={setCustomTo} />
+          </div>
+        </div>
+      )}
+
+      {erro && (
+        <p className="text-sm mb-3" style={{ color: "var(--status-red)" }}>
+          {erro}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isExporting}
+          onClick={() => exportar("excel")}
+        >
+          <FileSpreadsheet size={16} />
+          {isExporting ? "Gerando..." : "Exportar Excel"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isExporting}
+          onClick={() => exportar("csv")}
+        >
+          <FileText size={16} />
+          {isExporting ? "Gerando..." : "Exportar CSV"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -435,6 +643,9 @@ export function RelatoriosClient({
           vazio=""
         />
       )}
+
+      {/* ── Exportação — dado agregado sensível, só owner ── */}
+      {role === "owner" && <ExportSection />}
     </div>
   );
 }

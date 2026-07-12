@@ -2,6 +2,16 @@
 
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
+import { generateCsv, generateExcel, type ExportColumn } from "@/lib/reports/export";
+import {
+  getAssinaturasReport,
+  getClientesReport,
+  getComandasReport,
+  getComissoesReport,
+  getFaturamentoReport,
+  getPacotesReport,
+  type Periodo,
+} from "@/lib/reports/queries";
 
 export type PeriodoFiltro = "semana" | "mes" | "mes_anterior" | "ano";
 
@@ -339,4 +349,256 @@ function traduzirPagamento(metodo: string): string {
     voucher: "Voucher",
   };
   return mapa[metodo] ?? metodo;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Exportação (Excel / CSV) — acesso restrito a owner (dado agregado sensível,
+// mesmo padrão de requireRole(["owner"]) usado em pacotes/combos/profissionais).
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type TipoRelatorioExport =
+  | "faturamento"
+  | "comissoes"
+  | "comandas"
+  | "clientes"
+  | "assinaturas"
+  | "pacotes";
+
+export type FormatoExport = "excel" | "csv";
+
+export type ExportRelatorioInput = {
+  tipo: TipoRelatorioExport;
+  formato: FormatoExport;
+  periodo?: { from: string; to: string };
+};
+
+export type ExportRelatorioResult = {
+  filename: string;
+  mimeType: string;
+  base64: string;
+};
+
+const TIPOS_COM_PERIODO: TipoRelatorioExport[] = ["faturamento", "comissoes", "comandas"];
+
+function formatMoneyBR(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function formatDateBR(d: Date | null): string {
+  return d ? d.toLocaleDateString("pt-BR") : "";
+}
+
+function formatDateTimeBR(d: Date | null): string {
+  return d
+    ? d.toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+}
+
+const STATUS_COMANDA: Record<string, string> = {
+  open: "Aberta",
+  closed: "Fechada",
+  cancelled: "Cancelada",
+};
+
+const STATUS_ASSINATURA: Record<string, string> = {
+  pending: "Pendente",
+  active: "Ativa",
+  suspended: "Suspensa",
+  cancelled: "Cancelada",
+};
+
+const STATUS_PACOTE: Record<string, string> = {
+  pending: "Pendente",
+  paid: "Pago",
+};
+
+async function buildExportData(
+  barbershopId: string,
+  tipo: TipoRelatorioExport,
+  periodo?: Periodo,
+): Promise<{ data: Record<string, unknown>[]; columns: ExportColumn[]; nomeBase: string }> {
+  switch (tipo) {
+    case "faturamento": {
+      const rows = await getFaturamentoReport(barbershopId, periodo);
+      return {
+        nomeBase: "faturamento",
+        columns: [
+          { key: "data", header: "Data" },
+          { key: "cliente", header: "Cliente" },
+          { key: "profissional", header: "Profissional" },
+          { key: "pagamento", header: "Pagamento" },
+          { key: "bruto", header: "Bruto" },
+          { key: "comissao", header: "Comissão" },
+          { key: "liquido", header: "Líquido" },
+        ],
+        data: rows.map((r) => ({
+          data: formatDateTimeBR(r.closedAt),
+          cliente: r.clientName,
+          profissional: r.professionalName,
+          pagamento: r.paymentMethods,
+          bruto: formatMoneyBR(r.totalInCents),
+          comissao: formatMoneyBR(r.commissionInCents),
+          liquido: formatMoneyBR(r.liquidoInCents),
+        })),
+      };
+    }
+    case "comissoes": {
+      const rows = await getComissoesReport(barbershopId, periodo);
+      return {
+        nomeBase: "comissoes",
+        columns: [
+          { key: "profissional", header: "Profissional" },
+          { key: "periodo", header: "Período" },
+          { key: "valorGerado", header: "Valor Gerado" },
+          { key: "valorComissao", header: "Comissão a Pagar" },
+        ],
+        data: rows.map((r) => ({
+          profissional: r.professionalName,
+          periodo: r.periodoLabel,
+          valorGerado: formatMoneyBR(r.valorGeradoInCents),
+          valorComissao: formatMoneyBR(r.valorComissaoInCents),
+        })),
+      };
+    }
+    case "comandas": {
+      const rows = await getComandasReport(barbershopId, periodo);
+      return {
+        nomeBase: "comandas",
+        columns: [
+          { key: "aberta", header: "Aberta em" },
+          { key: "fechada", header: "Fechada em" },
+          { key: "cliente", header: "Cliente" },
+          { key: "profissional", header: "Profissional" },
+          { key: "status", header: "Status" },
+          { key: "pagamento", header: "Pagamento" },
+          { key: "itens", header: "Itens" },
+          { key: "total", header: "Total" },
+        ],
+        data: rows.map((r) => ({
+          aberta: formatDateTimeBR(r.openedAt),
+          fechada: formatDateTimeBR(r.closedAt),
+          cliente: r.clientName,
+          profissional: r.professionalName,
+          status: STATUS_COMANDA[r.status] ?? r.status,
+          pagamento: r.paymentMethods,
+          itens: r.itemsSummary,
+          total: formatMoneyBR(r.totalInCents),
+        })),
+      };
+    }
+    case "clientes": {
+      const rows = await getClientesReport(barbershopId);
+      return {
+        nomeBase: "clientes",
+        columns: [
+          { key: "nome", header: "Nome" },
+          { key: "telefone", header: "Telefone" },
+          { key: "email", header: "E-mail" },
+          { key: "cadastro", header: "Cadastro" },
+          { key: "ultimaVisita", header: "Última Visita" },
+          { key: "totalVisitas", header: "Total de Visitas" },
+          { key: "origem", header: "Origem" },
+          { key: "nascimento", header: "Nascimento" },
+          { key: "cpf", header: "CPF" },
+        ],
+        data: rows.map((r) => ({
+          nome: r.name,
+          telefone: r.phone,
+          email: r.email ?? "",
+          cadastro: formatDateBR(r.createdAt),
+          ultimaVisita: formatDateBR(r.lastVisitAt),
+          totalVisitas: r.totalVisits,
+          origem: r.origem ?? "",
+          nascimento: formatDateBR(r.birthDate),
+          cpf: r.cpf ?? "",
+        })),
+      };
+    }
+    case "assinaturas": {
+      const rows = await getAssinaturasReport(barbershopId);
+      return {
+        nomeBase: "assinaturas",
+        columns: [
+          { key: "cliente", header: "Cliente" },
+          { key: "plano", header: "Plano" },
+          { key: "status", header: "Status" },
+          { key: "inicio", header: "Início" },
+          { key: "fimCiclo", header: "Fim do Ciclo Atual" },
+          { key: "valor", header: "Valor do Plano" },
+        ],
+        data: rows.map((r) => ({
+          cliente: r.clientName,
+          plano: r.planName,
+          status: STATUS_ASSINATURA[r.status] ?? r.status,
+          inicio: formatDateBR(r.startedAt),
+          fimCiclo: formatDateBR(r.currentPeriodEnd),
+          valor: formatMoneyBR(r.priceInCents),
+        })),
+      };
+    }
+    case "pacotes": {
+      const rows = await getPacotesReport(barbershopId);
+      return {
+        nomeBase: "pacotes",
+        columns: [
+          { key: "cliente", header: "Cliente" },
+          { key: "pacote", header: "Pacote" },
+          { key: "statusPagamento", header: "Status Pagamento" },
+          { key: "valor", header: "Valor" },
+          { key: "expiraEm", header: "Expira em" },
+          { key: "uso", header: "Uso" },
+        ],
+        data: rows.map((r) => ({
+          cliente: r.clientName,
+          pacote: r.packageName,
+          statusPagamento: STATUS_PACOTE[r.paymentStatus] ?? r.paymentStatus,
+          valor: formatMoneyBR(r.priceInCents),
+          expiraEm: formatDateBR(r.expiresAt),
+          uso: r.uso,
+        })),
+      };
+    }
+  }
+}
+
+export async function exportRelatorio(
+  input: ExportRelatorioInput,
+): Promise<ExportRelatorioResult> {
+  const { barbershopId } = await requireRole(["owner"]);
+
+  const periodo: Periodo | undefined =
+    TIPOS_COM_PERIODO.includes(input.tipo) && input.periodo
+      ? { from: new Date(input.periodo.from), to: new Date(input.periodo.to) }
+      : undefined;
+
+  const { data, columns, nomeBase } = await buildExportData(
+    barbershopId,
+    input.tipo,
+    periodo,
+  );
+
+  const dataArquivo = new Date().toISOString().slice(0, 10);
+
+  if (input.formato === "excel") {
+    const buffer = await generateExcel(data, columns);
+    return {
+      filename: `${nomeBase}-${dataArquivo}.xlsx`,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      base64: buffer.toString("base64"),
+    };
+  }
+
+  const csv = generateCsv(data, columns);
+  return {
+    filename: `${nomeBase}-${dataArquivo}.csv`,
+    mimeType: "text/csv;charset=utf-8",
+    base64: Buffer.from(csv, "utf-8").toString("base64"),
+  };
 }
