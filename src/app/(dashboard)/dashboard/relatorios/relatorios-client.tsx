@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -337,24 +336,34 @@ function ExportSection() {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Button
+        <button
           type="button"
-          variant="secondary"
           disabled={isExporting}
           onClick={() => exportar("excel")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border)",
+          }}
         >
           <FileSpreadsheet size={16} />
           {isExporting ? "Gerando..." : "Exportar Excel"}
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
-          variant="secondary"
           disabled={isExporting}
           onClick={() => exportar("csv")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border)",
+          }}
         >
           <FileText size={16} />
           {isExporting ? "Gerando..." : "Exportar CSV"}
-        </Button>
+        </button>
       </div>
     </div>
   );
