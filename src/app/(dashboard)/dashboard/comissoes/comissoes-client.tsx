@@ -2,7 +2,7 @@
 "use client";
 
 import { MemberRole } from "@prisma/client";
-import { AlertTriangle, Settings } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ContextualHint } from "@/components/ui/contextual-hint";
@@ -255,25 +255,6 @@ export function ComissoesClient({
             text="Aqui você vê quanto cada profissional recebeu de comissão no período selecionado. É automático: o sistema já calcula a partir da comissão configurada para cada um."
           />
         </div>
-        {role === MemberRole.owner && profissionaisComissionaveis.length > 0 && (
-          <button
-            onClick={() => abrirEdit(profissionaisComissionaveis[0])}
-            className="px-4 py-2 rounded-lg text-sm transition-colors"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.borderColor = "var(--color-primary)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.borderColor = "var(--border)")
-            }
-          >
-            <Settings size={14} className="inline mr-1" />Configurar percentuais
-          </button>
-        )}
       </div>
 
       {/* Filtros */}
