@@ -124,6 +124,8 @@ Status: Produção
 - Ticket médio
 - Ranking por profissional
 - Evolução financeira
+- Exportação (Excel/CSV) por tipo: Faturamento, Comissões, Comandas,
+  Clientes, Assinaturas, Pacotes — restrita a owner
 
 ---
 
@@ -1348,3 +1350,33 @@ nao de engenharia).
   como pendencia PROPRIA, fora desta reestruturacao).
 - npx vitest run identico ao baseline (47/789); tsc=0; build OK.
 - /embaixadores NAO criado (Opcao A) -- proxima etapa da Frente B.
+
+### Módulo de Exportação de Relatórios (Excel/CSV) — 2026-07-12
+
+- Novo módulo de exportação dentro da página /dashboard/relatorios já
+  existente (nenhuma rota nova, nenhum item novo de sidebar): 6 tipos de
+  relatório (Faturamento, Comissões, Comandas, Clientes, Assinaturas,
+  Pacotes), 2 formatos (Excel via exceljs, CSV manual com BOM UTF-8 e
+  separador ";").
+- src/lib/reports/queries.ts (d81aca5): 6 queries de leitura pura,
+  escopadas por barbershopId, período opcional. Clientes anonimizados
+  (LGPD) excluídos do relatório de clientes.
+- src/lib/reports/export.ts (1abc5e2): generateExcel (exceljs, cabeçalho
+  negrito, auto-width) e generateCsv (sem lib externa, BOM via
+  String.fromCharCode para não deixar unicode cru no source).
+- relatorios/actions.ts (fd93605): exportRelatorio(tipo, formato,
+  periodo?) com requireRole(["owner"]) estrito — dado agregado
+  (faturamento, comissão por profissional) não deve ser visto por
+  reception/barber.
+- relatorios-client.tsx (3febbf9): seção "Exportar relatório"
+  condicionada a role === "owner" (role vem do server via requireRole,
+  não é prop manipulável no client) — reception nunca vê o botão; dupla
+  proteção com o gate da action.
+- Sem migration (schema.prisma intocado, confirmado via git diff vazio).
+  tsc=0 em cada etapa; npm run build limpo em duas rodadas completas
+  (guardrail-migrate-diff, guardrail-prisma-edge, guardrail-emoji OK).
+- Baseline do guardrail-migrate-diff atualizado em commit separado
+  (c8c262a), sem relação com esta feature (efeito colateral da migration
+  LIVO-006 já mergeada em main antes desta sessão).
+- LIVO_BACKLOG.md fora de todos os commits (alteração local
+  pré-existente, não relacionada).
