@@ -329,13 +329,16 @@ function SidebarContent({
           className="flex items-center"
           onClick={onNavClick}
         >
-          <Image
-            src={theme === "light" ? "/logo-livo-light.svg" : "/logo-livo.svg"}
-            alt="LIVO"
-            width={120}
-            height={32}
-            priority
-          />
+          <span
+            style={{
+              fontSize: "20px",
+              fontWeight: 300,
+              letterSpacing: "0.35em",
+              color: "var(--text-primary)",
+            }}
+          >
+            L I V O
+          </span>
         </Link>
       </div>
 
