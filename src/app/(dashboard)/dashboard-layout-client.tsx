@@ -329,16 +329,30 @@ function SidebarContent({
           className="flex items-center"
           onClick={onNavClick}
         >
-          <span
-            style={{
-              fontSize: "20px",
-              fontWeight: 300,
-              letterSpacing: "0.35em",
-              color: "var(--text-primary)",
-            }}
-          >
-            L I V O
-          </span>
+          <div className="flex flex-col">
+            <span
+              style={{
+                fontSize: "20px",
+                fontWeight: 300,
+                letterSpacing: "0.35em",
+                color: "var(--text-primary)",
+                lineHeight: 1.2,
+              }}
+            >
+              L I V O
+            </span>
+            <span
+              style={{
+                fontSize: "9px",
+                fontWeight: 500,
+                letterSpacing: "0.25em",
+                color: "var(--text-tertiary)",
+                marginLeft: "2px",
+              }}
+            >
+              BARBER
+            </span>
+          </div>
         </Link>
       </div>
 
