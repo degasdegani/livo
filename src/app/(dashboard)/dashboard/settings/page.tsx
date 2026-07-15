@@ -6,7 +6,6 @@ import { hasModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
 import { CopyUrlButton } from "./copy-url-button";
 import { SettingsAccordion } from "./settings-accordion";
-import { TvGoalsSection } from "./tv-goals-section";
 
 export default async function SettingsPage() {
   const membership = await requireRole(MemberRole.owner);
@@ -206,56 +205,14 @@ export default async function SettingsPage() {
             businessHours: barbershop.businessHours,
           }}
           hasReopenPin={!!barbershop.reopenPin}
-        />
-
-        {/* Ranking TV — metas, PIN e dispositivos */}
-        <section
-          className="p-5 rounded-xl flex flex-col gap-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
+          hasTv={hasTv}
+          tvData={{
+            barbershopGoals,
+            professionals,
+            tvPin: barbershopForPin?.tvPin ?? null,
+            devices: tvDevices,
           }}
-        >
-          <h2
-            className="text-sm font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Ranking TV
-          </h2>
-          {hasTv ? (
-            <TvGoalsSection
-              barbershopGoals={barbershopGoals}
-              professionals={professionals}
-              tvPin={barbershopForPin?.tvPin ?? null}
-              devices={tvDevices}
-            />
-          ) : (
-            <div
-              className="rounded-lg px-4 py-6 text-center"
-              style={{
-                backgroundColor: "var(--bg-card-elevated)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <p
-                className="text-sm font-semibold mb-1"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Disponível no plano PRO
-              </p>
-              <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
-                O Ranking TV (metas, PIN e dispositivos) faz parte do plano PRO.
-              </p>
-              <a
-                href="/dashboard/assinar"
-                className="text-xs font-bold"
-                style={{ color: "var(--color-primary)" }}
-              >
-                Fazer upgrade →
-              </a>
-            </div>
-          )}
-        </section>
+        />
       </main>
     </div>
   );
