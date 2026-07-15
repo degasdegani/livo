@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check, CheckCircle2 } from "lucide-react";
 import { CPFInput } from "@/components/ui/cpf-input";
+import { SeloAsaas } from "@/components/ui/selo-asaas";
 import { useToast } from "@/components/ui/toast";
 import { formatCentsToBRL } from "@/lib/masks";
 import { PLAN_PRICING } from "@/lib/pricing";
@@ -165,6 +166,7 @@ export default function AssinarPage() {
               Abrir fatura completa →
             </a>
           )}
+          <SeloAsaas variant="auto" style={{ marginTop: "8px" }} />
         </div>
       </main>
     );
@@ -203,6 +205,7 @@ export default function AssinarPage() {
           >
             Voltar ao dashboard
           </a>
+          <SeloAsaas variant="auto" style={{ marginTop: "8px" }} />
         </div>
       </main>
     );
@@ -481,6 +484,7 @@ export default function AssinarPage() {
           >
             Cancele quando quiser · Sem fidelidade · PIX ou cartão
           </p>
+          <SeloAsaas variant="auto" style={{ marginTop: "4px" }} />
         </form>
       </div>
     </main>
