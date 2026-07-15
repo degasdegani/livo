@@ -120,7 +120,7 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner"],
   },
   {
-    label: "Faturamento",
+    label: "Plano LIVO",
     href: "/dashboard/faturamento",
     icon: <CreditCard size={18} />,
     roles: ["owner"],
