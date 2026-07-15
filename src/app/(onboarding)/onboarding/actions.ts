@@ -106,27 +106,14 @@ export async function createBarbershop(
     }
   }
 
-  const owner = await db.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  const isWaitlistLead = owner?.email
-    ? (await db.waitlistLead.findFirst({
-        where: { email: { equals: owner.email, mode: "insensitive" } },
-        select: { id: true },
-      })) !== null
-    : false;
-
   // Plano escolhido no onboarding — validação server-side (whitelist), nunca
   // confiar cru no valor do client. Default seguro = "start".
   const rawPlan = formData.get("plan");
   const plan = rawPlan === "pro" ? "pro" : "start";
 
-  // Trial diferenciado por plano (START 7d, PRO 15d). O tratamento especial de
-  // waitlist/TX (60d) permanece por cima — só o trial PADRÃO passa a variar.
+  // Trial diferenciado por plano (START 7d, PRO 15d).
   // Valor vem da fonte única TRIAL_DAYS (compartilhada com a landing).
-  const baseTrial = TRIAL_DAYS[plan];
-  const trialDays = isWaitlistLead ? 60 : baseTrial;
+  const trialDays = TRIAL_DAYS[plan];
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
@@ -148,7 +135,6 @@ export async function createBarbershop(
     barbershopName,
     plan,
     trialDays,
-    isWaitlistLead,
   });
 
   try {
