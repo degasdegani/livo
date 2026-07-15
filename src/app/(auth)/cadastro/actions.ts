@@ -87,15 +87,8 @@ export async function registerAndCreateBarbershop(
     };
   }
 
-  // Trial automático no plano PRO (decisão de produto do LIVO-009). Lead de
-  // waitlist mantém o tratamento especial de 60 dias, já existente.
-  const isWaitlistLead =
-    (await db.waitlistLead.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-      select: { id: true },
-    })) !== null;
-
-  const trialDays = isWaitlistLead ? 60 : TRIAL_DAYS.pro;
+  // Trial automático no plano PRO (decisão de produto do LIVO-009).
+  const trialDays = TRIAL_DAYS.pro;
   const trialEndsAt = new Date();
   trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
