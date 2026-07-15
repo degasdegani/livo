@@ -4,9 +4,7 @@ import { MemberRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { hasModuleAccess } from "@/lib/modules";
 import { requireRole } from "@/lib/permissions";
-import { getReferralData } from "@/lib/referral-server";
 import { CopyUrlButton } from "./copy-url-button";
-import { ReferralSection } from "./referral-section";
 import { SettingsAccordion } from "./settings-accordion";
 import { TvGoalsSection } from "./tv-goals-section";
 
@@ -72,10 +70,6 @@ export default async function SettingsPage() {
     ...p,
     goals: profGoalsRaw.filter((g) => g.professionalId === p.id),
   }));
-
-  // Programa Embaixadores (A5): gera o código de indicação sob demanda (lazy)
-  // na primeira abertura desta página e monta o link/saldo para exibição.
-  const referral = await getReferralData();
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
@@ -160,14 +154,6 @@ export default async function SettingsPage() {
             fixo
           </span>
         </div>
-
-        {/* Programa Embaixadores — link de indicação, saldo e selo */}
-        <ReferralSection
-          referralLink={referral.referralLink}
-          referralCode={referral.referralCode}
-          isEmbaixador={referral.isEmbaixador}
-          freeMonthCredits={referral.freeMonthCredits}
-        />
 
         {/* Card de Acessos */}
         <a

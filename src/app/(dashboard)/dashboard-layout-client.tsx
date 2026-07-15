@@ -133,6 +133,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["owner"],
   },
   {
+    label: "Indicações",
+    href: "/dashboard/indicacoes",
+    icon: <Gift size={18} />,
+    roles: ["owner"],
+  },
+  {
     label: "Configurações",
     href: "/dashboard/settings",
     icon: <Settings size={18} />,
