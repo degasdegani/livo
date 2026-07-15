@@ -4,6 +4,7 @@
 import {
   BarChart2,
   CalendarDays,
+  CreditCard,
   DollarSign,
   FileText,
   Gift,
@@ -123,6 +124,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Pacotes",
     href: "/dashboard/pacotes",
     icon: <Gift size={18} />,
+    roles: ["owner"],
+  },
+  {
+    label: "Faturamento",
+    href: "/dashboard/faturamento",
+    icon: <CreditCard size={18} />,
     roles: ["owner"],
   },
   {
