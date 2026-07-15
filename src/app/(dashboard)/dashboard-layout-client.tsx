@@ -4,6 +4,7 @@
 import {
   BarChart2,
   CalendarDays,
+  ChevronDown,
   CreditCard,
   DollarSign,
   FileText,
@@ -39,6 +40,8 @@ import type { ModuleKey } from "@/lib/modules";
 
 type MemberRole = "owner" | "reception" | "barber";
 
+type NavGroupId = "vendas" | "crescimento" | "gestao";
+
 interface NavItem {
   label: string;
   href: string;
@@ -46,7 +49,16 @@ interface NavItem {
   roles: MemberRole[];
   // Módulo PRO-only associado; se ausente, o item é livre (START inclui).
   module?: ModuleKey;
+  // Grupo colapsável ao qual o item pertence; se ausente, fica sempre
+  // visível fora de qualquer grupo (uso diário, nunca escondido).
+  group?: NavGroupId;
 }
+
+const NAV_GROUPS: { id: NavGroupId; label: string }[] = [
+  { id: "vendas", label: "Vendas" },
+  { id: "crescimento", label: "Crescimento" },
+  { id: "gestao", label: "Gestão" },
+];
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -72,6 +84,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/produtos",
     icon: <Package size={18} />,
     roles: ["owner", "reception"],
+    group: "vendas",
   },
   {
     label: "Comandas",
@@ -85,12 +98,14 @@ const NAV_ITEMS: NavItem[] = [
     icon: <DollarSign size={18} />,
     roles: ["owner", "reception", "barber"],
     module: "comissoes",
+    group: "vendas",
   },
   {
     label: "Relatórios",
     href: "/dashboard/relatorios",
     icon: <BarChart2 size={18} />,
     roles: ["owner", "reception"],
+    group: "gestao",
   },
   {
     label: "Marketing",
@@ -98,6 +113,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Megaphone size={18} />,
     roles: ["owner", "reception"],
     module: "marketing",
+    group: "crescimento",
   },
   {
     label: "Insights",
@@ -105,6 +121,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Sparkles size={18} />,
     roles: ["owner"],
     module: "insights",
+    group: "crescimento",
   },
   {
     label: "Profissionais",
@@ -112,30 +129,35 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Scissors size={18} />,
     roles: ["owner"],
     module: "profissionais",
+    group: "gestao",
   },
   {
     label: "Pacotes",
     href: "/dashboard/pacotes",
     icon: <Gift size={18} />,
     roles: ["owner"],
+    group: "vendas",
   },
   {
     label: "Plano LIVO",
     href: "/dashboard/faturamento",
     icon: <CreditCard size={18} />,
     roles: ["owner"],
+    group: "gestao",
   },
   {
     label: "Indicações",
     href: "/dashboard/indicacoes",
     icon: <Gift size={18} />,
     roles: ["owner"],
+    group: "crescimento",
   },
   {
     label: "Configurações",
     href: "/dashboard/settings",
     icon: <Settings size={18} />,
     roles: ["owner"],
+    group: "gestao",
   },
 ];
 
@@ -317,6 +339,27 @@ function SidebarContent({
   allowedModules: ModuleKey[];
 }) {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const fixedItems = visibleItems.filter((item) => !item.group);
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: visibleItems.filter((item) => item.group === g.id),
+  })).filter((g) => g.items.length > 0);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const g of groups) {
+      initial[g.id] = g.items.some((item) =>
+        item.href === "/dashboard"
+          ? pathname === "/dashboard"
+          : pathname.startsWith(item.href),
+      );
+    }
+    return initial;
+  });
+
+  function toggleGroup(id: string) {
+    setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -357,7 +400,7 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {visibleItems.map((item) =>
+        {fixedItems.map((item) =>
           item.module && !allowedModules.includes(item.module) ? (
             <LockedNavItem key={item.href} item={item} />
           ) : (
@@ -369,6 +412,45 @@ function SidebarContent({
             />
           ),
         )}
+
+        {groups.map((group) => {
+          const isOpen = openGroups[group.id];
+          return (
+            <div key={group.id} className="pt-1">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.id)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <span>{group.label}</span>
+                <ChevronDown
+                  size={14}
+                  style={{
+                    transition: "transform 200ms ease",
+                    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              {isOpen && (
+                <div className="space-y-1 mt-1">
+                  {group.items.map((item) =>
+                    item.module && !allowedModules.includes(item.module) ? (
+                      <LockedNavItem key={item.href} item={item} />
+                    ) : (
+                      <NavLink
+                        key={item.href}
+                        item={item}
+                        pathname={pathname}
+                        onClick={onNavClick}
+                      />
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* ── Clube de Assinatura (somente owner) ─────────────── */}
         {role === "owner" &&
