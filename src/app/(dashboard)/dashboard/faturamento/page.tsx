@@ -24,10 +24,10 @@ export default async function FaturamentoPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Faturamento
+            Plano LIVO
           </h1>
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-            Status da assinatura, próximo vencimento e histórico de faturas
+            Seu plano, próximo vencimento e histórico de pagamentos
           </p>
         </div>
       </div>
