@@ -9,7 +9,6 @@ import {
   FileText,
   Gift,
   Home,
-  Layers,
   Lock,
   LogOut,
   Megaphone,
@@ -113,12 +112,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Scissors size={18} />,
     roles: ["owner"],
     module: "profissionais",
-  },
-  {
-    label: "Combos",
-    href: "/dashboard/combos",
-    icon: <Layers size={18} />,
-    roles: ["owner"],
   },
   {
     label: "Pacotes",

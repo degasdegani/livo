@@ -1,8 +1,8 @@
 // src/app/(dashboard)/dashboard/settings/settings-accordion.tsx
 "use client";
 
-import type { BusinessHour, Service } from "@prisma/client";
-import { ClipboardList, Clock, Lock, Scissors, User } from "lucide-react";
+import type { BusinessHour, GoalPeriod, Service } from "@prisma/client";
+import { ClipboardList, Clock, Lock, Scissors, Tv, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { BasicInfoForm } from "./basic-info-form";
@@ -12,6 +12,7 @@ import { PersonalInfoForm } from "./personal-info-form";
 import { PinForm } from "./pin-form";
 import { ProfileLogoForm } from "./profile-logo-form";
 import { ServicesManager } from "./services-manager";
+import { TvGoalsSection } from "./tv-goals-section";
 
 interface AccordionProps {
   user: {
@@ -34,19 +35,37 @@ interface AccordionProps {
     businessHours: BusinessHour[];
   };
   hasReopenPin: boolean;
+  hasTv: boolean;
+  tvData: {
+    barbershopGoals: { period: GoalPeriod; targetInCents: number }[];
+    professionals: {
+      id: string;
+      name: string;
+      goals: { professionalId: string; period: GoalPeriod; targetServices: number }[];
+    }[];
+    tvPin: string | null;
+    devices: { id: string; label: string | null; lastSeenAt: Date | null }[];
+  };
 }
 
-type SectionId = "pessoal" | "barbearia" | "servicos" | "horarios" | "seguranca";
+type SectionId = "pessoal" | "barbearia" | "servicos" | "horarios" | "tv" | "seguranca";
 
 const sections: { id: SectionId; label: string; icon: ReactNode }[] = [
   { id: "pessoal", label: "Dados Pessoais", icon: <User size={16} /> },
   { id: "barbearia", label: "Informações da Barbearia", icon: <Scissors size={16} /> },
   { id: "servicos", label: "Serviços", icon: <ClipboardList size={16} /> },
   { id: "horarios", label: "Horários de Funcionamento", icon: <Clock size={16} /> },
+  { id: "tv", label: "Ranking TV", icon: <Tv size={16} /> },
   { id: "seguranca", label: "Segurança", icon: <Lock size={16} /> },
 ];
 
-export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionProps) {
+export function SettingsAccordion({
+  user,
+  barbershop,
+  hasReopenPin,
+  hasTv,
+  tvData,
+}: AccordionProps) {
   const [open, setOpen] = useState<SectionId>("pessoal");
 
   function toggle(id: SectionId) {
@@ -137,6 +156,43 @@ export function SettingsAccordion({ user, barbershop, hasReopenPin }: AccordionP
                 )}
                 {section.id === "horarios" && (
                   <BusinessHoursForm businessHours={barbershop.businessHours} />
+                )}
+                {section.id === "tv" && (
+                  <div className="p-4">
+                    {hasTv ? (
+                      <TvGoalsSection
+                        barbershopGoals={tvData.barbershopGoals}
+                        professionals={tvData.professionals}
+                        tvPin={tvData.tvPin}
+                        devices={tvData.devices}
+                      />
+                    ) : (
+                      <div
+                        className="rounded-lg px-4 py-6 text-center"
+                        style={{
+                          backgroundColor: "var(--bg-card-elevated)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <p
+                          className="text-sm font-semibold mb-1"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          Disponível no plano PRO
+                        </p>
+                        <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
+                          O Ranking TV (metas, PIN e dispositivos) faz parte do plano PRO.
+                        </p>
+                        <a
+                          href="/dashboard/assinar"
+                          className="text-xs font-bold"
+                          style={{ color: "var(--color-primary)" }}
+                        >
+                          Fazer upgrade →
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {section.id === "seguranca" && (
                   <PinForm hasPin={hasReopenPin} />
