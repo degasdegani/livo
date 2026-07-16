@@ -315,13 +315,13 @@ export function BookingForm({
     ? [
         { key: "service" as Step, label: "Serviço" },
         { key: "professional" as Step, label: "Profissional" },
-        { key: "datetime" as Step, label: "Data e horário" },
-        { key: "clientinfo" as Step, label: "Seus dados" },
+        { key: "datetime" as Step, label: "Horário" },
+        { key: "clientinfo" as Step, label: "Confirmação" },
       ]
     : [
         { key: "service" as Step, label: "Serviço" },
-        { key: "datetime" as Step, label: "Data e horário" },
-        { key: "clientinfo" as Step, label: "Seus dados" },
+        { key: "datetime" as Step, label: "Horário" },
+        { key: "clientinfo" as Step, label: "Confirmação" },
       ];
 
   const currentStepIdx = stepDefs.findIndex((s) => s.key === step);
@@ -751,36 +751,78 @@ export function BookingForm({
     );
   }
 
-  // ── STEP: clientinfo ──────────────────────────────────────
+  // ── STEP: clientinfo (rotulado "Confirmação" no stepper) ──
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
+
   return (
     <div className="flex flex-col gap-6">
       {header}
-      <ServicesSummaryCard services={selectedServices} />
       {stepIndicator}
 
-      <div className="flex flex-col gap-5">
-        {/* Resumo data/hora */}
-        <div
-          className="p-4 rounded-xl flex flex-wrap gap-4"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          <div>
-            <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>Data</p>
-            <p className="text-sm font-semibold text-white">{formatDate(selectedDate)}</p>
-          </div>
-          <div>
-            <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>Horário</p>
-            <p className="text-sm font-semibold" style={{ color: "#FF2D55" }}>{selectedTime}</p>
-          </div>
-          {hasProfessionalChoice && selectedProf && (
-            <div>
-              <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>Profissional</p>
-              <p className="text-sm font-semibold text-white">{selectedProf.name}</p>
+      <div
+        className="rounded-2xl p-5 flex flex-col gap-1"
+        style={{ background: "var(--pb-card)", border: "1px solid var(--pb-border)" }}
+      >
+        {[
+          {
+            icon: Scissors,
+            label: "Serviço",
+            value: selectedServices.map((s) => s.name).join(", "),
+            extra: formatCents(totalPrice),
+          },
+          ...(selectedProf
+            ? [{ icon: UserCog, label: "Profissional", value: selectedProf.name, extra: null }]
+            : []),
+          { icon: CalendarDays, label: "Data", value: formatDate(selectedDate), extra: null },
+          { icon: Clock, label: "Horário", value: selectedTime, extra: null },
+          { icon: Clock, label: "Duração", value: `${totalDuration} min`, extra: null },
+        ].map((row, i, arr) => (
+          <div
+            key={row.label}
+            className="flex items-start gap-3 py-3"
+            style={{
+              borderBottom: i < arr.length - 1 ? "1px solid var(--pb-separator)" : undefined,
+            }}
+          >
+            <row.icon size={16} color="var(--pb-text-tertiary)" style={{ marginTop: 2 }} />
+            <div className="flex-1 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs mb-0.5" style={{ color: "var(--pb-text-tertiary)" }}>
+                  {row.label}
+                </p>
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--pb-text-primary)" }}
+                >
+                  {row.value}
+                </p>
+              </div>
+              {row.extra && (
+                <p
+                  className="text-sm font-bold shrink-0"
+                  style={{ color: "var(--pb-red)" }}
+                >
+                  {row.extra}
+                </p>
+              )}
             </div>
-          )}
+          </div>
+        ))}
+        <div className="flex items-center justify-between pt-3">
+          <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+            Total
+          </p>
+          <p
+            className="font-black"
+            style={{ color: "var(--pb-red)", fontSize: "20px", letterSpacing: "-0.5px" }}
+          >
+            {formatCents(totalPrice)}
+          </p>
         </div>
+      </div>
 
-        {/* Nome */}
+      <div className="flex flex-col gap-5">
         <div>
           <label className="block text-xs font-semibold mb-2" style={{ color: "#A1A1AA" }}>
             Seu nome *
