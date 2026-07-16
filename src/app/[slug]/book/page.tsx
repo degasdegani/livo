@@ -49,7 +49,7 @@ export default async function BookPage({
       data-theme="dark"
       style={{ backgroundColor: "var(--pb-bg)" }}
     >
-      <div className="max-w-lg mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <BookingForm
           barbershopId={barbershop.id}
           services={services.map((s) => ({
