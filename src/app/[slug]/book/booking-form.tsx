@@ -941,7 +941,7 @@ export function BookingForm({
             </p>
           )}
 
-          {selectedProf && (
+          {selectedProf && step !== "service" && (
             <div
               className="flex items-center gap-3 pt-3"
               style={{ borderTop: "1px solid var(--pb-separator)" }}
