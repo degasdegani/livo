@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  MapPin,
   Phone,
   Scissors,
   Star,
@@ -16,6 +17,7 @@ import { useEffect, useState, useTransition } from "react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import type { SlotInfo } from "@/lib/availability";
 import { formatPhoneBR } from "@/lib/masks";
+import { buildWhatsappUrl, sanitizePhone } from "@/lib/whatsapp";
 import { createAppointment, getAvailableSlots } from "./actions";
 
 // ── Constantes ────────────────────────────────────────────────
@@ -53,6 +55,8 @@ interface Props {
   professionals: ProfessionalInfo[];
   barbershopName: string;
   barbershopSlug: string;
+  barbershopPhone: string | null;
+  barbershopAddress: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -157,6 +161,8 @@ export function BookingForm({
   professionals,
   barbershopName,
   barbershopSlug,
+  barbershopPhone,
+  barbershopAddress,
 }: Props) {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const hasProfessionalChoice = professionals.length > 1;
@@ -224,63 +230,159 @@ export function BookingForm({
   // ── STEP: done (confirmação) ──────────────────────────────
   if (step === "done") {
     const total = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
+    const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
+
+    // Link do Google Agenda — calcula início/fim a partir de data+hora+duração
+    function formatGCalDate(d: Date): string {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(
+        d.getHours(),
+      )}${pad(d.getMinutes())}00`;
+    }
+    const [hh, mm] = selectedTime.split(":").map(Number);
+    const startDate = new Date(`${selectedDate}T00:00:00`);
+    startDate.setHours(hh, mm, 0, 0);
+    const endDate = new Date(startDate.getTime() + totalDuration * 60000);
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      `Agendamento - ${barbershopName}`,
+    )}&dates=${formatGCalDate(startDate)}/${formatGCalDate(endDate)}&details=${encodeURIComponent(
+      `${selectedServices.map((s) => s.name).join(", ")} com ${selectedProf?.name ?? ""}`,
+    )}&location=${encodeURIComponent(barbershopAddress)}`;
+
+    const mapsUrl = barbershopAddress
+      ? `https://www.google.com/maps/search/${encodeURIComponent(
+          `${barbershopName}, ${barbershopAddress}`,
+        )}`
+      : null;
+
+    const sanitizedPhone = sanitizePhone(barbershopPhone);
+    const whatsappUrl = sanitizedPhone ? buildWhatsappUrl(sanitizedPhone, "") : null;
+
     return (
-      <div className="flex flex-col items-center text-center py-8">
-        <CheckCircle2 className="mb-6" size={64} style={{ color: "#00D4A0" }} />
+      <div className="flex flex-col items-center text-center py-8" style={{ position: "relative" }}>
+        {/* Confete decorativo sutil */}
+        <span style={{ position: "absolute", top: 8, left: "18%", width: 6, height: 6, borderRadius: "50%", background: "var(--pb-red)", opacity: 0.6 }} />
+        <span style={{ position: "absolute", top: 40, left: "8%", width: 4, height: 4, borderRadius: "50%", background: "var(--pb-gold)", opacity: 0.5 }} />
+        <span style={{ position: "absolute", top: 24, right: "15%", width: 5, height: 5, borderRadius: "50%", background: "var(--pb-gold)", opacity: 0.6 }} />
+        <span style={{ position: "absolute", top: 56, right: "6%", width: 4, height: 4, borderRadius: "50%", background: "var(--pb-red)", opacity: 0.5 }} />
+
+        <CheckCircle2 className="mb-6" size={64} style={{ color: "var(--pb-success)" }} />
         <h2
-          className="font-black text-white mb-3"
-          style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
+          className="font-black mb-3"
+          style={{ color: "var(--pb-text-primary)", fontSize: "28px", letterSpacing: "-0.5px" }}
         >
-          Agendado!
+          Agendamento confirmado!
         </h2>
-        <p className="text-sm mb-6" style={{ color: "#A1A1AA", maxWidth: "320px", lineHeight: 1.7 }}>
-          Seu agendamento em{" "}
-          <strong style={{ color: "#FFFFFF" }}>{barbershopName}</strong> está confirmado.
+        <p
+          className="text-sm mb-8"
+          style={{ color: "var(--pb-text-secondary)", maxWidth: "320px", lineHeight: 1.7 }}
+        >
+          Seu horário está reservado. Te esperamos!
         </p>
 
-        <div
-          className="w-full rounded-2xl p-5 mb-8 text-left"
-          style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          {selectedServices.map((s) => (
-            <div
-              key={s.id}
-              className="flex gap-3 py-2"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-            >
-              <Scissors size={20} />
-              <div className="flex-1 flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">{s.name}</p>
-                <p className="text-sm" style={{ color: "#A1A1AA" }}>{formatCents(s.priceInCents)}</p>
-              </div>
-            </div>
-          ))}
+        {/* Resumo em chips horizontais */}
+        <div className="flex flex-wrap justify-center gap-6 mb-8 w-full">
           {[
-            { icon: DollarSign, label: "Total", value: formatCents(total) },
+            { icon: Scissors, label: "Serviço", value: selectedServices.map((s) => s.name).join(", ") },
+            ...(selectedProf ? [{ icon: UserCog, label: "Profissional", value: selectedProf.name }] : []),
             { icon: CalendarDays, label: "Data", value: formatDate(selectedDate) },
             { icon: Clock, label: "Horário", value: selectedTime },
-            { icon: User, label: "Cliente", value: clientName },
-            { icon: Phone, label: "Telefone", value: formatPhoneBR(clientPhone) },
-            ...(selectedProf ? [{ icon: UserCog, label: "Profissional", value: selectedProf.name }] : []),
+            { icon: DollarSign, label: "Valor", value: formatCents(total) },
           ].map((item) => (
-            <div
-              key={item.label}
-              className="flex gap-3 py-3"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-            >
-              <item.icon size={16} />
-              <div>
-                <p className="text-xs mb-0.5" style={{ color: "#52525B" }}>{item.label}</p>
-                <p className="text-sm font-semibold text-white">{item.value}</p>
-              </div>
+            <div key={item.label} className="flex flex-col items-center gap-1.5" style={{ minWidth: 90 }}>
+              <item.icon size={18} color="var(--pb-text-tertiary)" />
+              <p className="text-xs" style={{ color: "var(--pb-text-tertiary)" }}>
+                {item.label}
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+                {item.value}
+              </p>
             </div>
           ))}
         </div>
 
+        {/* Botões de ação */}
+        <div className="flex flex-col gap-3 w-full mb-8">
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-xl font-semibold text-center transition-all hover:opacity-90"
+            style={{ height: "48px", background: "var(--pb-red)", color: "#fff", fontSize: "14px" }}
+          >
+            <CalendarDays size={16} />
+            Adicionar ao Google Agenda
+          </a>
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl font-semibold text-center transition-all hover:opacity-80"
+              style={{
+                height: "48px",
+                background: "transparent",
+                border: "1px solid var(--pb-border)",
+                color: "var(--pb-text-primary)",
+                fontSize: "14px",
+              }}
+            >
+              <MapPin size={16} />
+              Abrir localização
+            </a>
+          )}
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl font-semibold text-center transition-all hover:opacity-90"
+              style={{ height: "48px", background: "var(--pb-whatsapp)", color: "#fff", fontSize: "14px" }}
+            >
+              <Phone size={16} />
+              Falar no WhatsApp
+            </a>
+          )}
+        </div>
+
+        {/* Não esqueça */}
+        <div
+          className="w-full rounded-2xl overflow-hidden mb-8 text-left flex"
+          style={{ background: "var(--pb-card)", border: "1px solid var(--pb-border)" }}
+        >
+          <div className="p-5 flex-1">
+            <p className="font-bold mb-3" style={{ color: "var(--pb-text-primary)", fontSize: "15px" }}>
+              Não esqueça!
+            </p>
+            <ul className="flex flex-col gap-2">
+              <li className="text-xs" style={{ color: "var(--pb-text-secondary)", lineHeight: 1.6 }}>
+                Chegue com 5 minutos de antecedência.
+              </li>
+              <li className="text-xs" style={{ color: "var(--pb-text-secondary)", lineHeight: 1.6 }}>
+                Em caso de imprevistos, nos avise com antecedência.
+              </li>
+            </ul>
+          </div>
+          <div
+            className="relative shrink-0 hidden sm:block"
+            style={{ width: 140 }}
+          >
+            <Image
+              src="/booking-success-chair.jpg"
+              alt=""
+              fill
+              style={{
+                objectFit: "cover",
+                filter: "grayscale(40%) brightness(0.55)",
+              }}
+            />
+          </div>
+        </div>
+
         <a
           href={`/${barbershopSlug}`}
-          className="w-full py-3 rounded-xl font-bold text-sm text-white text-center block transition-all hover:opacity-80"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+          className="w-full py-3 rounded-xl font-bold text-sm text-center block transition-all hover:opacity-80"
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--pb-text-primary)" }}
         >
           Voltar para a barbearia
         </a>

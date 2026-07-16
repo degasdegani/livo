@@ -69,6 +69,15 @@ export default async function BookPage({
           }))}
           barbershopName={barbershop.name}
           barbershopSlug={slug}
+          barbershopPhone={barbershop.phone}
+          barbershopAddress={[
+            barbershop.street,
+            barbershop.neighborhood,
+            barbershop.city,
+            barbershop.state,
+          ]
+            .filter(Boolean)
+            .join(", ")}
         />
       </div>
     </main>
