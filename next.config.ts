@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
     // Upload de avatar via Server Action (FormData). O default do Next é 1MB,
     // que barra fotos de celular mesmo após a compressão client-side.
     serverActions: { bodySizeLimit: "10mb" },
+    // staleTimes.dynamic = 0 desabilita o Client Router Cache para segmentos
+    // dinâmicos (como o layout do dashboard, que lê sessão/billing a cada
+    // requisição). Sem isso, navegação por clique dentro do dashboard não
+    // reexecutava o Server Component do layout, permitindo acesso mesmo após
+    // o trial expirar — só um hard refresh forçava a checagem de billing.
+    staleTimes: {
+      dynamic: 0,
+    },
   },
   images: {
     remotePatterns: [
