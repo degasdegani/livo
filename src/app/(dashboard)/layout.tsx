@@ -8,9 +8,15 @@ import { accessibleModulesFor } from "@/lib/modules";
 import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 
-// Rotas que não devem ser bloqueadas pelo billing check
-// (são as próprias telas de resolução de billing)
-const BILLING_EXEMPT = ["/dashboard/assinar", "/dashboard/suspenso"];
+// Rotas que não devem ser bloqueadas pelo billing check: as próprias telas
+// de resolução de billing, mais Plano LIVO e Configurações — o usuário
+// bloqueado ainda precisa conseguir ver/pagar a fatura e ajustar a conta.
+const BILLING_EXEMPT = [
+  "/dashboard/assinar",
+  "/dashboard/suspenso",
+  "/dashboard/faturamento",
+  "/dashboard/settings",
+];
 
 export default async function DashboardLayout({
   children,
