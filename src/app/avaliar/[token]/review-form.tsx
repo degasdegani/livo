@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { useState, useTransition } from "react";
 import { submitReviewAction } from "./actions";
 
@@ -30,7 +31,9 @@ export function ReviewForm({ token }: { token: string }) {
   if (done) {
     return (
       <div className="text-center py-4">
-        <p className="text-2xl mb-3">⭐</p>
+        <div className="flex justify-center mb-3">
+          <Star size={32} fill="#C8A24C" color="#C8A24C" />
+        </div>
         <p className="text-lg font-bold" style={{ color: "#00D4A0" }}>
           Obrigado pela sua avaliação!
         </p>
@@ -51,13 +54,14 @@ export function ReviewForm({ token }: { token: string }) {
             onClick={() => setRating(star)}
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}
-            className="text-4xl transition-transform duration-150 hover:scale-110"
-            style={{
-              color: star <= (hoverRating || rating) ? "#C8A24C" : "#2A2A33",
-            }}
+            className="transition-transform duration-150 hover:scale-110"
             aria-label={`${star} estrela${star > 1 ? "s" : ""}`}
           >
-            ★
+            <Star
+              size={40}
+              fill={star <= (hoverRating || rating) ? "#C8A24C" : "none"}
+              color={star <= (hoverRating || rating) ? "#C8A24C" : "#2A2A33"}
+            />
           </button>
         ))}
       </div>
