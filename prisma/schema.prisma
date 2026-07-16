@@ -175,6 +175,19 @@ model Review {
   @@map("reviews")
 }
 
+model ReviewInvite {
+  id            String    @id @default(cuid())
+  appointmentId String    @unique
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("review_invites")
+}
+
 model Service {
   id                      String                          @id @default(cuid())
   name                    String
@@ -251,6 +264,7 @@ model Appointment {
   comanda        Comanda?
   services       AppointmentService[]
   review         Review?
+  reviewInvite   ReviewInvite?
 
   // WhatsApp — timestamps de notificação
   notificationSentAt DateTime?
