@@ -9,14 +9,12 @@ import {
   Phone,
   Scissors,
   Star,
-  User,
   UserCog,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import type { SlotInfo } from "@/lib/availability";
-import { formatPhoneBR } from "@/lib/masks";
 import { buildWhatsappUrl, sanitizePhone } from "@/lib/whatsapp";
 import { createAppointment, getAvailableSlots } from "./actions";
 
@@ -373,7 +371,7 @@ export function BookingForm({
               fill
               style={{
                 objectFit: "cover",
-                filter: "grayscale(40%) brightness(0.55)",
+                filter: "grayscale(60%) brightness(0.35) contrast(1.1)",
               }}
             />
           </div>
