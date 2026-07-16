@@ -91,6 +91,12 @@ function ProfessionalModal({
 }) {
   const [name, setName] = useState(professional?.name ?? "");
   const [bio, setBio] = useState(professional?.bio ?? "");
+  const [yearStarted, setYearStarted] = useState(
+    professional?.yearStarted?.toString() ?? "",
+  );
+  const [specialties, setSpecialties] = useState(
+    professional?.specialties?.join(", ") ?? "",
+  );
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -174,9 +180,26 @@ function ProfessionalModal({
       return;
     }
     startTransition(async () => {
+      const yearStartedNum = yearStarted.trim()
+        ? parseInt(yearStarted.trim(), 10)
+        : undefined;
+      const specialtiesArray = specialties
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
       const result = professional
-        ? await updateProfessional(professional.id, { name, bio })
-        : await createProfessional({ name, bio });
+        ? await updateProfessional(professional.id, {
+            name,
+            bio,
+            yearStarted: yearStartedNum,
+            specialties: specialtiesArray,
+          })
+        : await createProfessional({
+            name,
+            bio,
+            yearStarted: yearStartedNum,
+            specialties: specialtiesArray,
+          });
       if (result.success) {
         onSaved(result.message);
         onClose();
@@ -315,6 +338,50 @@ function ProfessionalModal({
           >
             {bio.length}/500
           </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor="prof-year-started"
+              className="mb-1.5 block text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Atuando desde
+            </label>
+            <input
+              id="prof-year-started"
+              type="number"
+              inputMode="numeric"
+              value={yearStarted}
+              onChange={(e) => setYearStarted(e.target.value)}
+              placeholder="Ex: 2020"
+              className="livo-input"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="prof-specialties"
+              className="mb-1.5 block text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Especialidades
+            </label>
+            <input
+              id="prof-specialties"
+              type="text"
+              value={specialties}
+              onChange={(e) => setSpecialties(e.target.value)}
+              placeholder="Fade, Degradê, Navalhado"
+              className="livo-input"
+            />
+            <p
+              className="mt-1 text-xs"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Separe por vírgula
+            </p>
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
