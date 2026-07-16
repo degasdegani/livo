@@ -7,6 +7,7 @@ import {
   DollarSign,
   Phone,
   Scissors,
+  Star,
   User,
   UserCog,
 } from "lucide-react";
@@ -40,6 +41,10 @@ interface ProfessionalInfo {
   id: string;
   name: string;
   avatarUrl: string | null;
+  specialties: string[];
+  yearStarted: number | null;
+  avgRating: number | null;
+  reviewCount: number;
 }
 
 interface Props {
@@ -495,7 +500,7 @@ export function BookingForm({
           <p className="text-xs font-semibold mb-3" style={{ color: "#A1A1AA" }}>
             Escolha o profissional *
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             {professionals.map((prof) => {
               const isOn = selectedProfId === prof.id;
               return (
@@ -503,21 +508,56 @@ export function BookingForm({
                   key={prof.id}
                   type="button"
                   onClick={() => setSelectedProfId(prof.id)}
-                  className="flex flex-col items-center gap-3 p-4 rounded-2xl transition-all text-center"
+                  className="flex items-center gap-3 p-4 rounded-2xl transition-all text-left"
                   style={{
-                    background: isOn ? "rgba(255,45,85,0.08)" : "rgba(255,255,255,0.03)",
+                    background: isOn ? "var(--pb-red-selected-bg)" : "var(--pb-card)",
                     border: isOn
-                      ? "1px solid rgba(255,45,85,0.4)"
-                      : "1px solid rgba(255,255,255,0.08)",
+                      ? "1px solid var(--pb-red)"
+                      : "1px solid var(--pb-border)",
                   }}
                 >
                   <ProfAvatar name={prof.name} avatarUrl={prof.avatarUrl} />
-                  <p
-                    className="text-sm font-bold text-white leading-tight"
-                    style={{ color: isOn ? "#FFFFFF" : "#E4E4E7" }}
-                  >
-                    {prof.name}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-sm font-bold leading-tight"
+                      style={{ color: "var(--pb-text-primary)" }}
+                    >
+                      {prof.name}
+                    </p>
+                    {prof.specialties.length > 0 && (
+                      <p
+                        className="text-xs mt-0.5 truncate"
+                        style={{ color: "var(--pb-text-secondary)" }}
+                      >
+                        {prof.specialties.join(" · ")}
+                      </p>
+                    )}
+                    {prof.reviewCount > 0 && prof.avgRating !== null && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Star size={12} fill="var(--pb-gold)" color="var(--pb-gold)" />
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: "var(--pb-text-primary)" }}
+                        >
+                          {prof.avgRating.toFixed(1)}
+                        </span>
+                        <span
+                          className="text-xs"
+                          style={{ color: "var(--pb-text-tertiary)" }}
+                        >
+                          ({prof.reviewCount})
+                        </span>
+                      </div>
+                    )}
+                    {prof.yearStarted && (
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: "var(--pb-text-tertiary)" }}
+                      >
+                        Desde {prof.yearStarted}
+                      </p>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -539,6 +579,10 @@ export function BookingForm({
 
   // ── STEP: datetime ────────────────────────────────────────
   if (step === "datetime") {
+    const availableCount = slots.filter((s) => s.available).length;
+    const isLowAvailability =
+      slots.length > 0 && availableCount > 0 && availableCount / slots.length < 0.25;
+
     return (
       <div className="flex flex-col gap-6">
         {header}
@@ -626,6 +670,24 @@ export function BookingForm({
                   <p className="text-xs" style={{ color: "#52525B" }}>Escolha outra data</p>
                 </div>
               ) : (
+                <>
+                {isLowAvailability && (
+                  <p
+                    className="text-xs mb-2 flex items-center gap-1.5"
+                    style={{ color: "var(--pb-warning)" }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "var(--pb-warning)",
+                        display: "inline-block",
+                      }}
+                    />
+                    Poucas vagas disponíveis neste dia
+                  </p>
+                )}
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {slots.map((slot) => {
                     const isSelected = selectedTime === slot.time;
@@ -652,6 +714,12 @@ export function BookingForm({
                                 color: "#fff",
                                 boxShadow: "0 4px 12px rgba(255,45,85,0.3)",
                               }
+                            : isLowAvailability
+                            ? {
+                                background: "rgba(255,181,71,0.08)",
+                                border: "1px solid var(--pb-warning)",
+                                color: "var(--pb-warning)",
+                              }
                             : {
                                 background: "rgba(255,255,255,0.04)",
                                 border: "1px solid rgba(255,255,255,0.08)",
@@ -664,6 +732,7 @@ export function BookingForm({
                     );
                   })}
                 </div>
+                </>
               )}
             </div>
           )}
