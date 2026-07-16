@@ -288,6 +288,8 @@ export function BookingForm({
     );
   }
 
+  let stepContent: React.ReactNode;
+
   // ── Header compartilhado ──────────────────────────────────
   const header = (
     <div>
@@ -371,7 +373,7 @@ export function BookingForm({
     const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
     const canContinue = selectedServiceIds.length > 0;
 
-    return (
+    stepContent = (
       <div className="flex flex-col gap-6">
         {header}
         {stepIndicator}
@@ -486,11 +488,8 @@ export function BookingForm({
         </button>
       </div>
     );
-  }
-
-  // ── STEP: professional ────────────────────────────────────
-  if (step === "professional") {
-    return (
+  } else if (step === "professional") {
+    stepContent = (
       <div className="flex flex-col gap-6">
         {header}
         <ServicesSummaryCard services={selectedServices} />
@@ -575,15 +574,12 @@ export function BookingForm({
         </button>
       </div>
     );
-  }
-
-  // ── STEP: datetime ────────────────────────────────────────
-  if (step === "datetime") {
+  } else if (step === "datetime") {
     const availableCount = slots.filter((s) => s.available).length;
     const isLowAvailability =
       slots.length > 0 && availableCount > 0 && availableCount / slots.length < 0.25;
 
-    return (
+    stepContent = (
       <div className="flex flex-col gap-6">
         {header}
         <ServicesSummaryCard services={selectedServices} />
@@ -749,13 +745,12 @@ export function BookingForm({
         </div>
       </div>
     );
-  }
+  } else {
+    // ── STEP: clientinfo (rotulado "Confirmação" no stepper) ──
+    const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
+    const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
 
-  // ── STEP: clientinfo (rotulado "Confirmação" no stepper) ──
-  const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
-  const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
-
-  return (
+    stepContent = (
     <div className="flex flex-col gap-6">
       {header}
       {stepIndicator}
@@ -899,6 +894,115 @@ export function BookingForm({
           </button>
         </div>
       </div>
+    </div>
+  );
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="flex-1 min-w-0">{stepContent}</div>
+
+      {/* ── Resumo fixo lateral (sticky, 360px, oculto em telas pequenas) ── */}
+      <aside
+        className="hidden lg:block shrink-0"
+        style={{
+          width: 360,
+          position: "sticky",
+          top: 32,
+        }}
+      >
+        <div
+          className="rounded-2xl p-5 flex flex-col gap-4"
+          style={{ background: "var(--pb-card)", border: "1px solid var(--pb-border)" }}
+        >
+          <p
+            className="text-xs font-bold uppercase"
+            style={{ color: "var(--pb-text-tertiary)", letterSpacing: "1px" }}
+          >
+            Resumo
+          </p>
+
+          {selectedServices.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {selectedServices.map((s) => (
+                <div key={s.id} className="flex items-center justify-between">
+                  <p className="text-sm" style={{ color: "var(--pb-text-primary)" }}>
+                    {s.name}
+                  </p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--pb-text-secondary)" }}>
+                    {formatCents(s.priceInCents)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: "var(--pb-text-tertiary)" }}>
+              Nenhum serviço selecionado ainda
+            </p>
+          )}
+
+          {selectedProf && step !== "service" && (
+            <div
+              className="flex items-center gap-3 pt-3"
+              style={{ borderTop: "1px solid var(--pb-separator)" }}
+            >
+              <ProfAvatar name={selectedProf.name} avatarUrl={selectedProf.avatarUrl} />
+              <div>
+                <p className="text-xs" style={{ color: "var(--pb-text-tertiary)" }}>
+                  Profissional
+                </p>
+                <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+                  {selectedProf.name}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {selectedDate && (
+            <div
+              className="flex items-center justify-between pt-3"
+              style={{ borderTop: "1px solid var(--pb-separator)" }}
+            >
+              <p className="text-xs" style={{ color: "var(--pb-text-tertiary)" }}>
+                Data
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+                {formatDate(selectedDate)}
+              </p>
+            </div>
+          )}
+
+          {selectedTime && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs" style={{ color: "var(--pb-text-tertiary)" }}>
+                Horário
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "var(--pb-red)" }}>
+                {selectedTime}
+              </p>
+            </div>
+          )}
+
+          {selectedServices.length > 0 && (
+            <div
+              className="flex items-center justify-between pt-3"
+              style={{ borderTop: "1px solid var(--pb-separator)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+                Total
+              </p>
+              <p
+                className="font-black"
+                style={{ color: "var(--pb-red)", fontSize: "18px", letterSpacing: "-0.5px" }}
+              >
+                {formatCents(
+                  selectedServices.reduce((sum, s) => sum + s.priceInCents, 0),
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
