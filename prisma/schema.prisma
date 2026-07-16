@@ -112,6 +112,7 @@ model Barbershop {
   productCategories         ProductCategory[]
   products                  Product[]
   professionals             Professional[]
+  reviews                   Review[]
   services                  Service[]
   stockMovements            StockMovement[]
   timeBlocks                TimeBlock[]
@@ -129,6 +130,10 @@ model Professional {
   name                 String
   bio                  String?
   avatarUrl            String?
+  yearStarted          Int?
+  specialties          String[]                        @default([])
+  avgRating            Decimal?                        @db.Decimal(2, 1)
+  reviewCount          Int                             @default(0)
   isActive             Boolean                         @default(true)
   barbershopId         String
   createdAt            DateTime                        @default(now())
@@ -144,10 +149,30 @@ model Professional {
   productCommissions   ProfessionalProductCommission[]
   timeBlocks           TimeBlock[]
   soldPackages         ClientPackage[]
+  reviews              Review[]
   barbershop           Barbershop                      @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@index([barbershopId])
   @@map("professionals")
+}
+
+model Review {
+  id             String       @id @default(cuid())
+  barbershopId   String
+  professionalId String
+  appointmentId  String       @unique
+  rating         Int
+  comment        String?
+  clientName     String
+  createdAt      DateTime     @default(now())
+
+  barbershop     Barbershop   @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  appointment    Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([barbershopId])
+  @@index([professionalId])
+  @@map("reviews")
 }
 
 model Service {
@@ -225,6 +250,7 @@ model Appointment {
   service        Service              @relation(fields: [serviceId], references: [id])
   comanda        Comanda?
   services       AppointmentService[]
+  review         Review?
 
   // WhatsApp — timestamps de notificação
   notificationSentAt DateTime?

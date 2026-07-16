@@ -16,6 +16,11 @@ export function makeProfessional(overrides: Partial<Professional> = {}): Profess
     // Decimal fields — null satisfies Decimal | null
     commissionServicePct: null,
     commissionProductPct: null,
+    yearStarted: null,
+    specialties: [],
+    // Decimal field — null satisfies Decimal | null
+    avgRating: null,
+    reviewCount: 0,
     ...overrides,
   };
 }

@@ -64,6 +64,8 @@ export async function getProfessionalsData(): Promise<
 export async function createProfessional(data: {
   name: string;
   bio?: string;
+  yearStarted?: number;
+  specialties?: string[];
 }): Promise<ActionResult> {
   const membership = await requireRole("owner");
   await requireModuleAccess(membership.barbershopId, "profissionais");
@@ -81,12 +83,26 @@ export async function createProfessional(data: {
     return { success: false, error: "Bio deve ter no máximo 500 caracteres." };
   }
 
+  const currentYear = new Date().getFullYear();
+  if (
+    data.yearStarted !== undefined &&
+    (data.yearStarted < 1950 || data.yearStarted > currentYear)
+  ) {
+    return { success: false, error: `Ano de início deve estar entre 1950 e ${currentYear}.` };
+  }
+  const specialties = (data.specialties ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.length <= 40)
+    .slice(0, 8);
+
   await db.professional.create({
     data: {
       name,
       bio,
       barbershopId: membership.barbershopId,
       isActive: true,
+      yearStarted: data.yearStarted ?? null,
+      specialties,
     },
   });
 
@@ -110,7 +126,12 @@ export async function createProfessional(data: {
 
 export async function updateProfessional(
   professionalId: string,
-  data: { name: string; bio?: string },
+  data: {
+    name: string;
+    bio?: string;
+    yearStarted?: number;
+    specialties?: string[];
+  },
 ): Promise<ActionResult> {
   const membership = await requireRole("owner");
   await requireModuleAccess(membership.barbershopId, "profissionais");
@@ -139,9 +160,26 @@ export async function updateProfessional(
     return { success: false, error: "Bio deve ter no máximo 500 caracteres." };
   }
 
+  const currentYear = new Date().getFullYear();
+  if (
+    data.yearStarted !== undefined &&
+    (data.yearStarted < 1950 || data.yearStarted > currentYear)
+  ) {
+    return { success: false, error: `Ano de início deve estar entre 1950 e ${currentYear}.` };
+  }
+  const specialties = (data.specialties ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.length <= 40)
+    .slice(0, 8);
+
   await db.professional.update({
     where: { id: professionalId },
-    data: { name, bio },
+    data: {
+      name,
+      bio,
+      yearStarted: data.yearStarted ?? null,
+      specialties,
+    },
   });
 
   revalidatePath("/dashboard/profissionais");
