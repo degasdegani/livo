@@ -62,6 +62,10 @@ export default async function BookPage({
             id: p.id,
             name: p.name,
             avatarUrl: p.avatarUrl,
+            specialties: p.specialties,
+            yearStarted: p.yearStarted,
+            avgRating: p.avgRating ? Number(p.avgRating) : null,
+            reviewCount: p.reviewCount,
           }))}
           barbershopName={barbershop.name}
           barbershopSlug={slug}
