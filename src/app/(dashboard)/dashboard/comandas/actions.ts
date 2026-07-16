@@ -654,6 +654,11 @@ export async function fecharComanda(
     }, err);
   }
 
+  if (comanda.appointmentId) {
+    const { createReviewInviteAndNotify } = await import("@/lib/reviews-server");
+    await createReviewInviteAndNotify({ appointmentId: comanda.appointmentId });
+  }
+
   revalidatePath("/dashboard/agenda");
   revalidatePath(`/dashboard/comandas`);
   revalidatePath(`/dashboard/comandas/${comandaId}`);

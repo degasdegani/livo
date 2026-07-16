@@ -29,6 +29,14 @@ export type InvitationEmailPayload = {
   token: string;
 };
 
+interface ReviewInviteEmailData {
+  to: string;
+  clientName: string;
+  barbershopName: string;
+  professionalName: string;
+  reviewUrl: string;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 const DAYS_PT = [
@@ -85,6 +93,31 @@ export async function sendAppointmentConfirmation(
   } catch (err) {
     log.email.error("falha ao enviar confirmação de agendamento", {
       to: data.clientEmail,
+      barbershopName: data.barbershopName,
+    }, err);
+  }
+}
+
+// ─── Convite de avaliação (LIVO-063) ───────────────────────────────────────────
+
+export async function sendReviewInviteEmail(
+  data: ReviewInviteEmailData,
+): Promise<void> {
+  if (!data.to) return;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: data.to,
+      subject: `Como foi sua experiência na ${data.barbershopName}?`,
+      html: buildReviewInviteHtml(data),
+    });
+    log.email.info("convite de avaliação enviado", {
+      to: data.to,
+      barbershopName: data.barbershopName,
+    });
+  } catch (err) {
+    log.email.error("falha ao enviar convite de avaliação", {
+      to: data.to,
       barbershopName: data.barbershopName,
     }, err);
   }
@@ -278,6 +311,50 @@ function buildConfirmationHTML(data: AppointmentConfirmationData): string {
             </a>
             <p style="color:#6E6E78;font-size:12px;margin:20px 0 0;line-height:1.6;">
               Para cancelar ou remarcar, entre em contato diretamente com a barbearia.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #2A2A33;">
+            <p style="color:#6E6E78;font-size:12px;margin:0;">© 2026 LIVO · livobarber.com.br</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+function buildReviewInviteHtml(data: ReviewInviteEmailData): string {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0B0D;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0B0D;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#17171C;border-radius:12px;border:1px solid #2A2A33;overflow:hidden;max-width:560px;width:100%;">
+        <tr>
+          <td style="background:#C8102E;padding:8px 32px;text-align:center;">
+            <span style="color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;">LIVO</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 32px;">
+            <h1 style="color:#fff;font-size:22px;margin:0 0 8px;">Como foi sua experiência? \u{2B50}</h1>
+            <p style="color:#9A9AA6;font-size:15px;line-height:1.6;margin:0 0 28px;">
+              Olá, <strong style="color:#fff;">${data.clientName}</strong>! Esperamos que
+              tenha gostado do atendimento com
+              <strong style="color:#fff;">${data.professionalName}</strong> na
+              <strong style="color:#fff;">${data.barbershopName}</strong>.
+              Sua avaliação ajuda outros clientes a escolherem o profissional certo.
+            </p>
+            <a href="${data.reviewUrl}" style="display:inline-block;background:#C8102E;color:#fff;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:700;font-size:16px;">
+              Avaliar atendimento →
+            </a>
+            <p style="color:#6E6E78;font-size:12px;margin:24px 0 0;">
+              Leva menos de um minuto.
             </p>
           </td>
         </tr>
