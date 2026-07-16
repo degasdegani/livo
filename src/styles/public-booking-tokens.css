@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
    PALETA OFICIAL LIVO 2026 — Fluxo Público de Agendamento
    Prefixo --pb- (public booking) para não colidir com os tokens
-   do dashboard (--bg-*/--text-*) nem do institucional (--livo-*).
+   do dashboard (--bg-* ou --text-*) nem do institucional (--livo-*).
    Documentado em ADR-005. Fonte única de verdade para cores do
    agendamento público — qualquer alteração de paleta deve
    começar aqui, não em valores hardcoded nos componentes.
