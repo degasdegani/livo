@@ -6,7 +6,6 @@ import { Award, MapPin, Menu, Phone, Sparkles, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ServicePicker } from "./service-picker";
 import { PublicUnavailable } from "./unavailable";
 
 // Iniciais para fallback de avatar/logo quando não há imagem.
@@ -71,8 +70,6 @@ export default async function BarbershopPage({
   const barbershop = await db.barbershop.findUnique({
     where: { slug, isActive: true },
     include: {
-      services: { where: { isActive: true }, orderBy: { priceInCents: "asc" } },
-      professionals: { where: { isActive: true } },
       owner: { select: { emailVerified: true } },
     },
   });
@@ -88,7 +85,6 @@ export default async function BarbershopPage({
     return <PublicUnavailable />;
   }
 
-  const professional = barbershop.professionals[0];
   const hasAddress = barbershop.street && barbershop.city;
   const hasCover = !!barbershop.coverPhotoUrl;
   const hasLogo = !!barbershop.logoUrl;
@@ -204,7 +200,7 @@ export default async function BarbershopPage({
 
         <div className="flex flex-col gap-3" style={{ maxWidth: "320px" }}>
           <a
-            href="#servicos"
+            href={`/${slug}/book`}
             className="flex items-center justify-center gap-2 rounded-xl font-semibold text-center transition-all hover:opacity-90"
             style={{
               height: "48px",
@@ -217,7 +213,7 @@ export default async function BarbershopPage({
             Agendar agora →
           </a>
           <a
-            href="#servicos"
+            href={`/${slug}/book`}
             className="flex items-center justify-center rounded-xl font-semibold text-center transition-all hover:opacity-80"
             style={{
               height: "48px",
@@ -286,72 +282,6 @@ export default async function BarbershopPage({
           )}
         </div>
       )}
-
-      {/* ── TRANSITÓRIO: Serviços ─────────────────────────────
-          Mantido aqui temporariamente para não quebrar o único caminho de
-          agendamento em produção. Será removido e movido para dentro do
-          stepper no LIVO-064 (etapa "Escolha o Serviço"). */}
-      <div id="servicos" className="max-w-2xl mx-auto px-6 py-8">
-        <h2
-          className="font-bold mb-4"
-          style={{ color: "var(--pb-text-primary)", fontSize: "18px" }}
-        >
-          Serviços
-        </h2>
-        {barbershop.services.length === 0 ? (
-          <p style={{ color: "var(--pb-text-tertiary)", fontSize: "14px" }}>
-            Nenhum serviço disponível no momento.
-          </p>
-        ) : professional ? (
-          <ServicePicker
-            services={barbershop.services.map((s) => ({
-              id: s.id,
-              name: s.name,
-              durationMin: s.durationMin,
-              priceInCents: s.priceInCents,
-            }))}
-            slug={slug}
-          />
-        ) : (
-          <div className="flex flex-col gap-3">
-            {barbershop.services.map((service) => (
-              <div
-                key={service.id}
-                className="flex items-center justify-between p-4 rounded-2xl"
-                style={{
-                  background: "var(--pb-card)",
-                  border: "1px solid var(--pb-border)",
-                }}
-              >
-                <div className="flex-1 min-w-0 mr-4">
-                  <p
-                    className="font-bold text-sm mb-0.5"
-                    style={{ color: "var(--pb-text-primary)" }}
-                  >
-                    {service.name}
-                  </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: "var(--pb-text-tertiary)" }}
-                  >
-                    {service.durationMin} minutos
-                  </p>
-                </div>
-                <p
-                  className="font-black shrink-0"
-                  style={{
-                    color: "var(--pb-text-primary)",
-                    fontSize: "16px",
-                    letterSpacing: "-0.5px",
-                  }}
-                >
-                  R$ {(service.priceInCents / 100).toFixed(0)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </main>
   );
 }

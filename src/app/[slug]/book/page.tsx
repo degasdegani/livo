@@ -1,27 +1,17 @@
 // Server Component — busca dados no banco e passa para o formulário
 import { db } from "@/lib/db";
 import { isEmailGateBlocked } from "@/lib/email-gate";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { BookingForm } from "./booking-form";
 import { PublicUnavailable } from "../unavailable";
 
 export default async function BookPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ serviceIds?: string }>;
 }) {
   const { slug } = await params;
-  const { serviceIds: serviceIdsParam } = await searchParams;
 
-  // Sem serviceIds → volta para a página da barbearia
-  if (!serviceIdsParam) redirect(`/${slug}`);
-
-  const serviceIdsList = serviceIdsParam.split(",").filter(Boolean);
-  if (serviceIdsList.length === 0) redirect(`/${slug}`);
-
-  // Busca barbearia + TODOS os profissionais ativos + serviços solicitados
   const barbershop = await db.barbershop.findUnique({
     where: { slug, isActive: true },
     include: {
@@ -30,15 +20,14 @@ export default async function BookPage({
         orderBy: { name: "asc" },
       },
       services: {
-        where: { id: { in: serviceIdsList }, isActive: true },
+        where: { isActive: true },
+        orderBy: { priceInCents: "asc" },
       },
       owner: { select: { emailVerified: true } },
     },
   });
-
   if (!barbershop) notFound();
 
-  // Portão suave: mesma checagem da página pública pai (query própria aqui).
   if (
     isEmailGateBlocked({
       planStatus: barbershop.planStatus,
@@ -51,20 +40,18 @@ export default async function BookPage({
   const professionals = barbershop.professionals;
   const services = barbershop.services;
 
-  // Sem profissional ou nenhum serviço encontrado → 404
+  // Sem profissional ou nenhum serviço ativo → 404
   if (professionals.length === 0 || services.length === 0) notFound();
 
   return (
     <main
       className="min-h-screen"
       data-theme="dark"
-      style={{ backgroundColor: "var(--bg-base)" }}
+      style={{ backgroundColor: "var(--pb-bg)" }}
     >
       <div className="max-w-lg mx-auto px-6 py-8">
-        {/* Formulário client-side com todos os dados já carregados */}
         <BookingForm
           barbershopId={barbershop.id}
-          serviceIds={serviceIdsList}
           services={services.map((s) => ({
             id: s.id,
             name: s.name,
