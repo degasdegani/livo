@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════════
+   PALETA OFICIAL LIVO 2026 — Fluxo Público de Agendamento
+   Prefixo --pb- (public booking) para não colidir com os tokens
+   do dashboard (--bg-*/--text-*) nem do institucional (--livo-*).
+   Documentado em ADR-005. Fonte única de verdade para cores do
+   agendamento público — qualquer alteração de paleta deve
+   começar aqui, não em valores hardcoded nos componentes.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Fundos */
+  --pb-bg: #0B0B0D;
+  --pb-card: #141417;
+  --pb-card-hover: #1A1A1E;
+
+  /* Bordas e separadores */
+  --pb-border: #26262B;
+  --pb-separator: #1F1F24;
+
+  /* Vermelho (marca) */
+  --pb-red: #FF2D55;
+  --pb-red-hover: #FF4569;
+  --pb-red-glow: rgba(255, 45, 85, 0.25);
+  --pb-red-selected-bg: rgba(255, 45, 85, 0.08);
+
+  /* Dourado (premium/avaliação) */
+  --pb-gold: #D4A756;
+  --pb-gold-hover: #E0B96A;
+
+  /* Texto */
+  --pb-text-primary: #FFFFFF;
+  --pb-text-secondary: #9B9BA1;
+  --pb-text-tertiary: #6F6F78;
+
+  /* Status */
+  --pb-success: #00D26A;
+  --pb-warning: #FFB547;
+  --pb-error: #FF5A5F;
+
+  /* WhatsApp */
+  --pb-whatsapp: #25D366;
+  --pb-whatsapp-hover: #30E070;
+
+  /* Espaçamento padrão */
+  --pb-spacing-h: 24px;
+  --pb-spacing-v: 32px;
+  --pb-card-padding: 24px;
+}
