@@ -27,7 +27,7 @@ const MONTHS = [
 ];
 
 // ── Tipos ─────────────────────────────────────────────────────
-type Step = "professional" | "datetime" | "clientinfo" | "done";
+type Step = "service" | "professional" | "datetime" | "clientinfo" | "done";
 
 interface ServiceInfo {
   id: string;
@@ -44,7 +44,6 @@ interface ProfessionalInfo {
 
 interface Props {
   barbershopId: string;
-  serviceIds: string[];
   services: ServiceInfo[];
   professionals: ProfessionalInfo[];
   barbershopName: string;
@@ -149,16 +148,14 @@ function ServicesSummaryCard({ services }: { services: ServiceInfo[] }) {
 // ══════════════════════════════════════════════════════════════
 export function BookingForm({
   barbershopId,
-  serviceIds,
   services,
   professionals,
   barbershopName,
   barbershopSlug,
 }: Props) {
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const hasProfessionalChoice = professionals.length > 1;
-  const initialStep: Step = hasProfessionalChoice ? "professional" : "datetime";
-
-  const [step, setStep] = useState<Step>(initialStep);
+  const [step, setStep] = useState<Step>("service");
   const [selectedProfId, setSelectedProfId] = useState(professionals[0]?.id ?? "");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -170,7 +167,7 @@ export function BookingForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  const serviceIdsKey = serviceIds.join(",");
+  const serviceIdsKey = selectedServiceIds.join(",");
 
   // Recarrega slots ao trocar data ou profissional
   useEffect(() => {
@@ -182,7 +179,7 @@ export function BookingForm({
     getAvailableSlots({
       barbershopId,
       professionalId: selectedProfId,
-      serviceIds,
+      serviceIds: selectedServiceIds,
       date: selectedDate,
     }).then((result) => {
       setSlots(result);
@@ -194,6 +191,7 @@ export function BookingForm({
 
   const selectedProf = professionals.find((p) => p.id === selectedProfId);
   const today = new Date().toISOString().split("T")[0];
+  const selectedServices = services.filter((s) => selectedServiceIds.includes(s.id));
 
   function handleConfirm() {
     setError("");
@@ -201,7 +199,7 @@ export function BookingForm({
       const result = await createAppointment({
         barbershopId,
         professionalId: selectedProfId,
-        serviceIds,
+        serviceIds: selectedServiceIds,
         date: selectedDate,
         time: selectedTime,
         clientName,
@@ -220,7 +218,7 @@ export function BookingForm({
 
   // ── STEP: done (confirmação) ──────────────────────────────
   if (step === "done") {
-    const total = services.reduce((sum, s) => sum + s.priceInCents, 0);
+    const total = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
     return (
       <div className="flex flex-col items-center text-center py-8">
         <CheckCircle2 className="mb-6" size={64} style={{ color: "#00D4A0" }} />
@@ -239,7 +237,7 @@ export function BookingForm({
           className="w-full rounded-2xl p-5 mb-8 text-left"
           style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
-          {services.map((s) => (
+          {selectedServices.map((s) => (
             <div
               key={s.id}
               className="flex gap-3 py-2"
@@ -310,11 +308,13 @@ export function BookingForm({
   // ── Indicador de etapas ───────────────────────────────────
   const stepDefs = hasProfessionalChoice
     ? [
+        { key: "service" as Step, label: "Serviço" },
         { key: "professional" as Step, label: "Profissional" },
         { key: "datetime" as Step, label: "Data e horário" },
         { key: "clientinfo" as Step, label: "Seus dados" },
       ]
     : [
+        { key: "service" as Step, label: "Serviço" },
         { key: "datetime" as Step, label: "Data e horário" },
         { key: "clientinfo" as Step, label: "Seus dados" },
       ];
@@ -355,12 +355,140 @@ export function BookingForm({
     </div>
   );
 
+  // ── STEP: service ──────────────────────────────────────────
+  if (step === "service") {
+    function toggleService(id: string) {
+      setSelectedServiceIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      );
+    }
+    const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
+    const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceInCents, 0);
+    const canContinue = selectedServiceIds.length > 0;
+
+    return (
+      <div className="flex flex-col gap-6">
+        {header}
+        {stepIndicator}
+
+        <div className="flex flex-col gap-3">
+          {services.map((service) => {
+            const isOn = selectedServiceIds.includes(service.id);
+            return (
+              <div
+                key={service.id}
+                role="checkbox"
+                aria-checked={isOn}
+                tabIndex={0}
+                className="flex items-center justify-between p-4 rounded-2xl cursor-pointer select-none transition-all"
+                style={{
+                  background: isOn ? "var(--pb-red-selected-bg)" : "var(--pb-card)",
+                  border: isOn
+                    ? "1px solid var(--pb-red)"
+                    : "1px solid var(--pb-border)",
+                }}
+                onClick={() => toggleService(service.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleService(service.id);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 6,
+                      flexShrink: 0,
+                      background: isOn ? "var(--pb-red)" : "rgba(255,255,255,0.06)",
+                      border: isOn
+                        ? "1px solid var(--pb-red)"
+                        : "1px solid rgba(255,255,255,0.12)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isOn && (
+                      <svg width="11" height="8" viewBox="0 0 11 8" fill="none">
+                        <path
+                          d="M1 4L4 7L10 1"
+                          stroke="white"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-bold text-sm"
+                      style={{ color: "var(--pb-text-primary)" }}
+                    >
+                      {service.name}
+                    </p>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "var(--pb-text-tertiary)" }}
+                    >
+                      {service.durationMin} min
+                    </p>
+                  </div>
+                </div>
+                <p
+                  className="font-black ml-4 shrink-0"
+                  style={{
+                    color: isOn ? "var(--pb-red)" : "var(--pb-text-secondary)",
+                    fontSize: "16px",
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  {formatCents(service.priceInCents)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {canContinue && (
+          <div
+            className="p-4 rounded-2xl flex items-center justify-between"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--pb-border)" }}
+          >
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--pb-text-primary)" }}>
+                {formatCents(totalPrice)}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--pb-text-tertiary)" }}>
+                {totalDuration} min · {selectedServiceIds.length}{" "}
+                {selectedServiceIds.length === 1 ? "serviço" : "serviços"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setStep(hasProfessionalChoice ? "professional" : "datetime")}
+          disabled={!canContinue}
+          className="w-full py-4 rounded-xl font-black text-white text-base transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: "#FF2D55", boxShadow: "0 8px 24px rgba(255,45,85,0.3)" }}
+        >
+          Continuar →
+        </button>
+      </div>
+    );
+  }
+
   // ── STEP: professional ────────────────────────────────────
   if (step === "professional") {
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <ServicesSummaryCard services={services} />
+        <ServicesSummaryCard services={selectedServices} />
         {stepIndicator}
 
         <div>
@@ -414,7 +542,7 @@ export function BookingForm({
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <ServicesSummaryCard services={services} />
+        <ServicesSummaryCard services={selectedServices} />
         {stepIndicator}
 
         {/* Profissional selecionado — sempre visível (inclusive com 1 só
@@ -558,7 +686,7 @@ export function BookingForm({
   return (
     <div className="flex flex-col gap-6">
       {header}
-      <ServicesSummaryCard services={services} />
+      <ServicesSummaryCard services={selectedServices} />
       {stepIndicator}
 
       <div className="flex flex-col gap-5">
