@@ -1,22 +1,11 @@
 // src/app/(dashboard)/layout.tsx
-import { headers } from "next/headers";
-import { checkBillingAccess, requireMembership } from "@/lib/permissions";
+import { requireMembership } from "@/lib/permissions";
 import { requireTermsAccepted } from "@/lib/terms-gate";
 import { db } from "@/lib/db";
 import { isClubEnabled } from "@/lib/clube-flag";
 import { accessibleModulesFor } from "@/lib/modules";
 import { getTodayAppointmentsForAlerts } from "./dashboard/agenda/agenda-actions";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
-
-// Rotas que não devem ser bloqueadas pelo billing check: as próprias telas
-// de resolução de billing, mais Plano LIVO e Configurações — o usuário
-// bloqueado ainda precisa conseguir ver/pagar a fatura e ajustar a conta.
-const BILLING_EXEMPT = [
-  "/dashboard/assinar",
-  "/dashboard/suspenso",
-  "/dashboard/faturamento",
-  "/dashboard/settings",
-];
 
 export default async function DashboardLayout({
   children,
@@ -28,14 +17,6 @@ export default async function DashboardLayout({
   await requireTermsAccepted();
 
   const membership = await requireMembership();
-
-  const headersList = await headers();
-  const pathname = headersList.get("x-pathname") ?? "";
-  const isBillingExempt = BILLING_EXEMPT.some((p) => pathname.startsWith(p));
-
-  if (!isBillingExempt) {
-    await checkBillingAccess(membership.barbershopId);
-  }
 
   const [barbershop, alerts, clubEnabled] = await Promise.all([
     db.barbershop.findUnique({
