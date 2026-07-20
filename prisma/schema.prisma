@@ -86,6 +86,7 @@ model Barbershop {
   planStatus                PlanStatus        @default(trial)
   trialEndsAt               DateTime?
   lastBillingEventAt        DateTime?
+  overdueSince              DateTime?
   cep                       String?
   neighborhood              String?
   street                    String?

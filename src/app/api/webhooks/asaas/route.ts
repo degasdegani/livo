@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
             // O webhook só ativa o status; o guard de ordering
             // (lastBillingEventAt via isNewerEvent) permanece intacto.
             lastBillingEventAt: eventAt,
+            overdueSince: null,
           },
         });
         log.billing.info("assinatura ativada por pagamento", {
@@ -119,6 +120,7 @@ export async function POST(req: NextRequest) {
           data: {
             planStatus: PlanStatus.suspended,
             lastBillingEventAt: eventAt,
+            overdueSince: payment.dueDate ? new Date(payment.dueDate) : eventAt,
           },
         });
         log.billing.warn("plano suspenso por inadimplência", {

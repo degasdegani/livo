@@ -9,6 +9,7 @@
 // clique, só hard refresh. Corrigido movendo o gate para cá.
 import { headers } from "next/headers";
 import { requireMembership, checkBillingAccess } from "@/lib/permissions";
+import { BillingGraceBanner } from "@/components/billing-grace-banner";
 
 // Rotas que não devem ser bloqueadas pelo billing check: as próprias telas
 // de resolução de billing, mais Plano LIVO e Configurações — o usuário
@@ -30,9 +31,18 @@ export default async function DashboardTemplate({
   const pathname = headersList.get("x-pathname") ?? "";
   const isBillingExempt = BILLING_EXEMPT.some((p) => pathname.startsWith(p));
 
+  let graceEndsAt: Date | null = null;
   if (!isBillingExempt) {
-    await checkBillingAccess(membership.barbershopId);
+    const result = await checkBillingAccess(membership.barbershopId);
+    if (result.status === "grace") {
+      graceEndsAt = result.graceEndsAt;
+    }
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {graceEndsAt && <BillingGraceBanner graceEndsAt={graceEndsAt} />}
+      {children}
+    </>
+  );
 }

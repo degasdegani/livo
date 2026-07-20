@@ -69,36 +69,53 @@ export async function requireRole(
 
 // ── Verificação de billing ────────────────────────────────────────────────────
 
-export async function checkBillingAccess(barbershopId: string): Promise<void> {
+export type BillingCheckResult =
+  | { status: "ok" }
+  | { status: "grace"; graceEndsAt: Date };
+
+const GRACE_PERIOD_DAYS = 3;
+
+export async function checkBillingAccess(
+  barbershopId: string,
+): Promise<BillingCheckResult> {
   const barbershop = await db.barbershop.findUnique({
     where: { id: barbershopId },
-    select: { planStatus: true, trialEndsAt: true },
+    select: { planStatus: true, trialEndsAt: true, overdueSince: true },
   });
 
   if (!barbershop) redirect("/login");
 
   // Lifetime — nunca bloqueia
-  if (barbershop.planStatus === PlanStatus.lifetime) return;
+  if (barbershop.planStatus === PlanStatus.lifetime) return { status: "ok" };
 
   // Assinatura ativa — deixa passar
-  if (barbershop.planStatus === PlanStatus.active) return;
+  if (barbershop.planStatus === PlanStatus.active) return { status: "ok" };
 
   // Trial — verifica se ainda está válido
   if (barbershop.planStatus === PlanStatus.trial) {
-    if (!barbershop.trialEndsAt) return; // sem data = trial indefinido
-    if (new Date() < new Date(barbershop.trialEndsAt)) return; // ainda no prazo
-  }
-
-  // Trial expirado → tela de assinatura
-  if (barbershop.planStatus === PlanStatus.trial) {
+    if (!barbershop.trialEndsAt) return { status: "ok" }; // sem data = trial indefinido
+    if (new Date() < new Date(barbershop.trialEndsAt)) return { status: "ok" }; // ainda no prazo
+    // Trial expirado → tela de assinatura, sem carência
     redirect("/dashboard/assinar");
   }
 
-  // Suspenso ou cancelado → tela de recuperação financeira
-  if (
-    barbershop.planStatus === PlanStatus.suspended ||
-    barbershop.planStatus === PlanStatus.cancelled
-  ) {
+  // Assinatura paga com fatura vencida → carência de 3 dias contados a
+  // partir do vencimento real da fatura (overdueSince, vindo do Asaas via
+  // payment.dueDate). Sem overdueSince salvo, bloqueia na hora (fallback
+  // seguro — sem data confiável, não há carência a calcular).
+  if (barbershop.planStatus === PlanStatus.suspended) {
+    if (barbershop.overdueSince) {
+      const graceEndsAt = new Date(barbershop.overdueSince);
+      graceEndsAt.setDate(graceEndsAt.getDate() + GRACE_PERIOD_DAYS);
+      if (new Date() < graceEndsAt) {
+        return { status: "grace", graceEndsAt };
+      }
+    }
+    redirect("/dashboard/suspenso");
+  }
+
+  // Cancelado → tela de recuperação financeira, sem carência
+  if (barbershop.planStatus === PlanStatus.cancelled) {
     redirect("/dashboard/suspenso");
   }
 
