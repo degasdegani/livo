@@ -11,6 +11,8 @@ import { headers } from "next/headers";
 import { requireMembership, checkBillingAccess } from "@/lib/permissions";
 import { BillingGraceBanner } from "@/components/billing-grace-banner";
 
+export const dynamic = "force-dynamic";
+
 // Rotas que não devem ser bloqueadas pelo billing check: as próprias telas
 // de resolução de billing, mais Plano LIVO e Configurações — o usuário
 // bloqueado ainda precisa conseguir ver/pagar a fatura e ajustar a conta.
