@@ -102,3 +102,4 @@ TODO.md
 /scratch
 
 /src/generated/prisma
+.env*
