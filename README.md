@@ -20,7 +20,7 @@
 <!-- [PRINT] Substitua a linha abaixo por um GIF ou screenshot do dashboard em uso.
      Coloque o arquivo em /docs/preview.gif e referencie assim: -->
 <p align="center">
-  <img src="public/preview.png" alt="LIVO em uso" width="820">
+  <img src="docs/preview.png" alt="LIVO em uso" width="820">
 </p>
 
 ---
