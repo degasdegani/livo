@@ -1,10 +1,10 @@
 // src/app/(dashboard)/dashboard/clients/page.tsx
-import { requireMembership } from "@/lib/permissions";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import { getClientsData, getClientStats } from "./actions";
 import { ClientsClient } from "./clients-client";
 
 export default async function ClientsPage() {
-  await requireMembership();
+  await requireMembershipWithBilling();
   const [clients, stats] = await Promise.all([
     getClientsData(),
     getClientStats(),

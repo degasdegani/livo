@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getCurrentMembership } from "@/lib/permissions";
+import { getCurrentMembership, requireMembershipWithBilling } from "@/lib/permissions";
 import { OnboardingChecklist } from "@/components/ui/onboarding-checklist";
 import { getProfessionalMonthlyCounts } from "@/lib/professional-counts";
 import { getDashboardAnalytics } from "./actions";
@@ -97,6 +97,8 @@ function MiniGrafico({
 }
 
 export default async function DashboardPage() {
+  await requireMembershipWithBilling();
+
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 

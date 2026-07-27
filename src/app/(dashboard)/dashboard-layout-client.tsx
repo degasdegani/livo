@@ -199,6 +199,7 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onClick}
+      prefetch={false}
       style={
         isActive
           ? {
@@ -371,6 +372,7 @@ function SidebarContent({
           href="/dashboard"
           className="flex items-center"
           onClick={onNavClick}
+          prefetch={false}
         >
           <div className="flex flex-col">
             <span
