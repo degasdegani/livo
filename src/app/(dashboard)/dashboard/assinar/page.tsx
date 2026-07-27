@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/assinar/page.tsx
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Check, CheckCircle2 } from "lucide-react";
 import { CPFInput } from "@/components/ui/cpf-input";
@@ -51,10 +51,6 @@ export default function AssinarPage() {
     "monthly",
   );
   const { toast } = useToast();
-
-  useEffect(() => {
-    console.log("[DEBUG assinar] montado", new Date().toISOString());
-  }, []);
 
   // START não tem plano anual → coage o billing efetivo para mensal.
   const hasYearly = PLAN_PRICING[plan].yearly != null;
