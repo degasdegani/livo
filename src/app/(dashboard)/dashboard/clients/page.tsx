@@ -4,6 +4,7 @@ import { getClientsData, getClientStats } from "./actions";
 import { ClientsClient } from "./clients-client";
 
 export default async function ClientsPage() {
+  console.log("[DEBUG clients page] renderizando");
   await requireMembership();
   const [clients, stats] = await Promise.all([
     getClientsData(),
