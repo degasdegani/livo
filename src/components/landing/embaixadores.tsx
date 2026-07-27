@@ -3,35 +3,17 @@
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
 import { poppins } from "@/lib/fonts";
-import Image from "next/image";
 
 const EMBAIXADORES_WHATSAPP_NUMBER = "5516992813674";
 const EMBAIXADORES_WHATSAPP_MESSAGE =
-  "Olá! Vi o Programa de Embaixadores da LIVO e quero saber como faço parte. Pode me passar mais detalhes?";
+  "Olá! Vi a oferta de Embaixador Oficial da LIVO (R$169,90 vitalício) e quero saber como faço parte. Pode me passar mais detalhes?";
 const EMBAIXADORES_WHATSAPP_URL = `https://wa.me/${EMBAIXADORES_WHATSAPP_NUMBER}?text=${encodeURIComponent(EMBAIXADORES_WHATSAPP_MESSAGE)}`;
 
 export function Embaixadores() {
   return (
     <Section id="embaixadores" padding="xl" className="bg-black">
       <Container>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Imagem */}
-          <div
-            className="relative rounded-3xl overflow-hidden"
-            style={{
-              aspectRatio: "4 / 5",
-              background: "rgba(138,100,37,0.06)",
-              border: "1px solid rgba(138,100,37,0.25)",
-            }}
-          >
-            <Image
-              src="/embaixadores-tx.png"
-              alt="TX Barbearia, Embaixador Oficial LIVO Barber"
-              fill
-              className="object-cover"
-            />
-          </div>
-
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
           {/* Texto */}
           <div>
             <div
@@ -56,7 +38,7 @@ export function Embaixadores() {
                 color: "var(--livo-cream)",
               }}
             >
-              TX Barbearia — Embaixador Oficial LIVO Barber.
+              Seja Embaixador Oficial LIVO Barber.
             </h2>
 
             <p
@@ -68,12 +50,11 @@ export function Embaixadores() {
                 maxWidth: "480px",
               }}
             >
-              Embaixador Oficial é o título de quem representa a LIVO com
-              autoridade — acesso a conteúdos, mentorias e benefícios
-              exclusivos. TX Barbearia carrega esse título hoje.
-              Selecionamos barbearias de referência para representar a LIVO
-              em suas regiões — se você lidera uma barbearia de peso na sua
-              cidade, essa conversa é pra você.
+              Pague uma única vez R$ 169,90 e tenha acesso vitalício a todas
+              as novidades e atualizações do LIVO Barber. Além disso,
+              participe do nosso plano de indicações: a cada barbearia que
+              você indicar e fechar contrato conosco, você ganha um mês
+              grátis.
             </p>
 
             <a
