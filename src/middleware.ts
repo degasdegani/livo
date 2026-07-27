@@ -1,23 +1,23 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-// Sistema temporariamente indisponivel: toda rota redireciona para /manutencao,
-// sem excecao (inclusive contas lifetime) -- decisao do founder. Nao remove nada
-// do banco nem do codigo, so bloqueia o acesso via middleware, que roda antes de
-// qualquer coisa do App Router (sem risco de cache de rota).
-export default function middleware(req: NextRequest) {
+export default auth((req) => {
   const pathname = req.nextUrl.pathname;
+  const isLoggedIn = !!req.auth;
 
-  const isExempt =
-    pathname === "/manutencao" ||
-    pathname.startsWith("/api/webhooks/asaas");
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
 
-  if (isExempt) {
-    return NextResponse.next();
+  const isAuthRoute = pathname === "/login";
+
+  if (isAuthRoute && isLoggedIn) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  return NextResponse.redirect(new URL("/manutencao", req.url));
-}
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+});
 
 export const config = {
   matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
