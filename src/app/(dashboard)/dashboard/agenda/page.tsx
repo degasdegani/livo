@@ -1,5 +1,6 @@
 // src/app/(dashboard)/dashboard/agenda/page.tsx
 import Link from "next/link";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import {
   getAgendaDay,
   getAgendaMonthSummary,
@@ -47,6 +48,8 @@ export default async function AgendaPage({
 }: {
   searchParams: Promise<{ view?: string; date?: string }>;
 }) {
+  await requireMembershipWithBilling();
+
   const { view, date } = await searchParams;
 
   // ── Visão semanal ────────────────────────────────────────────────────────────

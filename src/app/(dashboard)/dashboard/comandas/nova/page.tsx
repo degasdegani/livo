@@ -1,10 +1,10 @@
 // src/app/(dashboard)/dashboard/comandas/nova/page.tsx
-import { requireMembership } from "@/lib/permissions";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import { getProfessionalsForComanda } from "../actions";
 import NovaComandaForm from "./nova-comanda-form";
 
 export default async function NovaComandaPage() {
-  const membership = await requireMembership();
+  const membership = await requireMembershipWithBilling();
   const professionals = await getProfessionalsForComanda();
 
   return (

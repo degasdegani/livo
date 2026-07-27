@@ -1,8 +1,11 @@
 import { Gift } from "lucide-react";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import { getReferralData } from "@/lib/referral-server";
 import { ReferralSection } from "./referral-section";
 
 export default async function IndicacoesPage() {
+  await requireMembershipWithBilling();
+
   const referral = await getReferralData();
 
   return (

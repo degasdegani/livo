@@ -1,9 +1,9 @@
-import { requireMembership } from "@/lib/permissions";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import { getCategories, getProducts } from "./actions";
 import { ProdutosClient } from "./produtos-client";
 
 export default async function ProdutosPage() {
-  const membership = await requireMembership();
+  const membership = await requireMembershipWithBilling();
 
   const [products, categories] = await Promise.all([
     getProducts(),

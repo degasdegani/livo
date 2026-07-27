@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { hasModuleAccess } from "@/lib/modules";
-import { requireMembership } from "@/lib/permissions";
+import { requireMembershipWithBilling } from "@/lib/permissions";
 import { getProfessionalMonthlyCounts } from "@/lib/professional-counts";
 import { MemberRole } from "@prisma/client";
 import { getComissoesData } from "../comandas/actions";
 import { ComissoesClient } from "./comissoes-client";
 
 export default async function ComissoesPage() {
-  const membership = await requireMembership();
+  const membership = await requireMembershipWithBilling();
 
   // Gate de módulo (navegação): START → upsell, sem tela de erro genérica.
   if (!(await hasModuleAccess(membership.barbershopId, "comissoes"))) {
