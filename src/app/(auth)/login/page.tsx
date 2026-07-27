@@ -5,13 +5,11 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { poppins } from "@/lib/fonts";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -25,6 +23,7 @@ export default function LoginPage() {
         email: formData.get("email"),
         password: formData.get("password"),
         redirect: false,
+        callbackUrl: "/dashboard",
       });
 
       if (result?.error) {
@@ -32,7 +31,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     });
   }
 
