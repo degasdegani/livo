@@ -30,6 +30,12 @@ export default async function DashboardTemplate({
   const pathname = headersList.get("x-pathname") ?? "";
   const isBillingExempt = BILLING_EXEMPT.some((p) => pathname.startsWith(p));
 
+  console.log("[DEBUG template]", {
+    pathname,
+    isBillingExempt,
+    barbershopId: membership.barbershopId,
+  });
+
   if (!isBillingExempt) {
     await checkBillingAccess(membership.barbershopId);
   }

@@ -70,9 +70,16 @@ export async function requireRole(
 // ── Verificação de billing ────────────────────────────────────────────────────
 
 export async function checkBillingAccess(barbershopId: string): Promise<void> {
+  console.log("[DEBUG checkBillingAccess] barbershopId recebido:", barbershopId);
+
   const barbershop = await db.barbershop.findUnique({
     where: { id: barbershopId },
     select: { planStatus: true, trialEndsAt: true },
+  });
+
+  console.log("[DEBUG checkBillingAccess]", {
+    planStatus: barbershop?.planStatus,
+    trialEndsAt: barbershop?.trialEndsAt,
   });
 
   if (!barbershop) redirect("/login");
