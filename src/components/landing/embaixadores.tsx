@@ -47,7 +47,6 @@ export function Embaixadores() {
                 fontSize: "18px",
                 lineHeight: 1.7,
                 marginBottom: "40px",
-                maxWidth: "480px",
               }}
             >
               Pague uma única vez R$ 169,90 e tenha acesso vitalício a todas
