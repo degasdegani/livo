@@ -59,7 +59,7 @@ export async function requireMembership(): Promise<MembershipContext> {
 export async function requireRole(
   roles: MemberRole | MemberRole[],
 ): Promise<MembershipContext> {
-  const m = await requireMembership();
+  const m = await requireMembershipWithBilling();
   const allowed = Array.isArray(roles) ? roles : [roles];
   if (!allowed.includes(m.role)) {
     redirect("/dashboard");
@@ -115,10 +115,7 @@ export async function checkBillingAccess(barbershopId: string): Promise<void> {
 
 export async function requireMembershipWithBilling(): Promise<MembershipContext> {
   const m = await requireMembership();
-  // Apenas owners são verificados — membros convidados seguem o billing da barbearia
-  if (m.role === MemberRole.owner) {
-    await checkBillingAccess(m.barbershopId);
-  }
+  await checkBillingAccess(m.barbershopId);
   return m;
 }
 
